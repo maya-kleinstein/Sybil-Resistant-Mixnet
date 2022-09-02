@@ -101,8 +101,8 @@ pub mod signature;
 /// Represents steps taken by the verifier to request signature proofs of knowledge
 /// and selective disclosure proofs
 pub mod verifier;
-/// Methods to calculate perfomance metrics
-pub mod main;
+/// Represents Communication Network
+pub mod network;
 
 /// Trait for structs that have variable length bytes but use compressed Bls12 elements
 pub trait ToVariableLengthBytes {
