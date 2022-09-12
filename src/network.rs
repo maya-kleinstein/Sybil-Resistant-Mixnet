@@ -52,13 +52,13 @@ struct TicketValues{
 /// Ticket configuration
 pub struct Ticket{
     ticket: u64,
-    proof: SignatureProof, // TODO: ???
+    proof: Vec<u8>, // TODO: ???
 }
 
 /// Packet configuration
 pub struct Packet{
     ticket: Ticket,
-    data: String
+    data: Vec<u8>,
 }
 
 /// Network configuration
@@ -69,16 +69,18 @@ pub struct Network{
     size: u64,
     servers: [Server],
 }
-
+//TODO: eventually take care of private-public values (e.g. Network can see all private keys)
 
 /// Generate a packet from the client to the network with the given data
-pub fn generate_packet(data: String, client: &Client, network: &Network) -> Packet{
+pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Packet{
     let mut packet: Packet;
-    let mut cur_sk: &SecretKey;
+    let mut cur_pk: &PublicKey;
     let mut ticket_vals: TicketValues;
     let mut b: u64;
     let mut t: u64;
     let mut s: u32;
+    let mut data: Vec<u8>;
+    let mut proof: SignatureProof;
     // Onion Encrypt the data using the keys matching the calculated tickets
     for i in network.size..1{
         // t = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
@@ -93,17 +95,16 @@ pub fn generate_packet(data: String, client: &Client, network: &Network) -> Pack
 
         // TODO: Genereate Proof of Knowledge for (A,e,s) and t=b^s
 
-        // TODO: Fix so the following is actually onion encryption...
-        // TODO: eventually convert t to t modulo amount of server
-        cur_sk = &network.servers[usize::try_from(t).unwrap()].keys.1;
+        // Onion Encryption
+        cur_pk = &network.servers[usize::try_from(t).unwrap()].keys.0;
         
         // old data needs to be old packet (to string? or smthn...) using cur_sk
         packet = Packet{
             ticket: Ticket{
                 ticket: t,
-                proof: proof,
+                proof: proof.to_bytes(false),
             },
-            data: "packet".to_string(),
+            data,
         };
     }
     return packet;
