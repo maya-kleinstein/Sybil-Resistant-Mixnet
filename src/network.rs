@@ -3,7 +3,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use ff_zeroize::{Field, PrimeField};
 use pairing_plus::bls12_381::{FrRepr, Fr};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 #[deny(
     missing_docs,
@@ -44,7 +44,7 @@ pub struct Client {
 // Ticket configuration
 #[derive(Hash)]
 struct TicketValues{
-    layer: u32,
+    layer: u64,
     round_id: u32,
     sys_rand: i32,
 }
@@ -61,20 +61,25 @@ pub struct Packet{
     data: String
 }
 
+/// Network configuration
 pub struct Network{
     id_provider: IDProvider,
     sys_rand: i32,
     round_id: u32,
-    size: u32,
+    size: u64,
     servers: [Server],
 }
 
+
+/// Generate a packet from the client to the network with the given data
 pub fn generate_packet(data: String, client: &Client, network: &Network) -> Packet{
     let mut packet: Packet;
     let mut cur_sk: &SecretKey;
     let mut ticket_vals: TicketValues;
-    let mut b: Fr;
+    let mut b: u64;
     let mut t: u64;
+    let mut s: u32;
+    // Onion Encrypt the data using the keys matching the calculated tickets
     for i in network.size..1{
         // t = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
         ticket_vals = TicketValues{
@@ -82,23 +87,11 @@ pub fn generate_packet(data: String, client: &Client, network: &Network) -> Pack
             round_id: network.round_id,
             sys_rand: network.sys_rand,
         };
-        b = Fr::from_repr(FrRepr::from(calculate_hash(&ticket_vals))).unwrap();
-        t = 1; // TODO: should be t = b^s
+        b =  calculate_hash(&ticket_vals);
+        s = (client.signature.s.into_repr().0[0] & 0x00000000FFFFFFFF).try_into().unwrap();
+        t = b.pow(s) % network.size;
 
-        // TODO: Fix proof generation... rn it only proves knowledge of signature
-        let nonce = Verifier::generate_proof_nonce();
-        let proof_request = Verifier::new_proof_request(&[0], 
-                                &network.servers[usize::try_from(t).unwrap()].keys.0).unwrap();
-
-        let proof_messages = vec![
-            pm_revealed!(b"I belong to this network"),
-        ];
-
-        let pok = Prover::commit_signature_pok(&proof_request, proof_messages.as_slice(), &client.signature)
-            .unwrap();
-        let challenge = Prover::create_challenge_hash(&[pok.clone()], None, &nonce).unwrap();
-
-        let proof = Prover::generate_signature_pok(pok, &challenge).unwrap();
+        // TODO: Genereate Proof of Knowledge for (A,e,s) and t=b^s
 
         // TODO: Fix so the following is actually onion encryption...
         // TODO: eventually convert t to t modulo amount of server
@@ -125,6 +118,20 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
 mod tests{
     use rand::Rng;
     use super::*;
+
+    #[test]
+    pub fn tests(){
+        let mut b: u64;
+        let mut s: u64;
+        let mut t: u64;
+        s = 0xFF88DDAA00000002;
+        let mut S: Fr;
+        S = Fr::from_repr(FrRepr::from(s)).unwrap();
+        // t = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
+        b =  5; // Fr::from_repr(FrRepr::from(calculate_hash(&ticket_vals))).unwrap();
+        t = b.pow((S.into_repr().0[0] & 0x00000000FFFFFFFF).try_into().unwrap());
+        println!("t: {}", t);
+    }
 
     #[test]
     /// A simple network example
