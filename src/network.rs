@@ -3,7 +3,10 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use ff_zeroize::{Field, PrimeField};
 use pairing_plus::bls12_381::{FrRepr, Fr};
+use rand::rngs::ThreadRng;
 use std::convert::{TryFrom, TryInto};
+use rsa::{PublicKey, RsaPrivateKey, RsaPublicKey, PaddingScheme};
+
 
 #[deny(
     missing_docs,
@@ -32,6 +35,7 @@ pub struct IDProvider{
 /// Server configuration
 pub struct Server{
     keys: (PublicKey, SecretKey),
+    rsa_keys: (RsaPublicKey, RsaPrivateKey)
     id: u32,
 }
 
@@ -80,7 +84,13 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Pac
     let mut t: u64;
     let mut s: u32;
     let mut data: Vec<u8>;
-    let mut proof: SignatureProof;
+    let mut proof: PoKOfSignatureProof;
+    let mut proof_messages: Vec<ProofMessage>;
+    let mut pok: PoKOfSignature;
+    let mut challenge_prover: ProofChallenge;
+    let mut rng: ThreadRng;
+    let mut padding: PaddingScheme;
+    let mut enc_data: &Vec<u8>;
     // Onion Encrypt the data using the keys matching the calculated tickets
     for i in network.size..1{
         // t = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
@@ -93,18 +103,34 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Pac
         s = (client.signature.s.into_repr().0[0] & 0x00000000FFFFFFFF).try_into().unwrap();
         t = b.pow(s) % network.size;
 
-        // TODO: Genereate Proof of Knowledge for (A,e,s) and t=b^s
+        // Get the public key of the server with ID t
+        cur_pk = &network.servers[t as usize].keys.0;
 
-        // Onion Encryption
-        cur_pk = &network.servers[usize::try_from(t).unwrap()].keys.0;
+        // Generating PoK for Signature (A,e,s) and t=b^s        
+        proof_messages = vec![
+            pm_revealed!(b"I'm a valid user! Some ID number..."),
+        ];
         
+        pok = PoKOfSignature::init(&client.signature, &cur_pk, proof_messages.as_slice()).unwrap();
+        challenge_prover = ProofChallenge::hash(&pok.to_bytes());
+        proof = pok.gen_proof(&challenge_prover).unwrap();
+
+        // TODO: Genereate Proof of Knowledge for t=b^s as well!
+        // TODO: complete other zkps as desired and compute `challenge_hash`???
+        // TODO: add bytes from other proofs???
+
+        // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
+        rng = rand::thread_rng();
+        padding = PaddingScheme::new_pkcs1v15_encrypt();
+        enc_data = &network.servers[t as usize].rsa_keys.0.encrypt(&mut rng, padding, &data[..]).expect("failed to encrypt");
+
         // old data needs to be old packet (to string? or smthn...) using cur_sk
         packet = Packet{
             ticket: Ticket{
                 ticket: t,
                 proof: proof.to_bytes(false),
             },
-            data,
+            enc_data,
         };
     }
     return packet;
