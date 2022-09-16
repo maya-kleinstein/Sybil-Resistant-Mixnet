@@ -3,7 +3,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use ff_zeroize::PrimeField;
-use rand::Rng;
+use rand_08::Rng;
 use rsa::{RsaPrivateKey, RsaPublicKey, PaddingScheme};
 use rsa::PublicKey as PublicKeyForRSAEnc;
 use serde::{Serialize, Deserialize};
@@ -75,21 +75,19 @@ pub struct Network{
 /// Generate a packet from the client to the network with the given data
 pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Packet{
     let mut packet: Packet;
-    let mut cur_pk: &PublicKey;
     let mut ticket_vals: TicketValues;
     let mut b: u64;
     let mut t: u64;
-    let mut data: Vec<u8>;
+    let mut data: Vec<u8> = data;
     let mut padding: PaddingScheme;
-    let mut enc_data: &Vec<u8>;
-    let encoded_packet: Vec<u8>;
+    let mut encoded_packet: Vec<u8>;
 
     let s = (client.signature.s.into_repr().0[0] & 0x00000000FFFFFFFF).try_into().unwrap();
     
     let proof_messages = vec![
         pm_revealed!(b"I'm a valid user! Some ID number...?"),
     ];
-    let rng = rand::thread_rng();
+    let mut rng = rand_08::thread_rng();
 
     let pok = PoKOfSignature::init(&client.signature, &network.id_provider.keys.0, proof_messages.as_slice()).unwrap();
     let challenge_prover = ProofChallenge::hash(&pok.to_bytes());
@@ -105,9 +103,6 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Pac
         };
         b =  calculate_hash(&ticket_vals);
         t = b.pow(s) % network.size;
-
-        // Get the public key of the server with ID t
-        cur_pk = &network.servers[t as usize].keys.0;
 
         // Generating PoK for t=b^s given Signature (A,e,s)       
         // TODO: Generate proof of knowledge for t=b^s as well!
@@ -127,13 +122,13 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Pac
 }
 
 /// Creating a new network of size size
-pub fn create_network(network: &Network, size: u64){
+pub fn create_network(network: &mut Network, size: u64){
     let mut keys: (PublicKey, SecretKey) = Issuer::new_keys(1).unwrap();
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand_08::thread_rng();
     let bits = 2048;
-    let mut rsa_private_key = RsaPrivateKey::new(&mut rng, bits).unwrap();
-    let mut rsa_public_key = RsaPublicKey::from(&rsa_private_key);
+    let mut rsa_private_key:RsaPrivateKey;
+    let mut rsa_public_key:RsaPublicKey;
 
     let id_provider = IDProvider{
         keys: keys,
@@ -141,7 +136,7 @@ pub fn create_network(network: &Network, size: u64){
     };
 
     network.id_provider = id_provider;
-    network.sys_rand = rand::thread_rng().gen();
+    network.sys_rand = rand_08::thread_rng().gen();
     network.round_id = 0;
     
     for i in 0..size{
@@ -170,11 +165,11 @@ mod tests{
     use super::*;
     use pairing_plus::bls12_381::{Fr, FrRepr};
     
-    #[test]
-    pub fn test_simple_network(){
+    // #[test]
+    // pub fn test_simple_network(){
         
 
-    }
+    // }
 
     #[test]
     pub fn test_ticket_creation(){
