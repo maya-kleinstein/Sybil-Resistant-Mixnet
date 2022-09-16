@@ -1,11 +1,12 @@
-use crate::prelude::*;
+use crate::prelude::{*, PublicKey};
 use std::collections::hash_map::DefaultHasher;
+use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
-use ff_zeroize::{Field, PrimeField};
-use pairing_plus::bls12_381::{FrRepr, Fr};
-use rand::rngs::ThreadRng;
-use std::convert::{TryFrom, TryInto};
-use rsa::{PublicKey, RsaPrivateKey, RsaPublicKey, PaddingScheme};
+use ff_zeroize::PrimeField;
+use rand::Rng;
+use rsa::{RsaPrivateKey, RsaPublicKey, PaddingScheme};
+use rsa::PublicKey as PublicKeyForRSAEnc;
+use serde::{Serialize, Deserialize};
 
 
 #[deny(
@@ -35,7 +36,7 @@ pub struct IDProvider{
 /// Server configuration
 pub struct Server{
     keys: (PublicKey, SecretKey),
-    rsa_keys: (RsaPublicKey, RsaPrivateKey)
+    rsa_keys: (RsaPublicKey, RsaPrivateKey),
     id: u32,
 }
 
@@ -53,6 +54,7 @@ struct TicketValues{
 }
 
 /// Packet configuration
+#[derive(Serialize, Deserialize)]
 pub struct Packet{
     ticket: u64,
     proof: Vec<u8>, 
@@ -67,6 +69,7 @@ pub struct Network{
     size: u64,
     servers: [Server],
 }
+
 //TODO: eventually take care of private-public values (e.g. Network can see all private keys)
 
 /// Generate a packet from the client to the network with the given data
@@ -79,6 +82,7 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Pac
     let mut data: Vec<u8>;
     let mut padding: PaddingScheme;
     let mut enc_data: &Vec<u8>;
+    let encoded_packet: Vec<u8>;
 
     let s = (client.signature.s.into_repr().0[0] & 0x00000000FFFFFFFF).try_into().unwrap();
     
@@ -105,21 +109,54 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Pac
         // Get the public key of the server with ID t
         cur_pk = &network.servers[t as usize].keys.0;
 
-        // Generating PoK for Signature (A,e,s) and t=b^s        
+        // Generating PoK for t=b^s given Signature (A,e,s)       
         // TODO: Generate proof of knowledge for t=b^s as well!
-        // TODO: complete other zkps as desired and compute `challenge_hash`???
-        // TODO: add bytes from other proofs???
         packet = Packet{
             ticket: t,
             proof: proof.to_bytes(false),
             data,
         };
 
+        encoded_packet = bincode::serialize(&packet).unwrap();
+
         // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
         padding = PaddingScheme::new_pkcs1v15_encrypt();
-        data = &network.servers[t as usize].rsa_keys.0.encrypt(&mut rng, padding, &packet[..]).expect("failed to encrypt");
+        data = network.servers[t as usize].rsa_keys.0.encrypt(&mut rng, padding, &encoded_packet[..]).expect("failed to encrypt");
     }
-    return data;
+    return bincode::deserialize(&data[..]).unwrap();
+}
+
+/// Creating a new network of size size
+pub fn create_network(network: &Network, size: u64){
+    let mut keys: (PublicKey, SecretKey) = Issuer::new_keys(1).unwrap();
+
+    let mut rng = rand::thread_rng();
+    let bits = 2048;
+    let mut rsa_private_key = RsaPrivateKey::new(&mut rng, bits).unwrap();
+    let mut rsa_public_key = RsaPublicKey::from(&rsa_private_key);
+
+    let id_provider = IDProvider{
+        keys: keys,
+        sys_rand: rand::random::<i32>(),
+    };
+
+    network.id_provider = id_provider;
+    network.sys_rand = rand::thread_rng().gen();
+    network.round_id = 0;
+    
+    for i in 0..size{
+        keys = Issuer::new_keys(1).unwrap();
+
+        rsa_private_key = RsaPrivateKey::new(&mut rng, bits).unwrap();
+        rsa_public_key = RsaPublicKey::from(&rsa_private_key);
+    
+        let server = Server{
+            keys,
+            rsa_keys: (rsa_public_key, rsa_private_key),
+            id: i.try_into().unwrap(),
+        };
+        network.servers[i as usize] = server;
+    }
 }
 
 fn calculate_hash<T: Hash>(t: &T) -> u64 {
@@ -128,14 +165,16 @@ fn calculate_hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
+
 mod tests{
-    use rand::Rng;
     use super::*;
+    use pairing_plus::bls12_381::{Fr, FrRepr};
+    
+    #[test]
+    pub fn test_simple_network(){
+        
 
-    // #[test]
-    // pub fn test_simple_network(){
-
-    // }
+    }
 
     #[test]
     pub fn test_ticket_creation(){
@@ -146,7 +185,7 @@ mod tests{
         let mut S: Fr;
         S = Fr::from_repr(FrRepr::from(s)).unwrap();
         // t = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
-        b =  5; // Fr::from_repr(FrRepr::from(calculate_hash(&ticket_vals))).unwrap();
+        b =  5;
         t = b.pow((S.into_repr().0[0] & 0x00000000FFFFFFFF).try_into().unwrap());
         println!("t: {}", t);
     }
