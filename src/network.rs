@@ -1,5 +1,6 @@
 use crate::prelude::{*, PublicKey};
 use std::convert::TryInto;
+use std::io::Read;
 use blake2::Blake2b;
 use pairing_plus::{CurveProjective, CurveAffine};
 use pairing_plus::bls12_381::{G1, Fr, G1Uncompressed};
@@ -8,11 +9,10 @@ use pairing_plus::hash_to_field::ExpandMsgXmd;
 use rand_4net::Rng;
 use rsa::{RsaPrivateKey, RsaPublicKey, PaddingScheme};
 use rsa::PublicKey as PublicKeyForRSAEnc;
+use sodiumoxide::crypto::secretbox;
 use serde::{Serialize, Deserialize};
 use blake2::VarBlake2b;
 use blake2::digest::{Input, VariableOutput};
-
-
 
 /// Network module
 /// Contains network related functionality
@@ -83,7 +83,6 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     let sig_pok = PoKOfSignature::init(&client.signature, &network.id_provider.keys.0, proof_messages.as_slice()).unwrap();
     let challenge_prover = ProofChallenge::hash(&sig_pok.to_bytes());
     let proof = sig_pok.gen_proof(&challenge_prover).unwrap();
-
     // Onion Encrypt the data using the keys matching the calculated tickets
     for i in (0..network.size-1).rev(){
         // t = b^s, where b=H0(layer, RoundID, SysRand) and s is part of signature
@@ -99,8 +98,7 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
         };
         let encoded_packet = bincode::serialize(&packet).unwrap();
         // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
-        let padding = PaddingScheme::new_pkcs1v15_encrypt();
-        data = network.servers[x as usize].rsa_keys.0.encrypt(&mut rng, padding, &encoded_packet[..]).expect("failed to encrypt");
+        data = encrypt_packet(encoded_packet, &network.servers[x as usize].rsa_keys.0);
     }
     return (data, x);
 }
@@ -182,6 +180,25 @@ fn generate_rsa_keys() -> (RsaPublicKey, RsaPrivateKey) {
 }
 
 
+// Encrypting packet using both asymmetric and symmetric encryption, 128bit secure
+fn encrypt_packet(encoded_data: Vec<u8>, pub_key: &RsaPublicKey) -> Vec<u8>{
+    // generate random symmetric key and encrypt data with it
+    let key = secretbox::gen_key();
+    let nonce = secretbox::gen_nonce();
+    let mut ciphertext = secretbox::seal(encoded_data.as_ref(), &nonce, &key);
+
+    // encrypt sym key using pub key
+    let mut rng = rand_4net::thread_rng();
+    let padding = PaddingScheme::new_pkcs1v15_encrypt();
+    let mut enc_key = pub_key.encrypt(&mut rng, padding, &key.as_ref()[..]).expect("failed to encrypt");
+
+    // TODO: fix this after decryption implementations...
+    // add sym key to encrypted data
+    ciphertext.append(&mut enc_key);
+    return ciphertext;
+}
+
+
 mod tests{
     use super::*;
  
@@ -195,13 +212,13 @@ mod tests{
             },
             sys_rand: 0,
             round_id: 0,
-            size: 3,
-            servers: vec![Server::new(); 3],
+            size: 4,
+            servers: vec![Server::new(); 4],
         };
 
         println!("about to create the network entirely!");
 
-        create_network(&mut network, 3);
+        create_network(&mut network, 4);
 
         println!("done creating the network!");
 
