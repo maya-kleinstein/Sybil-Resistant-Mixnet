@@ -3,10 +3,7 @@ extern crate bbs;
 
 use bbs::prelude::*;
 use std::collections::BTreeMap;
-use std::collections::hash_map::DefaultHasher;
-use std::convert::TryInto;
-use std::hash::{Hash, Hasher};
-use std::time::Instant;
+
 
 #[test]
 fn keygen() {
