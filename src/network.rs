@@ -1,6 +1,5 @@
 use crate::prelude::{*, PublicKey};
 use std::convert::TryInto;
-use std::io::Read;
 use blake2::Blake2b;
 use pairing_plus::{CurveProjective, CurveAffine};
 use pairing_plus::bls12_381::{G1, Fr, G1Uncompressed};
@@ -13,6 +12,7 @@ use sodiumoxide::crypto::secretbox;
 use serde::{Serialize, Deserialize};
 use blake2::VarBlake2b;
 use blake2::digest::{Input, VariableOutput};
+use std::time::Instant;
 
 /// Network module
 /// Contains network related functionality
@@ -75,7 +75,6 @@ pub struct Network{
 pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64){
     let mut data: Vec<u8> = data;
     let mut x: u64 = 0;
-    let mut rng = rand_4net::thread_rng();
     let proof_messages = vec![
         pm_revealed!(b"Testing"),
     ];
@@ -155,7 +154,7 @@ fn calculate_next_server(t_affine_uncompressed: G1Uncompressed, size: u64)->u64{
 
     // server x = H(t), H: {0,1}^* -> Zp
     let mut hasher = VarBlake2b::new(8).unwrap();
-    hasher.input(&mut t);
+    hasher.input(&mut t); // TODO: add constant string to beginning of hash
     let buf = hasher.vec_result();
     let x = u64::from_be_bytes(buf.as_slice().try_into().unwrap()) % size;
     return x;
@@ -182,6 +181,7 @@ fn generate_rsa_keys() -> (RsaPublicKey, RsaPrivateKey) {
 
 // Encrypting packet using both asymmetric and symmetric encryption, 128bit secure
 fn encrypt_packet(encoded_data: Vec<u8>, pub_key: &RsaPublicKey) -> Vec<u8>{
+    // TODO: USE CRATE: log (or tracing) for BENCHMARKS
     // generate random symmetric key and encrypt data with it
     let key = secretbox::gen_key();
     let nonce = secretbox::gen_nonce();
@@ -196,6 +196,7 @@ fn encrypt_packet(encoded_data: Vec<u8>, pub_key: &RsaPublicKey) -> Vec<u8>{
     // add sym key to encrypted data
     ciphertext.append(&mut enc_key);
     return ciphertext;
+    // TODO: https://doc.libsodium.org/public-key_cryptography/sealed_boxes, should be able to do 1000's per sec (Yossi says)
 }
 
 
@@ -212,13 +213,13 @@ mod tests{
             },
             sys_rand: 0,
             round_id: 0,
-            size: 4,
-            servers: vec![Server::new(); 4],
+            size: 10,
+            servers: vec![Server::new(); 10],
         };
 
         println!("about to create the network entirely!");
 
-        create_network(&mut network, 4);
+        create_network(&mut network, 10);
 
         println!("done creating the network!");
 
