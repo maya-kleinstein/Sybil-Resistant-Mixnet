@@ -6,34 +6,34 @@ use pairing_plus::bls12_381::{G1, Fr, G1Uncompressed};
 use pairing_plus::hash_to_curve::HashToCurve;
 use pairing_plus::hash_to_field::ExpandMsgXmd;
 use rand_4net::Rng;
-use rsa::{RsaPrivateKey, RsaPublicKey, PaddingScheme};
-use rsa::PublicKey as PublicKeyForRSAEnc;
-use sodiumoxide::crypto::secretbox;
 use serde::{Serialize, Deserialize};
 use blake2::VarBlake2b;
 use blake2::digest::{Input, VariableOutput};
-use std::time::Instant;
+use dryoc::dryocbox;
+use dryoc::dryocbox::DryocBox;
+
 
 /// Network module
 /// Contains network related functionality
 /// Entities Included: ID provider, Server, Client, Tickets, etc.
 
+
+
 /// IDprovider configuration
 pub struct IDProvider{
-    keys: (PublicKey, SecretKey),
+    bbs_keys: (PublicKey, SecretKey),
 }
 
 /// Server configuration
 #[derive(Clone)]
 pub struct Server{
-    rsa_keys: (RsaPublicKey, RsaPrivateKey),
+    key_pair: dryocbox::KeyPair,
 }
 
 impl Server {
-    #[cfg(test)]
     fn new() -> Server {
         Server {
-            rsa_keys: generate_rsa_keys(),
+            key_pair: dryocbox::KeyPair::gen(),
         }
     }
 }
@@ -78,14 +78,17 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     let proof_messages = vec![
         pm_revealed!(b"Testing"),
     ];
+
     // Generating Fiat Shamir Signature PoK
-    let sig_pok = PoKOfSignature::init(&client.signature, &network.id_provider.keys.0, proof_messages.as_slice()).unwrap();
+    let sig_pok = PoKOfSignature::init(&client.signature, &network.id_provider.bbs_keys.0, proof_messages.as_slice()).unwrap();
     let challenge_prover = ProofChallenge::hash(&sig_pok.to_bytes());
     let proof = sig_pok.gen_proof(&challenge_prover).unwrap();
+
     // Onion Encrypt the data using the keys matching the calculated tickets
     for i in (0..network.size-1).rev(){
         // t = b^s, where b=H0(layer, RoundID, SysRand) and s is part of signature
         let t_affine_uncompressed = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.s);
+        
         // server x = H(t) % network size, H: {0,1}^* -> Zp
         x = calculate_next_server(t_affine_uncompressed, network.size);
         // Generating PoK for t=b^s given Signature (A,e,s)       
@@ -97,23 +100,23 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
         };
         let encoded_packet = bincode::serialize(&packet).unwrap();
         // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
-        data = encrypt_packet(encoded_packet, &network.servers[x as usize].rsa_keys.0);
+        data = DryocBox::seal_to_vecbox(&encoded_packet, &network.servers[x as usize].key_pair.public_key.clone()).expect("Unable to seal").to_vec();
     }
     return (data, x);
 }
 
+/// Decrypt a packet traversing through the network
+// pub fn decrypt_packet(packet: Vec<u8>, server: &Server, network: &Network) -> Vec<u8>{
+    
+// }
+
 
 /// Creating a new network of size size
 pub fn create_network(network: &mut Network, size: u64){
-    let keys: (PublicKey, SecretKey) = Issuer::new_keys(1).unwrap();
-
-    let mut rng = rand_4net::thread_rng();
-    let bits = 2048;
-    let mut rsa_private_key:RsaPrivateKey;
-    let mut rsa_public_key:RsaPublicKey;
+    let bbs_keys: (PublicKey, SecretKey) = Issuer::new_keys(1).unwrap();
 
     let id_provider = IDProvider{
-        keys: keys,
+        bbs_keys,
     };
 
     network.id_provider = id_provider;
@@ -121,13 +124,7 @@ pub fn create_network(network: &mut Network, size: u64){
     network.round_id = 0;
     
     for i in 0..size{
-        rsa_private_key = RsaPrivateKey::new(&mut rng, bits).unwrap();
-        rsa_public_key = RsaPublicKey::from(&rsa_private_key);
-    
-        let server = Server{
-            rsa_keys: (rsa_public_key, rsa_private_key),
-        };
-        network.servers[i as usize] = server;
+        network.servers[i as usize] = Server::new();
     }
 }
 
@@ -168,66 +165,32 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 }
 
 
-// Generating RSA keys
-#[cfg(test)]
-fn generate_rsa_keys() -> (RsaPublicKey, RsaPrivateKey) {
-    let mut rng = rand_4net::thread_rng();
-    let bits = 2048;
-    let rsa_private_key = RsaPrivateKey::new(&mut rng, bits).unwrap();
-    let rsa_public_key = RsaPublicKey::from(&rsa_private_key);
-    return (rsa_public_key, rsa_private_key);
-}
-
-
-// Encrypting packet using both asymmetric and symmetric encryption, 128bit secure
-fn encrypt_packet(encoded_data: Vec<u8>, pub_key: &RsaPublicKey) -> Vec<u8>{
-    // TODO: USE CRATE: log (or tracing) for BENCHMARKS
-    // generate random symmetric key and encrypt data with it
-    let key = secretbox::gen_key();
-    let nonce = secretbox::gen_nonce();
-    let mut ciphertext = secretbox::seal(encoded_data.as_ref(), &nonce, &key);
-
-    // encrypt sym key using pub key
-    let mut rng = rand_4net::thread_rng();
-    let padding = PaddingScheme::new_pkcs1v15_encrypt();
-    let mut enc_key = pub_key.encrypt(&mut rng, padding, &key.as_ref()[..]).expect("failed to encrypt");
-
-    // TODO: fix this after decryption implementations...
-    // add sym key to encrypted data
-    ciphertext.append(&mut enc_key);
-    return ciphertext;
-    // TODO: https://doc.libsodium.org/public-key_cryptography/sealed_boxes, should be able to do 1000's per sec (Yossi says)
-}
-
-
 mod tests{
     use super::*;
  
+    const TEST_NETWORK_SIZE: u64 = 3;
+
     #[test]
     pub fn test_simple_network(){
         println!("about to create the skeleton for the network");
 
-        let mut network = Network{
+        let network = Network{
             id_provider: IDProvider{
-                keys: Issuer::new_keys(1).unwrap(),
+                bbs_keys: Issuer::new_keys(1).unwrap(),
             },
             sys_rand: 0,
             round_id: 0,
-            size: 10,
-            servers: vec![Server::new(); 10],
+            size: TEST_NETWORK_SIZE,
+            servers: vec![Server::new(); TEST_NETWORK_SIZE.try_into().unwrap()],
         };
 
-        println!("about to create the network entirely!");
-
-        create_network(&mut network, 10);
-
-        println!("done creating the network!");
+        println!("about to create client stuff");
 
         let messages = vec![
             SignatureMessage::hash(b"Testing"),
         ];
         let client = Client{ 
-            signature: Signature::new(messages.as_slice(), &network.id_provider.keys.1, &network.id_provider.keys.0).unwrap(),
+            signature: Signature::new(messages.as_slice(), &network.id_provider.bbs_keys.1, &network.id_provider.bbs_keys.0).unwrap(),
         };
 
         let bytes = vec![b'a', b'b', b'c'];
