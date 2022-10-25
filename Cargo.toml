@@ -36,6 +36,6 @@ subtle = "2.2"
 wasm-bindgen = { version = "0.2", optional = true }
 zeroize = "1.1"
 bincode = "1.3.3"
-dryoc = "0.4.0"
+dryoc = {version = "0.4.0", features = ["serde"]}
 
 [dev-dependencies]
