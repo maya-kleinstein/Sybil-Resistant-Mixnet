@@ -20,7 +20,6 @@ use dryoc::dryocbox::DryocBox;
 /// Entities Included: ID provider, Server, Client, Tickets, etc.
 
 
-
 /// IDprovider configuration
 pub struct IDProvider{
     bbs_keys: (PublicKey, SecretKey),
@@ -45,6 +44,20 @@ pub struct Client {
     signature: Signature,
 }
 
+
+impl Client {
+    /// Generate new client for given network
+    pub fn new(network: &Network) -> Client {
+        let messages = vec![
+            SignatureMessage::hash(b"Testing"),
+        ];
+        Client {
+            signature: Signature::new(messages.as_slice(), &network.id_provider.bbs_keys.1, &network.id_provider.bbs_keys.0).unwrap(),
+        }
+    }
+}
+
+
 // Ticket configuration
 #[derive(Serialize, Deserialize)]
 struct TicketValues{
@@ -68,6 +81,24 @@ pub struct Network{
     round_id: u32,
     size: u64,
     servers: Vec<Server>,
+}
+
+
+impl Network {
+    /// Generate a network of size size
+    pub fn new(size: u64) -> Network {
+        let id_provider = IDProvider {
+            bbs_keys: Issuer::new_keys(1).unwrap(),
+        };
+        let servers = vec![Server::new(); size.try_into().unwrap()];
+        Network {
+            id_provider,
+            sys_rand: 0,
+            round_id: 0,
+            size,
+            servers,
+        }
+    }
 }
 
 
@@ -113,6 +144,7 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     return (data, x);
 }
 
+
 /// Decrypt a packet traversing through the network
 pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u8>{
     let mut data = enc_packet;
@@ -127,11 +159,12 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
         // Retrieving data and next server 
         data = packet.data;
         // Calculating next server using the ticket
-        let t_recovered = G1::deserialize(&mut packet.ticket[..].as_ref(), true).unwrap();
+        let t_recovered = G1::deserialize(&mut packet.ticket[..].as_ref(), false).unwrap();
         x = calculate_next_server(t_recovered, network.size);
     }
     return data;
 }
+
 
 // Verify the proof of knowledge of the signature and the ticket
 fn verify_packet(proof: Vec<u8>){
@@ -199,42 +232,19 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 mod tests{
     use super::*;
  
-    const TEST_NETWORK_SIZE: u64 = 3;
+    const TEST_NETWORK_SIZE: u64 = 5;
 
     #[test]
     pub fn test_simple_network(){
-        println!("about to create the skeleton for the network");
-
-        let network = Network{
-            id_provider: IDProvider{
-                bbs_keys: Issuer::new_keys(1).unwrap(),
-            },
-            sys_rand: 0,
-            round_id: 0,
-            size: TEST_NETWORK_SIZE,
-            servers: vec![Server::new(); TEST_NETWORK_SIZE.try_into().unwrap()],
-        };
-
-        println!("about to create client stuff");
-
-        let messages = vec![
-            SignatureMessage::hash(b"Testing"),
-        ];
-        let client = Client{ 
-            signature: Signature::new(messages.as_slice(), &network.id_provider.bbs_keys.1, &network.id_provider.bbs_keys.0).unwrap(),
-        };
-
-        let bytes = vec![b'a', b'b', b'c'];
-
-        println!("about to generate the packet, wish me luck!");
-
-        let (enc_data, first_server) = generate_packet(bytes, &client, &network);
+        let network = Network::new(TEST_NETWORK_SIZE);
+        let client = Client::new(&network);
+        let data = vec![b'a', b'b', b'c'];
+        let (enc_data, first_server) = generate_packet(data, &client, &network);
 
         println!("{}, is the first server", first_server);
         println!("{}, is the length of the data", enc_data.len());
         println!("enc_data: {:?}", enc_data);
 
-        println!("about to decrypt the packet, wish me luck!");
         let dec_data = decrypt_packet(enc_data, first_server, &network);
 
         println!("dec_data: {:?}", dec_data);
