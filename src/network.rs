@@ -31,6 +31,7 @@ pub struct Server{
     key_pair: dryocbox::KeyPair,
 }
 
+
 impl Server {
     fn new() -> Server {
         Server {
@@ -177,7 +178,7 @@ fn verify_packet(proof: Vec<u8>){
 
 /// Creating a new network of size size
 pub fn create_network(network: &mut Network, size: u64){
-    let bbs_keys: (PublicKey, SecretKey) = Issuer::new_keys(1).unwrap();
+    let bbs_keys: (PublicKey, SecretKey) = Issuer::new_keys(0).unwrap();
 
     let id_provider = IDProvider{
         bbs_keys,
