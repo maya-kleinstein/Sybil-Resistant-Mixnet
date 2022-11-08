@@ -39,19 +39,19 @@ pub mod prelude {
 #[derive(Debug, Clone)]
 pub struct PoKOfSignature {
     /// A' in section 4.5
-    a_prime: G1,
+    pub(crate) a_prime: G1,
     /// \overline{A} in section 4.5
-    a_bar: G1,
+    pub(crate) a_bar: G1,
     /// d in section 4.5
-    d: G1,
+    pub(crate) d: G1,
     /// For proving relation a_bar / d == a_prime^{-e} * h_0^r2
-    pok_vc_1: ProverCommittedG1,
+    pub(crate) pok_vc_1: ProverCommittedG1,
     /// The messages
-    secrets_1: Vec<Fr>,
+    pub(crate) secrets_1: Vec<Fr>,
     /// For proving relation g1 * h1^m1 * h2^m2.... for all disclosed messages m_i == d^r3 * h_0^{-s_prime} * h1^-m1 * h2^-m2.... for all undisclosed messages m_i
-    pok_vc_2: ProverCommittedG1,
+    pub(crate) pok_vc_2: ProverCommittedG1,
     /// The blinding factors
-    secrets_2: Vec<Fr>,
+    pub(crate) secrets_2: Vec<Fr>,
     /// revealed messages
     pub(crate) revealed_messages: BTreeMap<usize, SignatureMessage>,
 }

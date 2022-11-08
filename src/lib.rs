@@ -103,6 +103,8 @@ pub mod signature;
 pub mod verifier;
 /// Represents Communication Network
 pub mod network;
+/// Methods and structs for creating tickets proof of knowledge
+pub mod pok_ticket;
 
 /// Trait for structs that have variable length bytes but use compressed Bls12 elements
 pub trait ToVariableLengthBytes {
@@ -763,6 +765,27 @@ fn rand_non_zero_fr() -> Fr {
         r = Fr::random(&mut rng);
     }
 }
+
+
+
+/// The Fiat-Shamir Challenge in proofs of tickets+signatures
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct TicketProofChallenge(pub(crate) Fr);
+
+impl TicketProofChallenge {
+    to_fixed_length_bytes_impl!(TicketProofChallenge, Fr, FR_COMPRESSED_SIZE, FR_COMPRESSED_SIZE);
+}
+
+default_zero_impl!(TicketProofChallenge, Fr);
+as_ref_impl!(TicketProofChallenge, Fr);
+from_impl!(TicketProofChallenge, Fr, FR_COMPRESSED_SIZE);
+display_impl!(TicketProofChallenge);
+serdes_impl!(TicketProofChallenge);
+hash_elem_impl!(TicketProofChallenge, |data| { TicketProofChallenge(hash_to_fr(data)) });
+random_elem_impl!(TicketProofChallenge, { Self(Fr::random(&mut thread_rng())) });
+
+
+
 
 /// Convenience importer
 pub mod prelude {
