@@ -1,3 +1,5 @@
+use crate::TicketProofChallenge;
+use crate::pok_ticket::PoKOfTicket;
 use crate::prelude::{*, PublicKey};
 use std::convert::TryInto;
 use blake2::Blake2b;
@@ -112,15 +114,14 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     let proof_messages = vec![
         pm_revealed!(b"Testing"),
     ];
-    // Generating Fiat Shamir Signature PoK
+
+    // Generating base signature proof
     let sig_pok = PoKOfSignature::init(&client.signature, &network.id_provider.bbs_keys.0, proof_messages.as_slice()).unwrap();
-    let challenge_prover = ProofChallenge::hash(&sig_pok.to_bytes());
-    let proof = sig_pok.gen_proof(&challenge_prover).unwrap();
 
     // Onion Encrypt the data using the keys matching the calculated tickets
     for i in (0..network.size-1).rev(){
         // t = b^s, where b=H0(layer, RoundID, SysRand) and s is part of signature
-        let t = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.s);
+        let (b, t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.s);
         
         // server x = H(t) % network size, H: {0,1}^* -> Zp
         x = calculate_next_server(t, network.size);
@@ -131,6 +132,11 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
         let mut t_buf: Vec<u8> = vec![];
         // serialize a t into buffer
         t.serialize(&mut t_buf, false).unwrap();
+
+        // Building proof for ticket + signature
+        let ticket_pok = PoKOfTicket::init(&client.signature, sig_pok.clone(), t, b).unwrap();
+        let challenge_prover = TicketProofChallenge::hash(&ticket_pok.to_bytes());
+        let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
 
         let packet = Packet{
             ticket: t_buf,
@@ -195,17 +201,18 @@ pub fn create_network(network: &mut Network, size: u64){
 
 
 // Calculating ticket = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
-fn calculate_ticket(layer: u64, round_id: u32, sys_rand: i32, s: Fr)-> G1{
+fn calculate_ticket(layer: u64, round_id: u32, sys_rand: i32, s: Fr)-> (G1, G1){
     let ticket_vals = TicketValues{
         layer,
         round_id,
         sys_rand,
     };
     let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
-    let mut b =  h_0(ticket_vals_bytes);
-    b.mul_assign(s);
+    let b =  h_0(ticket_vals_bytes);
+    let mut t = b;
+    t.mul_assign(s);
 
-    return b;
+    return (b, t);
 }
 
 

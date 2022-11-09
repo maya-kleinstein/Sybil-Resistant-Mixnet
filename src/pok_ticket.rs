@@ -1,5 +1,7 @@
+use std::io::Cursor;
+
 use ff_zeroize::Field;
-use pairing_plus::{bls12_381::{G1, Fr}, CurveProjective};
+use pairing_plus::{bls12_381::{G1, Fr}, CurveProjective, serdes::SerDes};
 
 use crate::{prelude::*, rand_non_zero_fr, TicketProofChallenge};
 
@@ -203,6 +205,144 @@ impl PoKOfTicket {
             proof_vc_4,
             proof_vc_5,
         })
+    }
+}
+
+impl PoKOfTicketProof{
+        /// Convert the proof to raw bytes
+        pub(crate) fn to_bytes(&self, compressed: bool) -> Vec<u8> {
+            let mut output = Vec::new();
+            self.a_prime.serialize(&mut output, compressed).unwrap();
+            self.a_bar.serialize(&mut output, compressed).unwrap();
+            self.d.serialize(&mut output, compressed).unwrap();
+            self.c.serialize(&mut output, compressed).unwrap();
+
+            let mut proof1_bytes = self.proof_vc_1.to_bytes(compressed);
+            let proof1_len: u32 = proof1_bytes.len() as u32;
+            output.extend_from_slice(&proof1_len.to_be_bytes()[..]);
+            output.append(&mut proof1_bytes);
+
+            let mut proof2_bytes = self.proof_vc_2.to_bytes(compressed);
+            let proof2_len: u32 = proof2_bytes.len() as u32;
+            output.extend_from_slice(&proof2_len.to_be_bytes()[..]);
+            output.append(&mut proof2_bytes);
+
+            let mut proof3_bytes = self.proof_vc_3.to_bytes(compressed);
+            let proof3_len: u32 = proof3_bytes.len() as u32;
+            output.extend_from_slice(&proof3_len.to_be_bytes()[..]);
+            output.append(&mut proof3_bytes);
+
+            let mut proof4_bytes = self.proof_vc_4.to_bytes(compressed);
+            let proof4_len: u32 = proof4_bytes.len() as u32;
+            output.extend_from_slice(&proof4_len.to_be_bytes()[..]);
+            output.append(&mut proof4_bytes);
+
+
+            let mut proof5_bytes = self.proof_vc_5.to_bytes(compressed);
+            output.append(&mut proof5_bytes);
+            output
+        }
+
+           /// Convert the byte slice into a proof
+    pub(crate) fn from_bytes(
+        data: &[u8],
+        g1_size: usize,
+        compressed: bool,
+    ) -> Result<Self, BBSError> {
+        if data.len() < g1_size * 3 {
+            return Err(BBSError::from_kind(BBSErrorKind::PoKVCError {
+                msg: format!("Invalid proof bytes. Expected {}", g1_size * 3),
+            }));
+        }
+        let mut cursor = Cursor::new(data);
+
+        let mut offset;
+        let mut end = g1_size;
+        let a_prime = slice_to_elem!(&mut cursor, G1, compressed)?;
+
+        offset = end;
+        end = offset + g1_size;
+        let a_bar = slice_to_elem!(&mut cursor, G1, compressed)?;
+
+        offset = end;
+        end = offset + g1_size;
+        let d = slice_to_elem!(&mut cursor, G1, compressed)?;
+
+        offset = end;
+        end = offset + g1_size;
+        let c = slice_to_elem!(&mut cursor, G1, compressed)?;
+
+        offset = end;
+        end = offset + 4;
+        let proof1_bytes = u32::from_be_bytes(*array_ref![data, offset, 4]) as usize;
+
+        offset = end;
+        end = offset + proof1_bytes;
+        let proof_vc_1 = ProofG1::from_bytes(&data[offset..end], g1_size, compressed)?;
+
+
+        offset = end;
+        end = offset + 4;
+        let proof2_bytes = u32::from_be_bytes(*array_ref![data, offset, 4]) as usize;
+
+        offset = end;
+        end = offset + proof2_bytes;
+        let proof_vc_2 = ProofG1::from_bytes(&data[offset..end], g1_size, compressed)?;
+
+        offset = end;
+        end = offset + 4;
+        let proof3_bytes = u32::from_be_bytes(*array_ref![data, offset, 4]) as usize;
+
+        offset = end;
+        end = offset + proof3_bytes;
+        let proof_vc_3 = ProofG1::from_bytes(&data[offset..end], g1_size, compressed)?;
+
+        offset = end;
+        end = offset + 4;
+        let proof4_bytes = u32::from_be_bytes(*array_ref![data, offset, 4]) as usize;
+
+        offset = end;
+        end = offset + proof4_bytes;
+        let proof_vc_4 = ProofG1::from_bytes(&data[offset..end], g1_size, compressed)?;
+
+
+        let proof_vc_5 = ProofG1::from_bytes(&data[end..], g1_size, compressed)?;
+        Ok(Self {
+            a_prime,
+            a_bar,
+            d,
+            c,
+            proof_vc_1,
+            proof_vc_2,
+            proof_vc_3,
+            proof_vc_4,
+            proof_vc_5,
+        })
+    }
+}
+
+
+
+impl ToVariableLengthBytes for PoKOfTicketProof {
+    type Output = PoKOfTicketProof;
+    type Error = BBSError;
+
+    /// Convert the proof to a compressed raw bytes form.
+    fn to_bytes_compressed_form(&self) -> Vec<u8> {
+        self.to_bytes(true)
+    }
+
+    /// Convert compressed byte slice into a proof
+    fn from_bytes_compressed_form<I: AsRef<[u8]>>(data: I) -> Result<Self, BBSError> {
+        Self::from_bytes(data.as_ref(), G1_COMPRESSED_SIZE, true)
+    }
+
+    fn to_bytes_uncompressed_form(&self) -> Vec<u8> {
+        self.to_bytes(false)
+    }
+
+    fn from_bytes_uncompressed_form<I: AsRef<[u8]>>(data: I) -> Result<Self::Output, Self::Error> {
+        Self::from_bytes(data.as_ref(), G1_UNCOMPRESSED_SIZE, false)
     }
 }
 
