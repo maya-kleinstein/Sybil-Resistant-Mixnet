@@ -116,7 +116,7 @@ impl PoKOfTicket {
         committing_5.commit(&GeneratorG1(t));
         let mut neg_rho1 = rho1;
         neg_rho1.negate();
-        secrets_4.push(neg_rho1);
+        secrets_5.push(neg_rho1);
         let pok_vc_5 = committing_5.finish();
 
 
@@ -159,6 +159,16 @@ impl PoKOfTicket {
         self,
         challenge_hash: &TicketProofChallenge,
     ) -> Result<PoKOfTicketProof, BBSError> {
+        let secrets_1: Vec<_> = self
+        .pok_sig.secrets_1
+        .iter()
+        .map(|s| SignatureMessage(*s))
+        .collect();
+        let secrets_2: Vec<_> = self
+        .pok_sig.secrets_2
+        .iter()
+        .map(|s| SignatureMessage(*s))
+        .collect();
         let secrets_3: Vec<_> = self
             .secrets_3
             .iter()
@@ -177,19 +187,20 @@ impl PoKOfTicket {
             
         let proof_vc_1 = self
             .pok_sig.pok_vc_1
-            .gen_proof_ticket(challenge_hash, secrets_3.as_slice())?;
+            .gen_proof_ticket(challenge_hash, secrets_1.as_slice())?;
 
         let proof_vc_2 = self
             .pok_sig.pok_vc_2
-            .gen_proof_ticket(challenge_hash, secrets_3.as_slice())?;
-
+            .gen_proof_ticket(challenge_hash, secrets_2.as_slice())?;
 
         let proof_vc_3 = self
             .pok_vc_3
             .gen_proof_ticket(challenge_hash, secrets_3.as_slice())?;
+
         let proof_vc_4 = self
             .pok_vc_4
             .gen_proof_ticket(challenge_hash, secrets_4.as_slice())?;
+            
         let proof_vc_5 = self
             .pok_vc_5
             .gen_proof_ticket(challenge_hash, secrets_5.as_slice())?;

@@ -162,7 +162,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
         let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
         let packet: Packet = bincode::deserialize(&decrypted).unwrap();
         // Verify ticket and proof (done by x)
-        verify_packet(packet.proof);
+        // verify_packet(packet.proof);
         // Retrieving data and next server 
         data = packet.data;
         // Calculating next server using the ticket
@@ -174,12 +174,12 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 
 
 // Verify the proof of knowledge of the signature and the ticket
-fn verify_packet(proof: Vec<u8>){
-    // Verifying PoK of Signature
-    let proof_cp = PoKOfSignatureProof::from_bytes_uncompressed_form(&proof);
-    assert!(proof_cp.is_ok());
-    // TODO: verify ticket generation
-}
+// fn verify_packet(proof: Vec<u8>){
+//     // Verifying PoK of Signature
+//     let proof_cp = PoKOfSignatureProof::from_bytes_uncompressed_form(&proof);
+//     assert!(proof_cp.is_ok());
+//     // TODO: verify ticket generation
+// }
 
 
 /// Creating a new network of size size
@@ -240,7 +240,7 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 mod tests{
     use super::*;
  
-    const TEST_NETWORK_SIZE: u64 = 5;
+    const TEST_NETWORK_SIZE: u64 = 3;
 
     #[test]
     pub fn test_simple_network(){
