@@ -1,6 +1,6 @@
-use crate::TicketProofChallenge;
-use crate::pok_ticket::PoKOfTicket;
+use crate::pok_ticket::{PoKOfTicket, PoKOfTicketProof};
 use crate::prelude::{*, PublicKey};
+use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryInto;
 use blake2::Blake2b;
 use dryoc::types::StackByteArray;
@@ -119,23 +119,21 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     let sig_pok = PoKOfSignature::init(&client.signature, &network.id_provider.bbs_keys.0, proof_messages.as_slice()).unwrap();
 
     // Onion Encrypt the data using the keys matching the calculated tickets
+    // TODO: don't make the amount of layers == network size... weird and unnecessary
     for i in (0..network.size-1).rev(){
         // t = b^s, where b=H0(layer, RoundID, SysRand) and s is part of signature
         let (b, t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.s);
         
         // server x = H(t) % network size, H: {0,1}^* -> Zp
         x = calculate_next_server(t, network.size);
-        // Generating PoK for t=b^s given Signature (A,e,s)       
-        // TODO: Generate proof of knowledge for t=b^s as well!
 
-        // Wrapping packet
+        // serialize t into buffer
         let mut t_buf: Vec<u8> = vec![];
-        // serialize a t into buffer
         t.serialize(&mut t_buf, false).unwrap();
 
         // Building proof for ticket + signature
         let ticket_pok = PoKOfTicket::init(&client.signature, sig_pok.clone(), t, b).unwrap();
-        let challenge_prover = TicketProofChallenge::hash(&ticket_pok.to_bytes());
+        let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
         let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
 
         let packet = Packet{
@@ -156,35 +154,67 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
 pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u8>{
     let mut data = enc_packet;
     let mut x = x_0;
-    for _ in 0..(network.size-1){
+    // Set up msg.'s info before decrypting
+    let messages = vec![
+        SignatureMessage::hash(b"Testing"),
+    ];
+    
+    let mut revealed_indices = BTreeSet::new();
+    revealed_indices.insert(0);
+
+    let mut revealed_msgs = BTreeMap::new();
+    for i in &revealed_indices {
+        revealed_msgs.insert(i.clone(), messages[*i]);
+    }
+    for i in 0..(network.size-1){
         // Decrypt Packet 
         let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&data).unwrap();
         let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
         let packet: Packet = bincode::deserialize(&decrypted).unwrap();
-        // Verify ticket and proof (done by x)
-        // verify_packet(packet.proof);
-        // Retrieving data and next server 
-        data = packet.data;
         // Calculating next server using the ticket
         let t_recovered = G1::deserialize(&mut packet.ticket[..].as_ref(), false).unwrap();
         x = calculate_next_server(t_recovered, network.size);
+
+        // Recovering the value of b
+        let ticket_vals = TicketValues{
+            layer: i,
+            round_id: network.round_id,
+            sys_rand: network.sys_rand,
+        };
+        let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
+        let b_recovered =  h_0(ticket_vals_bytes);
+
+        // Verify ticket and proof (done by x)
+        verify_packet(packet.proof, &network.id_provider.bbs_keys.0, &revealed_msgs, b_recovered, t_recovered);
+        // Retrieving data and next server 
+        data = packet.data;
     }
     return data;
 }
 
 
 // Verify the proof of knowledge of the signature and the ticket
-// fn verify_packet(proof: Vec<u8>){
-//     // Verifying PoK of Signature
-//     let proof_cp = PoKOfSignatureProof::from_bytes_uncompressed_form(&proof);
-//     assert!(proof_cp.is_ok());
-//     // TODO: verify ticket generation
-// }
+fn verify_packet(proof_bytes: Vec<u8>, verkey: &PublicKey, revealed_msgs: &BTreeMap<usize, SignatureMessage>, b: G1, t: G1){
+    // getting proof from bytes
+    let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&proof_bytes).unwrap();
+
+    // Setting up revealed indices
+    let mut revealed_indices = BTreeSet::new();
+    revealed_indices.insert(0);
+
+    // The verifier generates the challenge on its own.
+    let challenge_bytes = proof.get_bytes_for_challenge(revealed_indices.clone(), &verkey, b, t);
+    let challenge_verifier = ProofChallenge::hash(&challenge_bytes);
+    assert!(proof
+        .verify(&verkey, &revealed_msgs, &challenge_verifier)
+        .unwrap()
+        .is_valid());
+}
 
 
 /// Creating a new network of size size
 pub fn create_network(network: &mut Network, size: u64){
-    let bbs_keys: (PublicKey, SecretKey) = Issuer::new_keys(0).unwrap();
+    let bbs_keys: (PublicKey, SecretKey) = Issuer::new_keys(1).unwrap();
 
     let id_provider = IDProvider{
         bbs_keys,
@@ -240,7 +270,7 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 mod tests{
     use super::*;
  
-    const TEST_NETWORK_SIZE: u64 = 3;
+    const TEST_NETWORK_SIZE: u64 = 2;
 
     #[test]
     pub fn test_simple_network(){

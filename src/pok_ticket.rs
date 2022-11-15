@@ -1,9 +1,9 @@
-use std::io::Cursor;
+use std::{io::Cursor, collections::{BTreeMap, BTreeSet}};
 
-use ff_zeroize::Field;
-use pairing_plus::{bls12_381::{G1, Fr}, CurveProjective, serdes::SerDes};
+use ff_zeroize::{Field, PrimeField};
+use pairing_plus::{bls12_381::{G1, Fr, Bls12, G2, Fq12, FrRepr}, CurveProjective, serdes::SerDes, CurveAffine, Engine};
 
-use crate::{prelude::*, rand_non_zero_fr, TicketProofChallenge};
+use crate::{prelude::*, rand_non_zero_fr, multi_scalar_mul_const_time_g1};
 
 
 #[allow(dead_code)]
@@ -50,6 +50,7 @@ pub struct PoKOfTicket {
     /// The blinding factors
     secrets_5: Vec<Fr>,
 }
+
 
 
 impl PoKOfTicket {
@@ -147,8 +148,9 @@ impl PoKOfTicket {
         // self.C is included as part of self.pok_vc_4
         bytes.append(&mut self.pok_vc_4.to_bytes());
 
+
         // For 5th PoKVC
-        bytes.append(&mut self.pok_vc_4.to_bytes());
+        bytes.append(&mut self.pok_vc_5.to_bytes());
 
         bytes
     }
@@ -157,7 +159,7 @@ impl PoKOfTicket {
     /// Creates the final proof data after a Fiat-Shamir calculation
     pub fn gen_proof(
         self,
-        challenge_hash: &TicketProofChallenge,
+        challenge_hash: &ProofChallenge,
     ) -> Result<PoKOfTicketProof, BBSError> {
         let secrets_1: Vec<_> = self
         .pok_sig.secrets_1
@@ -187,23 +189,23 @@ impl PoKOfTicket {
             
         let proof_vc_1 = self
             .pok_sig.pok_vc_1
-            .gen_proof_ticket(challenge_hash, secrets_1.as_slice())?;
+            .gen_proof(challenge_hash, secrets_1.as_slice())?;
 
         let proof_vc_2 = self
             .pok_sig.pok_vc_2
-            .gen_proof_ticket(challenge_hash, secrets_2.as_slice())?;
+            .gen_proof(challenge_hash, secrets_2.as_slice())?;
 
         let proof_vc_3 = self
             .pok_vc_3
-            .gen_proof_ticket(challenge_hash, secrets_3.as_slice())?;
+            .gen_proof(challenge_hash, secrets_3.as_slice())?;
 
         let proof_vc_4 = self
             .pok_vc_4
-            .gen_proof_ticket(challenge_hash, secrets_4.as_slice())?;
+            .gen_proof(challenge_hash, secrets_4.as_slice())?;
             
         let proof_vc_5 = self
             .pok_vc_5
-            .gen_proof_ticket(challenge_hash, secrets_5.as_slice())?;
+            .gen_proof(challenge_hash, secrets_5.as_slice())?;
 
         Ok(PoKOfTicketProof {
             a_prime: self.pok_sig.a_prime,
@@ -219,40 +221,41 @@ impl PoKOfTicket {
     }
 }
 
+
 impl PoKOfTicketProof{
-        /// Convert the proof to raw bytes
-        pub(crate) fn to_bytes(&self, compressed: bool) -> Vec<u8> {
-            let mut output = Vec::new();
-            self.a_prime.serialize(&mut output, compressed).unwrap();
-            self.a_bar.serialize(&mut output, compressed).unwrap();
-            self.d.serialize(&mut output, compressed).unwrap();
-            self.c.serialize(&mut output, compressed).unwrap();
+    /// Convert the proof to raw bytes
+    pub(crate) fn to_bytes(&self, compressed: bool) -> Vec<u8> {
+        let mut output = Vec::new();
+        self.a_prime.serialize(&mut output, compressed).unwrap();
+        self.a_bar.serialize(&mut output, compressed).unwrap();
+        self.d.serialize(&mut output, compressed).unwrap();
+        self.c.serialize(&mut output, compressed).unwrap();
 
-            let mut proof1_bytes = self.proof_vc_1.to_bytes(compressed);
-            let proof1_len: u32 = proof1_bytes.len() as u32;
-            output.extend_from_slice(&proof1_len.to_be_bytes()[..]);
-            output.append(&mut proof1_bytes);
+        let mut proof1_bytes = self.proof_vc_1.to_bytes(compressed);
+        let proof1_len: u32 = proof1_bytes.len() as u32;
+        output.extend_from_slice(&proof1_len.to_be_bytes()[..]);
+        output.append(&mut proof1_bytes);
 
-            let mut proof2_bytes = self.proof_vc_2.to_bytes(compressed);
-            let proof2_len: u32 = proof2_bytes.len() as u32;
-            output.extend_from_slice(&proof2_len.to_be_bytes()[..]);
-            output.append(&mut proof2_bytes);
+        let mut proof2_bytes = self.proof_vc_2.to_bytes(compressed);
+        let proof2_len: u32 = proof2_bytes.len() as u32;
+        output.extend_from_slice(&proof2_len.to_be_bytes()[..]);
+        output.append(&mut proof2_bytes);
 
-            let mut proof3_bytes = self.proof_vc_3.to_bytes(compressed);
-            let proof3_len: u32 = proof3_bytes.len() as u32;
-            output.extend_from_slice(&proof3_len.to_be_bytes()[..]);
-            output.append(&mut proof3_bytes);
+        let mut proof3_bytes = self.proof_vc_3.to_bytes(compressed);
+        let proof3_len: u32 = proof3_bytes.len() as u32;
+        output.extend_from_slice(&proof3_len.to_be_bytes()[..]);
+        output.append(&mut proof3_bytes);
 
-            let mut proof4_bytes = self.proof_vc_4.to_bytes(compressed);
-            let proof4_len: u32 = proof4_bytes.len() as u32;
-            output.extend_from_slice(&proof4_len.to_be_bytes()[..]);
-            output.append(&mut proof4_bytes);
+        let mut proof4_bytes = self.proof_vc_4.to_bytes(compressed);
+        let proof4_len: u32 = proof4_bytes.len() as u32;
+        output.extend_from_slice(&proof4_len.to_be_bytes()[..]);
+        output.append(&mut proof4_bytes);
 
 
-            let mut proof5_bytes = self.proof_vc_5.to_bytes(compressed);
-            output.append(&mut proof5_bytes);
-            output
-        }
+        let mut proof5_bytes = self.proof_vc_5.to_bytes(compressed);
+        output.append(&mut proof5_bytes);
+        output
+    }
 
            /// Convert the byte slice into a proof
     pub(crate) fn from_bytes(
@@ -329,6 +332,146 @@ impl PoKOfTicketProof{
             proof_vc_4,
             proof_vc_5,
         })
+    }
+
+
+    /// Return bytes that need to be hashed for generating challenge. Takes `self.a_bar`,
+    /// `self.a_prime`, `self.d`, `self.c` and commitment and instance data of the five proof of knowledge protocols.
+    pub fn get_bytes_for_challenge(
+        &self,
+        revealed_msg_indices: BTreeSet<usize>,
+        vk: &PublicKey,
+        b: G1,
+        t: G1,
+    ) -> Vec<u8> {
+
+        // sig PoK portion
+        let sig_pok = PoKOfSignatureProof{
+            a_prime: self.a_prime,
+            a_bar: self.a_bar,
+            d: self.d,
+            proof_vc_1: self.proof_vc_1.clone(),
+            proof_vc_2: self.proof_vc_2.clone(),
+        };
+        
+        let mut bytes = vec![];
+        bytes.extend_from_slice(&sig_pok.get_bytes_for_challenge(revealed_msg_indices, vk)[..]);
+        
+        // proof_vc_i for i=3,4,5
+        G1::one().serialize(&mut bytes, false).unwrap();
+        get_g2().serialize(&mut bytes, false).unwrap();
+        self.proof_vc_3
+            .commitment
+            .serialize(&mut bytes, false)
+            .unwrap();
+        
+        self.c.serialize(&mut bytes, false).unwrap();
+        G1::one().serialize(&mut bytes, false).unwrap();
+        get_g2().serialize(&mut bytes, false).unwrap();
+        self.proof_vc_4
+            .commitment
+            .serialize(&mut bytes, false)
+            .unwrap();
+        
+        b.serialize(&mut bytes, false).unwrap();
+        t.serialize(&mut bytes, false).unwrap();
+        self.proof_vc_5
+            .commitment
+            .serialize(&mut bytes, false)
+            .unwrap();
+        
+        bytes
+    }
+
+        /// Validate the proof
+    pub fn verify(
+        &self,
+        vk: &PublicKey,
+        revealed_msgs: &BTreeMap<usize, SignatureMessage>,
+        challenge: &ProofChallenge,
+    ) -> Result<PoKOfSignatureProofStatus, BBSError> {
+        vk.validate()?;
+        for i in revealed_msgs.keys() {
+            if *i >= vk.message_count() {
+                return Err(BBSError::from_kind(BBSErrorKind::GeneralError {
+                    msg: format!("Index {} should be less than {}", i, vk.message_count()),
+                }));
+            }
+        }
+
+        if self.a_prime.is_zero() {
+            return Ok(PoKOfSignatureProofStatus::BadSignature);
+        }
+
+        let mut a_bar = self.a_bar;
+        a_bar.negate();
+        match Bls12::final_exponentiation(&Bls12::miller_loop(&[
+            (
+                &self.a_prime.into_affine().prepare(),
+                &vk.w.0.into_affine().prepare(),
+            ),
+            (
+                &a_bar.into_affine().prepare(),
+                &G2::one().into_affine().prepare(),
+            ),
+        ])) {
+            None => return Ok(PoKOfSignatureProofStatus::BadSignature),
+            Some(product) => {
+                if product != Fq12::one() {
+                    return Ok(PoKOfSignatureProofStatus::BadSignature);
+                }
+            }
+        };
+
+        let mut bases = vec![];
+        bases.push(GeneratorG1(self.a_prime));
+        bases.push(vk.h0);
+        // a_bar / d
+        let mut a_bar_d = self.a_bar;
+        a_bar_d.sub_assign(&self.d);
+        // let a_bar_d = &self.a_bar - &self.d;
+        if !self
+            .proof_vc_1
+            .verify(&bases, &Commitment(a_bar_d), &challenge)?
+        {
+            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+        }
+
+        let mut bases_pok_vc_2 = Vec::with_capacity(2 + vk.message_count() - revealed_msgs.len());
+        bases_pok_vc_2.push(GeneratorG1(self.d));
+        bases_pok_vc_2.push(vk.h0);
+
+        // `bases_disclosed` and `exponents` below are used to create g1 * h1^-m1 * h2^-m2.... for all disclosed messages m_i
+        let mut bases_disclosed = Vec::with_capacity(1 + revealed_msgs.len());
+        let mut exponents = Vec::with_capacity(1 + revealed_msgs.len());
+        // XXX: g1 should come from a setup param and not generator
+        bases_disclosed.push(G1::one());
+        exponents.push(Fr::from_repr(FrRepr::from(1u64)).unwrap());
+        for i in 0..vk.message_count() {
+            if revealed_msgs.contains_key(&i) {
+                let message = revealed_msgs.get(&i).unwrap();
+                bases_disclosed.push(vk.h[i].0);
+                exponents.push(message.0);
+            } else {
+                bases_pok_vc_2.push(vk.h[i]);
+            }
+        }
+        // pr = g1 * h1^-m1 * h2^-m2.... = (g1 * h1^m1 * h2^m2....)^-1 for all disclosed messages m_i
+        let mut pr = Commitment(multi_scalar_mul_const_time_g1(&bases_disclosed, &exponents));
+        pr.0.negate();
+        match self
+            .proof_vc_2
+            .verify(bases_pok_vc_2.as_slice(), &pr, challenge)
+        {
+            Ok(b) => {
+                if b {
+                    Ok(PoKOfSignatureProofStatus::Success)
+                } else {
+                    Ok(PoKOfSignatureProofStatus::BadRevealedMessage)
+                }
+            }
+            Err(_)  => Ok(PoKOfSignatureProofStatus::BadRevealedMessage),
+        }
     }
 }
 

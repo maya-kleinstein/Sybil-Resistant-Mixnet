@@ -15,7 +15,7 @@ use crate::errors::{BBSError, BBSErrorKind};
 use crate::{
     hash_to_fr, multi_scalar_mul_const_time_g1, rand_non_zero_fr, Commitment, GeneratorG1,
     ProofChallenge, SignatureMessage, ToVariableLengthBytes, FR_COMPRESSED_SIZE,
-    G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, TicketProofChallenge,
+    G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE,
 };
 
 use failure::{Backtrace, Context, Fail};
@@ -277,34 +277,8 @@ impl ProverCommittedG1 {
             responses,
         })
     }
-
-    /// Generate proof of ticket and signature
-    pub fn gen_proof_ticket(
-        self,
-        challenge: &TicketProofChallenge,
-        secrets: &[SignatureMessage],
-    ) -> Result<ProofG1, PoKVCError> {
-        if secrets.len() != self.bases.len() {
-            return Err(PoKVCErrorKind::UnequalNoOfBasesExponents {
-                bases: self.bases.len(),
-                exponents: secrets.len(),
-            }
-            .into());
-        }
-        let mut responses = Vec::with_capacity(self.bases.len());
-        for i in 0..self.bases.len() {
-            let mut c = challenge.0;
-            c.mul_assign(&secrets[i].0);
-            let mut s = self.blinding_factors[i];
-            s.sub_assign(&c);
-            responses.push(s);
-        }
-        Ok(ProofG1 {
-            commitment: self.commitment,
-            responses,
-        })
-    }
 }
+
 
 impl ProofG1 {
     /// Computes the piece that goes into verifying the overall proof component
