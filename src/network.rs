@@ -197,7 +197,6 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 fn verify_packet(proof_bytes: Vec<u8>, verkey: &PublicKey, revealed_msgs: &BTreeMap<usize, SignatureMessage>, b: G1, t: G1){
     // getting proof from bytes
     let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&proof_bytes).unwrap();
-
     // Setting up revealed indices
     let mut revealed_indices = BTreeSet::new();
     revealed_indices.insert(0);
@@ -270,7 +269,7 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 mod tests{
     use super::*;
  
-    const TEST_NETWORK_SIZE: u64 = 2;
+    const TEST_NETWORK_SIZE: u64 = 3;
 
     #[test]
     pub fn test_simple_network(){
@@ -286,5 +285,39 @@ mod tests{
         let dec_data = decrypt_packet(enc_data, first_server, &network);
 
         println!("dec_data: {:?}", dec_data);
+    }
+
+
+    # [test]
+    pub fn test_to_and_from_bytes(){
+        let message_count = 1;
+
+        let mut messages = Vec::new();
+        messages.push(SignatureMessage::random());
+        
+        let (verkey, signkey) = generate(message_count).unwrap();
+
+        let sig = Signature::new(messages.as_slice(), &signkey, &verkey).unwrap();
+        let res = sig.verify(messages.as_slice(), &verkey);
+        assert!(res.unwrap());
+        let proof_messages = vec![
+            pm_hidden_raw!(messages[0].clone()),
+        ];
+
+        // Generating base signature proof
+        let sig_pok = PoKOfSignature::init(&sig, &verkey, proof_messages.as_slice()).unwrap();
+        // Generating ticket PoK
+        let pok = PoKOfTicket::init(&sig, sig_pok, G1::one(), G1::one()).unwrap();
+        let challenge_prover = ProofChallenge::hash(&pok.to_bytes());
+        let proof = pok.gen_proof(&challenge_prover).unwrap();
+
+        // Test to_bytes
+        let proof_bytes = proof.to_bytes_uncompressed_form();
+        let proof_cp = PoKOfTicketProof::from_bytes_uncompressed_form(&proof_bytes);
+        assert!(proof_cp.is_ok());
+
+        let proof_bytes = proof.to_bytes_compressed_form();
+        let proof_cp = PoKOfTicketProof::from_bytes_compressed_form(&proof_bytes);
+        assert!(proof_cp.is_ok());
     }
 }

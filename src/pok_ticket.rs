@@ -139,7 +139,7 @@ impl PoKOfTicket {
         let mut bytes = vec![];
 
         // For signature PoK values
-        self.pok_sig.to_bytes().append(&mut bytes);
+        bytes.append(&mut self.pok_sig.to_bytes());
 
         // For 3rd PoKVC
         bytes.append(&mut self.pok_vc_3.to_bytes());
@@ -161,6 +161,7 @@ impl PoKOfTicket {
         self,
         challenge_hash: &ProofChallenge,
     ) -> Result<PoKOfTicketProof, BBSError> {
+        // TODO: isn't there a prettier way to do this? like for-each?
         let secrets_1: Vec<_> = self
         .pok_sig.secrets_1
         .iter()
