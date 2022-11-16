@@ -66,18 +66,18 @@ impl PoKOfTicket {
         let rho2 = rand_non_zero_fr();
 
         let mut beta1 = rho1;
-        beta1.add_assign(&signature.e);
+        beta1.mul_assign(&signature.e);
 
         let mut beta2 = rho2;
-        beta2.add_assign(&signature.e);
+        beta2.mul_assign(&signature.e);
 
         let mut c = G1::one();
         c.mul_assign(rho1);
-        let mut g2 = get_g2();
-        g2.mul_assign(rho2);
-        c.add_assign(&g2);
+        let mut g2_rho2 = get_g2();
+        g2_rho2.mul_assign(rho2);
+        c.add_assign(&g2_rho2);
 
-
+        
         // For proving relation C = g1^rho1*g2^rho2
         let mut committing_3 = ProverCommittingG1::new();
         let mut secrets_3 = Vec::with_capacity(2);
@@ -95,9 +95,9 @@ impl PoKOfTicket {
         let mut secrets_4 = Vec::with_capacity(3);
         // For C^{-e}
         committing_4.commit(&GeneratorG1(c));
-        let mut sig_e = signature.e;
-        sig_e.negate();
-        secrets_4.push(sig_e);
+        let mut neg_sig_e = signature.e;
+        neg_sig_e.negate();
+        secrets_4.push(neg_sig_e);
         // For g1^{beta1}
         committing_4.commit(&GeneratorG1(G1::one()));
         secrets_4.push(beta1);
@@ -390,6 +390,8 @@ impl PoKOfTicketProof{
         vk: &PublicKey,
         revealed_msgs: &BTreeMap<usize, SignatureMessage>,
         challenge: &ProofChallenge,
+        b: G1,
+        t: G1,
     ) -> Result<PoKOfSignatureProofStatus, BBSError> {
         vk.validate()?;
         for i in revealed_msgs.keys() {
@@ -404,6 +406,7 @@ impl PoKOfTicketProof{
             return Ok(PoKOfSignatureProofStatus::BadSignature);
         }
 
+        // Verifying the equation e(a_prime, w) = e(a_bar, g_2) 
         let mut a_bar = self.a_bar;
         a_bar.negate();
         match Bls12::final_exponentiation(&Bls12::miller_loop(&[
@@ -424,6 +427,8 @@ impl PoKOfTicketProof{
             }
         };
 
+
+        // Verifying proof_vc_1
         let mut bases = vec![];
         bases.push(GeneratorG1(self.a_prime));
         bases.push(vk.h0);
@@ -433,11 +438,12 @@ impl PoKOfTicketProof{
         // let a_bar_d = &self.a_bar - &self.d;
         if !self
             .proof_vc_1
-            .verify(&bases, &Commitment(a_bar_d), &challenge)?
+            .verify(&bases, &Commitment(a_bar_d), challenge)?
         {
             return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
         }
-
+        // TODO: future problem: maybe challenge should have borrow before it? for vc_2 as well?
+        // Verifying proof_vc_2
         let mut bases_pok_vc_2 = Vec::with_capacity(2 + vk.message_count() - revealed_msgs.len());
         bases_pok_vc_2.push(GeneratorG1(self.d));
         bases_pok_vc_2.push(vk.h0);
@@ -460,22 +466,52 @@ impl PoKOfTicketProof{
         // pr = g1 * h1^-m1 * h2^-m2.... = (g1 * h1^m1 * h2^m2....)^-1 for all disclosed messages m_i
         let mut pr = Commitment(multi_scalar_mul_const_time_g1(&bases_disclosed, &exponents));
         pr.0.negate();
-        match self
+        if !self
             .proof_vc_2
-            .verify(bases_pok_vc_2.as_slice(), &pr, challenge)
+            .verify(bases_pok_vc_2.as_slice(), &pr, challenge)?
         {
-            Ok(b) => {
-                if b {
-                    Ok(PoKOfSignatureProofStatus::Success)
-                } else {
-                    Ok(PoKOfSignatureProofStatus::BadRevealedMessage)
-                }
-            }
-            Err(_)  => Ok(PoKOfSignatureProofStatus::BadRevealedMessage),
+            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
         }
+
+        // Verifying proof_vc_3
+        let mut bases = vec![];
+        bases.push(GeneratorG1(G1::one()));
+        bases.push(GeneratorG1(get_g2()));
+        if !self
+            .proof_vc_3
+            .verify(&bases, &Commitment(self.c), challenge)?
+        {
+            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+        }
+
+        // Verifying proof_vc_4
+        let mut bases = vec![];
+        bases.push(GeneratorG1(self.c));
+        bases.push(GeneratorG1(G1::one()));
+        bases.push(GeneratorG1(get_g2()));
+        if !self
+            .proof_vc_4
+            .verify(&bases, &Commitment(G1::zero()), challenge)?
+        {
+            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+        }
+
+        // Verifying proof_vc_5
+        let mut bases = vec![];
+        bases.push(GeneratorG1(b));
+        bases.push(GeneratorG1(t));
+        if !self
+            .proof_vc_5
+            .verify(&bases, &Commitment(G1::zero()), challenge)?
+        {
+            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+        }
+
+        // If everything worked!
+        return Ok(PoKOfSignatureProofStatus::Success);
+        // TODO: test if e's are equal!
     }
 }
-
 
 
 impl ToVariableLengthBytes for PoKOfTicketProof {

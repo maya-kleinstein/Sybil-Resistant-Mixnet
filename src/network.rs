@@ -106,6 +106,7 @@ impl Network {
 
 
 //TODO: eventually take care of private-public values (e.g. Network can see all private keys)
+//TODO: maybe t should be part of proof? Why should it be seperate portion of packet?
 
 /// Generate a packet from the client to the network with the given data
 pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64){
@@ -205,7 +206,7 @@ fn verify_packet(proof_bytes: Vec<u8>, verkey: &PublicKey, revealed_msgs: &BTree
     let challenge_bytes = proof.get_bytes_for_challenge(revealed_indices.clone(), &verkey, b, t);
     let challenge_verifier = ProofChallenge::hash(&challenge_bytes);
     assert!(proof
-        .verify(&verkey, &revealed_msgs, &challenge_verifier)
+        .verify(&verkey, &revealed_msgs, &challenge_verifier, b, t)
         .unwrap()
         .is_valid());
 }
@@ -269,7 +270,7 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 mod tests{
     use super::*;
  
-    const TEST_NETWORK_SIZE: u64 = 3;
+    const TEST_NETWORK_SIZE: u64 = 2;
 
     #[test]
     pub fn test_simple_network(){
