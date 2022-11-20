@@ -294,7 +294,7 @@ mod tests{
     }
 
     #[test]
-    pub fn test_into_and_from_affine(){
+    pub fn test_into_and_from_bytes_g1(){
         let mut t  = G1::one();
         unsafe {
             // Serializing
