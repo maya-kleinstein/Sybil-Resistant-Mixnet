@@ -268,6 +268,11 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 
 
 mod tests{
+    use std::io::{Cursor, Read};
+
+    use ff_zeroize::{PrimeField, PrimeFieldRepr};
+    use pairing_plus::{bls12_381::{G1Uncompressed, FqRepr, Fq, transmute}, EncodedPoint};
+
     use super::*;
  
     const TEST_NETWORK_SIZE: u64 = 2;
@@ -286,6 +291,32 @@ mod tests{
         let dec_data = decrypt_packet(enc_data, first_server, &network);
 
         println!("dec_data: {:?}", dec_data);
+    }
+
+    #[test]
+    pub fn test_into_and_from_affine(){
+        let mut t  = G1::one();
+        unsafe {
+            // Serializing
+            let mut t_buf: Vec<u8> = vec![];
+            let tmp = t.as_tuple_mut();
+            tmp.0.into_repr().write_be(&mut t_buf).unwrap();
+            tmp.1.into_repr().write_be(&mut t_buf).unwrap();
+            tmp.2.into_repr().write_be(&mut t_buf).unwrap();
+            
+            // Deserializing
+            let mut t_recover = G1::zero();
+            let (x, y, z) = t_recover.as_tuple_mut();
+            let mut q = FqRepr::default();
+            q.read_be(&*t_buf).unwrap();
+            *x = Fq::from_repr(q).unwrap();
+            q.read_be(&*t_buf).unwrap();
+            *y = Fq::from_repr(q).unwrap();
+            q.read_be(&*t_buf).unwrap();
+            *z = Fq::from_repr(q).unwrap();
+            println!("Hope this worked...");
+
+        }
     }
 
 
