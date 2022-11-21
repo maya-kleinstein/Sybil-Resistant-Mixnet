@@ -4,9 +4,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryInto;
 use blake2::Blake2b;
 use dryoc::types::StackByteArray;
-use pairing_plus::serdes::SerDes;
+use ff_zeroize::{PrimeField, PrimeFieldRepr};
 use pairing_plus::{CurveProjective, CurveAffine};
-use pairing_plus::bls12_381::{G1, Fr};
+use pairing_plus::bls12_381::{G1, Fr, FqRepr, Fq};
 use pairing_plus::hash_to_curve::HashToCurve;
 use pairing_plus::hash_to_field::ExpandMsgXmd;
 use rand_4net::Rng;
@@ -123,20 +123,21 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     // TODO: don't make the amount of layers == network size... weird and unnecessary
     for i in (0..network.size-1).rev(){
         // t = b^s, where b=H0(layer, RoundID, SysRand) and s is part of signature
-        let (b, t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.s);
-        
+        let (b, mut t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.s);
         // server x = H(t) % network size, H: {0,1}^* -> Zp
         x = calculate_next_server(t, network.size);
-
-        // serialize t into buffer
-        let mut t_buf: Vec<u8> = vec![];
-        t.serialize(&mut t_buf, false).unwrap();
 
         // Building proof for ticket + signature
         let ticket_pok = PoKOfTicket::init(&client.signature, sig_pok.clone(), t, b).unwrap();
         let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
         let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
 
+        // serialize t into buffer
+        let t_buf: Vec<u8>;
+        unsafe{
+            t_buf = pack_ticket(&mut t);
+        } 
+        
         let packet = Packet{
             ticket: t_buf,
             proof: proof.to_bytes_uncompressed_form(),
@@ -173,7 +174,10 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
         let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
         let packet: Packet = bincode::deserialize(&decrypted).unwrap();
         // Calculating next server using the ticket
-        let t_recovered = G1::deserialize(&mut packet.ticket[..].as_ref(), false).unwrap();
+        let t_recovered:G1;
+        unsafe{
+            t_recovered = unpack_ticket((&mut packet.ticket[..].as_ref()).to_vec());
+        }
         x = calculate_next_server(t_recovered, network.size);
 
         // Recovering the value of b
@@ -260,6 +264,30 @@ fn calculate_next_server(t: G1, size: u64)->u64{
 }
 
 
+unsafe fn pack_ticket(t:&mut G1)-> Vec<u8>{
+    let mut t_buf: Vec<u8> = vec![];
+    let tmp = t.as_tuple_mut();
+    tmp.0.into_repr().write_be(&mut t_buf).unwrap();
+    tmp.1.into_repr().write_be(&mut t_buf).unwrap();
+    tmp.2.into_repr().write_be(&mut t_buf).unwrap();
+    t_buf
+    
+}
+
+unsafe fn unpack_ticket(t_buf :Vec<u8>)-> G1{
+    let mut t_recover = G1::zero();
+    let (x, y, z) = t_recover.as_tuple_mut();
+    let mut q = FqRepr::default();
+    q.read_be(&mut &t_buf[..]).unwrap();
+    *x = Fq::from_repr(q).unwrap();
+    q.read_be(&mut &t_buf[48..]).unwrap();
+    *y = Fq::from_repr(q).unwrap();
+    q.read_be(&mut &t_buf[96..]).unwrap();
+    *z = Fq::from_repr(q).unwrap();
+    t_recover
+}
+
+
 // H0: {0,1}^* -> G1
 fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
     const DST: &[u8] = b"BLS12381G1_XMD:BLAKE2B_SSWU_RO_BBS+_SIGNATURES:ANONYMOUS_MIXNETS:1_0_0";
@@ -268,11 +296,6 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 
 
 mod tests{
-    use std::io::{Cursor, Read};
-
-    use ff_zeroize::{PrimeField, PrimeFieldRepr};
-    use pairing_plus::{bls12_381::{G1Uncompressed, FqRepr, Fq, transmute}, EncodedPoint};
-
     use super::*;
  
     const TEST_NETWORK_SIZE: u64 = 2;
