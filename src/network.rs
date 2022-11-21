@@ -2,11 +2,12 @@ use crate::pok_ticket::{PoKOfTicket, PoKOfTicketProof};
 use crate::prelude::{*, PublicKey};
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryInto;
+use std::io::Cursor;
 use blake2::Blake2b;
 use dryoc::types::StackByteArray;
-use ff_zeroize::{PrimeField, PrimeFieldRepr};
+use pairing_plus::serdes::SerDes;
 use pairing_plus::{CurveProjective, CurveAffine};
-use pairing_plus::bls12_381::{G1, Fr, FqRepr, Fq};
+use pairing_plus::bls12_381::{G1, Fr};
 use pairing_plus::hash_to_curve::HashToCurve;
 use pairing_plus::hash_to_field::ExpandMsgXmd;
 use rand_4net::Rng;
@@ -122,8 +123,8 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     // Onion Encrypt the data using the keys matching the calculated tickets
     // TODO: don't make the amount of layers == network size... weird and unnecessary
     for i in (0..network.size-1).rev(){
-        // t = b^s, where b=H0(layer, RoundID, SysRand) and s is part of signature
-        let (b, mut t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.s);
+        // t = b^e, where b=H0(layer, RoundID, SysRand) and e is part of signature
+        let (b, t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.e);
         // server x = H(t) % network size, H: {0,1}^* -> Zp
         x = calculate_next_server(t, network.size);
 
@@ -133,11 +134,9 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
         let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
 
         // serialize t into buffer
-        let t_buf: Vec<u8>;
-        unsafe{
-            t_buf = pack_ticket(&mut t);
-        } 
-        
+        let mut t_buf = Vec::new();
+        t.serialize(&mut t_buf, false).unwrap();
+
         let packet = Packet{
             ticket: t_buf,
             proof: proof.to_bytes_uncompressed_form(),
@@ -174,10 +173,8 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
         let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
         let packet: Packet = bincode::deserialize(&decrypted).unwrap();
         // Calculating next server using the ticket
-        let t_recovered:G1;
-        unsafe{
-            t_recovered = unpack_ticket((&mut packet.ticket[..].as_ref()).to_vec());
-        }
+        let mut cursor = Cursor::new(packet.ticket);
+        let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
         x = calculate_next_server(t_recovered, network.size);
 
         // Recovering the value of b
@@ -188,7 +185,6 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
         };
         let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
         let b_recovered =  h_0(ticket_vals_bytes);
-
         // Verify ticket and proof (done by x)
         verify_packet(packet.proof, &network.id_provider.bbs_keys.0, &revealed_msgs, b_recovered, t_recovered);
         // Retrieving data and next server 
@@ -205,7 +201,6 @@ fn verify_packet(proof_bytes: Vec<u8>, verkey: &PublicKey, revealed_msgs: &BTree
     // Setting up revealed indices
     let mut revealed_indices = BTreeSet::new();
     revealed_indices.insert(0);
-
     // The verifier generates the challenge on its own.
     let challenge_bytes = proof.get_bytes_for_challenge(revealed_indices.clone(), &verkey, b, t);
     let challenge_verifier = ProofChallenge::hash(&challenge_bytes);
@@ -235,7 +230,7 @@ pub fn create_network(network: &mut Network, size: u64){
 
 
 // Calculating ticket = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
-fn calculate_ticket(layer: u64, round_id: u32, sys_rand: i32, s: Fr)-> (G1, G1){
+fn calculate_ticket(layer: u64, round_id: u32, sys_rand: i32, e: Fr)-> (G1, G1){
     let ticket_vals = TicketValues{
         layer,
         round_id,
@@ -244,7 +239,7 @@ fn calculate_ticket(layer: u64, round_id: u32, sys_rand: i32, s: Fr)-> (G1, G1){
     let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
     let b =  h_0(ticket_vals_bytes);
     let mut t = b;
-    t.mul_assign(s);
+    t.mul_assign(e);
 
     return (b, t);
 }
@@ -261,30 +256,6 @@ fn calculate_next_server(t: G1, size: u64)->u64{
     let buf = hasher.vec_result();
     let x = u64::from_be_bytes(buf.as_slice().try_into().unwrap()) % size;
     return x;
-}
-
-
-unsafe fn pack_ticket(t:&mut G1)-> Vec<u8>{
-    let mut t_buf: Vec<u8> = vec![];
-    let tmp = t.as_tuple_mut();
-    tmp.0.into_repr().write_be(&mut t_buf).unwrap();
-    tmp.1.into_repr().write_be(&mut t_buf).unwrap();
-    tmp.2.into_repr().write_be(&mut t_buf).unwrap();
-    t_buf
-    
-}
-
-unsafe fn unpack_ticket(t_buf :Vec<u8>)-> G1{
-    let mut t_recover = G1::zero();
-    let (x, y, z) = t_recover.as_tuple_mut();
-    let mut q = FqRepr::default();
-    q.read_be(&mut &t_buf[..]).unwrap();
-    *x = Fq::from_repr(q).unwrap();
-    q.read_be(&mut &t_buf[48..]).unwrap();
-    *y = Fq::from_repr(q).unwrap();
-    q.read_be(&mut &t_buf[96..]).unwrap();
-    *z = Fq::from_repr(q).unwrap();
-    t_recover
 }
 
 
@@ -318,28 +289,13 @@ mod tests{
 
     #[test]
     pub fn test_into_and_from_bytes_g1(){
-        let mut t  = G1::one();
-        unsafe {
-            // Serializing
-            let mut t_buf: Vec<u8> = vec![];
-            let tmp = t.as_tuple_mut();
-            tmp.0.into_repr().write_be(&mut t_buf).unwrap();
-            tmp.1.into_repr().write_be(&mut t_buf).unwrap();
-            tmp.2.into_repr().write_be(&mut t_buf).unwrap();
-            
-            // Deserializing
-            let mut t_recover = G1::zero();
-            let (x, y, z) = t_recover.as_tuple_mut();
-            let mut q = FqRepr::default();
-            q.read_be(&*t_buf).unwrap();
-            *x = Fq::from_repr(q).unwrap();
-            q.read_be(&*t_buf).unwrap();
-            *y = Fq::from_repr(q).unwrap();
-            q.read_be(&*t_buf).unwrap();
-            *z = Fq::from_repr(q).unwrap();
-            println!("Hope this worked...");
+        let t = G1::one();
+        let mut t_buf = Vec::new();
+        t.serialize(&mut t_buf, false).unwrap();
 
-        }
+        let mut cursor = Cursor::new(t_buf);
+        let t_recover = slice_to_elem!(&mut cursor, G1, false).unwrap();
+        println!("Well?");
     }
 
 
