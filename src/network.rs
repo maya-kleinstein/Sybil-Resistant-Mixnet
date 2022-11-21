@@ -294,7 +294,7 @@ mod tests{
         t.serialize(&mut t_buf, false).unwrap();
 
         let mut cursor = Cursor::new(t_buf);
-        let t_recover = slice_to_elem!(&mut cursor, G1, false).unwrap();
+        let _t_recover = slice_to_elem!(&mut cursor, G1, false).unwrap();
         println!("Well?");
     }
 
