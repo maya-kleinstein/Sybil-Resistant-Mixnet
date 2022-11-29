@@ -33,10 +33,24 @@ pub struct PoKOfTicketProof {
 /// XXX: An optimization would be to combine the 2 relations into one by using the same techniques as Bulletproofs
 #[derive(Debug, Clone)]
 pub struct PoKOfTicket {
-    /// Building on PoKOfSignature
-    pok_sig : PoKOfSignature,
+    /// A' in section 4.5
+    a_prime: G1,
+    /// \overline{A} in section 4.5
+    a_bar: G1,
+    /// d in section 4.5
+    d: G1,
     /// C in my paper
     c : G1,
+    /// For proving relation a_bar / d == a_prime^{-e} * h_0^r2
+    pok_vc_1: ProverCommittedG1,
+    /// The messages
+    secrets_1: Vec<Fr>,
+    /// For proving relation g1 * h1^m1 * h2^m2.... for all disclosed messages m_i == d^r3 * h_0^{-s_prime} * h1^-m1 * h2^-m2.... for all undisclosed messages m_i
+    pok_vc_2: ProverCommittedG1,
+    /// The blinding factors
+    secrets_2: Vec<Fr>,
+    /// revealed messages
+    pub(crate) revealed_messages: BTreeMap<usize, SignatureMessage>,
     // For proving relation C = g1^rho1*g2^rho2
     pok_vc_3: ProverCommittedG1,
     /// The blinding factors
@@ -57,10 +71,122 @@ impl PoKOfTicket {
     /// Creates the initial proof data before a Fiat-Shamir calculation
     pub fn init(
         signature: &Signature,
-        pok_sig : PoKOfSignature,
+        vk: &PublicKey,
+        messages: &[ProofMessage],
         t: G1,
         b: G1,
     ) -> Result<Self, BBSError> {
+        if messages.len() != vk.message_count() {
+            return Err(BBSError::from_kind(
+                BBSErrorKind::PublicKeyGeneratorMessageCountMismatch(
+                    vk.message_count(),
+                    messages.len(),
+                ),
+            ));
+        }
+        let sig_messages = messages
+            .iter()
+            .map(|m| m.get_message())
+            .collect::<Vec<SignatureMessage>>();
+        if !signature.verify(sig_messages.as_slice(), &vk)? {
+            return Err(BBSErrorKind::PoKVCError {
+                msg: "The messages and signature do not match.".to_string(),
+            }
+            .into());
+        }
+
+        let r1 = rand_non_zero_fr();
+        let r2 = rand_non_zero_fr();
+
+        let mut temp: Vec<SignatureMessage> = Vec::new();
+        for i in 0..messages.len() {
+            match &messages[i] {
+                ProofMessage::Revealed(r) => temp.push(*r),
+                ProofMessage::Hidden(HiddenMessage::ProofSpecificBlinding(m)) => temp.push(*m),
+                ProofMessage::Hidden(HiddenMessage::ExternalBlinding(m, _)) => temp.push(*m),
+            }
+        }
+
+        let b_sig = signature.get_b(temp.as_slice(), &vk);
+
+        let mut a_prime = signature.a;
+        a_prime.mul_assign(r1);
+
+        let mut a_bar_denom = a_prime;
+        a_bar_denom.mul_assign(signature.e);
+
+        let mut a_bar = b_sig;
+        a_bar.mul_assign(r1);
+        a_bar.sub_assign(&a_bar_denom);
+
+        let mut r2_d = r2;
+        r2_d.negate();
+        let mut builder = CommitmentBuilder::new();
+        builder.add(&GeneratorG1(b_sig), &SignatureMessage(r1));
+        builder.add(&vk.h0, &SignatureMessage(r2_d));
+
+        // d = b^r1 h0^-r2
+        let d = builder.finalize().0;
+
+        let r3 = r1.inverse().unwrap();
+
+        // s' = s - r2 r3
+        let mut s_prime = r2;
+        s_prime.mul_assign(&r3);
+        s_prime.negate();
+        s_prime.add_assign(&signature.s);
+
+        // For proving relation a_bar / d == a_prime^{-e} * h_0^r2
+        let mut committing_1 = ProverCommittingG1::new();
+        let mut secrets_1 = Vec::with_capacity(2);
+        // For a_prime^{-e}
+        let blinding_e = rand_non_zero_fr();
+        committing_1.commit_with(&GeneratorG1(a_prime), ProofNonce(blinding_e));
+        let mut sig_e = signature.e;
+        sig_e.negate();
+        secrets_1.push(sig_e);
+        // For h_0^r2
+        committing_1.commit(&vk.h0);
+        secrets_1.push(r2);
+        let pok_vc_1 = committing_1.finish();
+
+        // For proving relation g1 * h1^m1 * h2^m2.... for all disclosed messages m_i == d^r3 * h_0^{-s_prime} * h1^-m1 * h2^-m2.... for all undisclosed messages m_i
+        // Usually the number of disclosed messages is much less than the number of hidden messages, its better to avoid negations in hidden messages and do
+        // them in revealed messages. So transform the relation
+        // g1 * h1^m1 * h2^m2.... * h_i^m_i for disclosed messages m_i = d^r3 * h_0^{-s_prime} * h1^-m1 * h2^-m2.... * h_j^-m_j for all undisclosed messages m_j
+        // into
+        // d^{-r3} * h_0^s_prime * h1^m1 * h2^m2.... * h_j^m_j = g1 * h1^-m1 * h2^-m2.... * h_i^-m_i. Moreover g1 * h1^-m1 * h2^-m2.... * h_i^-m_i is public
+        // and can be efficiently computed as (g1 * h1^m1 * h2^m2.... * h_i^m_i)^-1 and inverse in elliptic group is a point negation which is very cheap
+        let mut committing_2 = ProverCommittingG1::new();
+        let mut secrets_2 = Vec::with_capacity(2 + messages.len());
+        // For d^-r3
+        committing_2.commit(&GeneratorG1(d));
+        let mut r3_d = r3;
+        r3_d.negate();
+        secrets_2.push(r3_d);
+        // h_0^s_prime
+        committing_2.commit(&vk.h0);
+        secrets_2.push(s_prime);
+
+        let mut revealed_messages = BTreeMap::new();
+
+        for i in 0..vk.message_count() {
+            match &messages[i] {
+                ProofMessage::Revealed(r) => {
+                    revealed_messages.insert(i, *r);
+                }
+                ProofMessage::Hidden(HiddenMessage::ProofSpecificBlinding(m)) => {
+                    committing_2.commit(&vk.h[i]);
+                    secrets_2.push(m.0);
+                }
+                ProofMessage::Hidden(HiddenMessage::ExternalBlinding(e, b)) => {
+                    committing_2.commit_with(&vk.h[i], b);
+                    secrets_2.push(e.0);
+                }
+            }
+        }
+        let pok_vc_2 = committing_2.finish();
+
 
         let rho1 = rand_non_zero_fr();
         let rho2 = rand_non_zero_fr();
@@ -94,7 +220,7 @@ impl PoKOfTicket {
         let mut committing_4 = ProverCommittingG1::new();
         let mut secrets_4 = Vec::with_capacity(3);
         // For C^{-e}
-        committing_4.commit(&GeneratorG1(c));
+        committing_4.commit_with(&GeneratorG1(c), ProofNonce(blinding_e));
         let mut neg_sig_e = signature.e;
         neg_sig_e.negate();
         secrets_4.push(neg_sig_e);
@@ -121,9 +247,16 @@ impl PoKOfTicket {
         let pok_vc_5 = committing_5.finish();
 
 
-        Ok(PoKOfTicket {
-            pok_sig,
+        Ok(Self {
+            a_prime,
+            a_bar,
+            d,
             c,
+            pok_vc_1,
+            secrets_1,
+            pok_vc_2,
+            secrets_2,
+            revealed_messages,
             pok_vc_3,
             secrets_3,
             pok_vc_4,
@@ -138,8 +271,15 @@ impl PoKOfTicket {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = vec![];
 
-        // For signature PoK values
-        bytes.append(&mut self.pok_sig.to_bytes());
+        self.a_bar.serialize(&mut bytes, false).unwrap();
+
+        // For 1st PoKVC
+        // self.a_prime is included as part of self.pok_vc_1
+        bytes.append(&mut self.pok_vc_1.to_bytes());
+
+        // For 2nd PoKVC
+        // self.d is included as part of self.pok_vc_2
+        bytes.append(&mut self.pok_vc_2.to_bytes());
 
         // For 3rd PoKVC
         bytes.append(&mut self.pok_vc_3.to_bytes());
@@ -163,12 +303,12 @@ impl PoKOfTicket {
     ) -> Result<PoKOfTicketProof, BBSError> {
         // TODO: isn't there a prettier way to do this? like for-each?
         let secrets_1: Vec<_> = self
-        .pok_sig.secrets_1
+        .secrets_1
         .iter()
         .map(|s| SignatureMessage(*s))
         .collect();
         let secrets_2: Vec<_> = self
-        .pok_sig.secrets_2
+        .secrets_2
         .iter()
         .map(|s| SignatureMessage(*s))
         .collect();
@@ -189,11 +329,11 @@ impl PoKOfTicket {
             .collect();
             
         let proof_vc_1 = self
-            .pok_sig.pok_vc_1
+            .pok_vc_1
             .gen_proof(challenge_hash, secrets_1.as_slice())?;
 
         let proof_vc_2 = self
-            .pok_sig.pok_vc_2
+            .pok_vc_2
             .gen_proof(challenge_hash, secrets_2.as_slice())?;
 
         let proof_vc_3 = self
@@ -209,9 +349,9 @@ impl PoKOfTicket {
             .gen_proof(challenge_hash, secrets_5.as_slice())?;
 
         Ok(PoKOfTicketProof {
-            a_prime: self.pok_sig.a_prime,
-            a_bar: self.pok_sig.a_bar,
-            d: self.pok_sig.d,
+            a_prime: self.a_prime,
+            a_bar: self.a_bar,
+            d: self.d,
             c: self.c,
             proof_vc_1,
             proof_vc_2,
@@ -346,19 +486,28 @@ impl PoKOfTicketProof{
         t: G1,
     ) -> Vec<u8> {
 
-        // sig PoK portion
-        let sig_pok = PoKOfSignatureProof{
-            a_prime: self.a_prime,
-            a_bar: self.a_bar,
-            d: self.d,
-            proof_vc_1: self.proof_vc_1.clone(),
-            proof_vc_2: self.proof_vc_2.clone(),
-        };
-        
         let mut bytes = vec![];
-        bytes.extend_from_slice(&sig_pok.get_bytes_for_challenge(revealed_msg_indices, vk)[..]);
-        
-        // proof_vc_i for i=3,4,5
+
+        self.a_bar.serialize(&mut bytes, false).unwrap();
+        self.a_prime.serialize(&mut bytes, false).unwrap();
+        vk.h0.0.serialize(&mut bytes, false).unwrap();
+        self.proof_vc_1
+            .commitment
+            .serialize(&mut bytes, false)
+            .unwrap();
+        self.d.serialize(&mut bytes, false).unwrap();
+        vk.h0.0.serialize(&mut bytes, false).unwrap();
+        for i in 0..vk.message_count() {
+            if revealed_msg_indices.contains(&i) {
+                continue;
+            }
+            vk.h[i].0.serialize(&mut bytes, false).unwrap();
+        }
+        self.proof_vc_2
+            .commitment
+            .serialize(&mut bytes, false)
+            .unwrap();
+
         G1::one().serialize(&mut bytes, false).unwrap();
         get_g2().serialize(&mut bytes, false).unwrap();
         self.proof_vc_3
@@ -538,7 +687,7 @@ impl ToVariableLengthBytes for PoKOfTicketProof {
 }
 
 
-
+//TODO: actually make this get g2...
 fn get_g2() -> G1{
     return G1::one();
 }

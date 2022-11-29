@@ -117,19 +117,23 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
         pm_revealed!(b"Testing"),
     ];
 
-    // Generating base signature proof
-    let sig_pok = PoKOfSignature::init(&client.signature, &network.id_provider.bbs_keys.0, proof_messages.as_slice()).unwrap();
-
     // Onion Encrypt the data using the keys matching the calculated tickets
     // TODO: don't make the amount of layers == network size... weird and unnecessary
     for i in (0..network.size-1).rev(){
         // t = b^e, where b=H0(layer, RoundID, SysRand) and e is part of signature
-        let (b, t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.e);
+         let (b, t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.e);
         // server x = H(t) % network size, H: {0,1}^* -> Zp
         x = calculate_next_server(t, network.size);
 
         // Building proof for ticket + signature
-        let ticket_pok = PoKOfTicket::init(&client.signature, sig_pok.clone(), t, b).unwrap();
+        let ticket_pok = PoKOfTicket::init(
+            &client.signature, 
+            &network.id_provider.bbs_keys.0, 
+            proof_messages.as_slice(),
+            t,
+            b
+        ).unwrap();
+
         let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
         let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
 
@@ -296,39 +300,5 @@ mod tests{
         let mut cursor = Cursor::new(t_buf);
         let _t_recover = slice_to_elem!(&mut cursor, G1, false).unwrap();
         println!("Well?");
-    }
-
-
-    # [test]
-    pub fn test_to_and_from_bytes(){
-        let message_count = 1;
-
-        let mut messages = Vec::new();
-        messages.push(SignatureMessage::random());
-        
-        let (verkey, signkey) = generate(message_count).unwrap();
-
-        let sig = Signature::new(messages.as_slice(), &signkey, &verkey).unwrap();
-        let res = sig.verify(messages.as_slice(), &verkey);
-        assert!(res.unwrap());
-        let proof_messages = vec![
-            pm_hidden_raw!(messages[0].clone()),
-        ];
-
-        // Generating base signature proof
-        let sig_pok = PoKOfSignature::init(&sig, &verkey, proof_messages.as_slice()).unwrap();
-        // Generating ticket PoK
-        let pok = PoKOfTicket::init(&sig, sig_pok, G1::one(), G1::one()).unwrap();
-        let challenge_prover = ProofChallenge::hash(&pok.to_bytes());
-        let proof = pok.gen_proof(&challenge_prover).unwrap();
-
-        // Test to_bytes
-        let proof_bytes = proof.to_bytes_uncompressed_form();
-        let proof_cp = PoKOfTicketProof::from_bytes_uncompressed_form(&proof_bytes);
-        assert!(proof_cp.is_ok());
-
-        let proof_bytes = proof.to_bytes_compressed_form();
-        let proof_cp = PoKOfTicketProof::from_bytes_compressed_form(&proof_bytes);
-        assert!(proof_cp.is_ok());
     }
 }
