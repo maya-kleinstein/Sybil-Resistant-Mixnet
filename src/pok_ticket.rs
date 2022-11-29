@@ -1,10 +1,53 @@
-use std::{io::Cursor, collections::{BTreeMap, BTreeSet}, cmp::Ordering};
+use std::{io::Cursor, collections::{BTreeMap, BTreeSet}, cmp::Ordering, fmt::{Display, Formatter, Result as FmtResult}};
 
 use ff_zeroize::{Field, PrimeField};
 use pairing_plus::{bls12_381::{G1, Fr, Bls12, G2, Fq12, FrRepr}, CurveProjective, serdes::SerDes, CurveAffine, Engine};
 
 use crate::{prelude::*, rand_non_zero_fr, multi_scalar_mul_const_time_g1};
 
+/// Indicates the status returned from `PoKOfSignatureProof`
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PoKOfTicketProofStatus {
+    /// The proof verified
+    Success,
+    /// The proof failed because the signature proof of knowledge failed
+    BadSignature,
+    /// The proof failed because a hidden message was invalid when the proof was created
+    BadHiddenMessage,
+    /// The proof failed because a revealed message was invalid
+    BadRevealedMessage,
+    /// The proof failed because the ticket proof of knowledge failed
+    BadTicket
+}
+
+impl PoKOfTicketProofStatus {
+    /// Return whether the proof succeeded or not
+    pub fn is_valid(self) -> bool {
+        matches!(self, PoKOfTicketProofStatus::Success)
+    }
+}
+
+impl Display for PoKOfTicketProofStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match *self {
+            PoKOfTicketProofStatus::Success => write!(f, "Success"),
+            PoKOfTicketProofStatus::BadHiddenMessage => write!(
+                f,
+                "a message was supplied when the proof was created that was not signed or a message was revealed that was initially hidden"
+            ),
+            PoKOfTicketProofStatus::BadRevealedMessage => {
+                write!(f, "a revealed message was supplied that was not signed or a message was revealed that was initially hidden")
+            }
+            PoKOfTicketProofStatus::BadSignature => {
+                write!(f, "An invalid signature was supplied")
+            }
+            PoKOfTicketProofStatus::BadTicket =>{
+                write!(f, "An invalid ticket was supplied")
+            }
+        }
+    }
+}
 
 #[allow(dead_code)]
 /// PoK of a ticket and a valid signature
@@ -541,7 +584,7 @@ impl PoKOfTicketProof{
         challenge: &ProofChallenge,
         b: G1,
         t: G1,
-    ) -> Result<PoKOfSignatureProofStatus, BBSError> {
+    ) -> Result<PoKOfTicketProofStatus, BBSError> {
         vk.validate()?;
         for i in revealed_msgs.keys() {
             if *i >= vk.message_count() {
@@ -552,7 +595,7 @@ impl PoKOfTicketProof{
         }
 
         if self.a_prime.is_zero() {
-            return Ok(PoKOfSignatureProofStatus::BadSignature);
+            return Ok(PoKOfTicketProofStatus::BadSignature);
         }
 
         // Verifying the equation e(a_prime, w) = e(a_bar, g_2) 
@@ -568,10 +611,10 @@ impl PoKOfTicketProof{
                 &G2::one().into_affine().prepare(),
             ),
         ])) {
-            None => return Ok(PoKOfSignatureProofStatus::BadSignature),
+            None => return Ok(PoKOfTicketProofStatus::BadSignature),
             Some(product) => {
                 if product != Fq12::one() {
-                    return Ok(PoKOfSignatureProofStatus::BadSignature);
+                    return Ok(PoKOfTicketProofStatus::BadSignature);
                 }
             }
         };
@@ -589,7 +632,7 @@ impl PoKOfTicketProof{
             .proof_vc_1
             .verify(&bases, &Commitment(a_bar_d), challenge)?
         {
-            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+            return Ok(PoKOfTicketProofStatus::BadHiddenMessage);
         }
         // TODO: future problem: maybe challenge should have borrow before it? for vc_2 as well?
         // Verifying proof_vc_2
@@ -619,7 +662,7 @@ impl PoKOfTicketProof{
             .proof_vc_2
             .verify(bases_pok_vc_2.as_slice(), &pr, challenge)?
         {
-            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+            return Ok(PoKOfTicketProofStatus::BadHiddenMessage);
         }
 
         // Verifying proof_vc_3
@@ -630,7 +673,7 @@ impl PoKOfTicketProof{
             .proof_vc_3
             .verify(&bases, &Commitment(self.c), challenge)?
         {
-            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+            return Ok(PoKOfTicketProofStatus::BadTicket);
         }
 
         // Verifying proof_vc_4
@@ -642,7 +685,7 @@ impl PoKOfTicketProof{
             .proof_vc_4
             .verify(&bases, &Commitment(G1::zero()), challenge)?
         {
-            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+            return Ok(PoKOfTicketProofStatus::BadTicket);
         }
 
         // Verifying proof_vc_5
@@ -653,14 +696,14 @@ impl PoKOfTicketProof{
             .proof_vc_5
             .verify(&bases, &Commitment(G1::zero()), challenge)?
         {
-            return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
+            return Ok(PoKOfTicketProofStatus::BadTicket);
         }
 
-        // Testing if blinding for signature.e are equal
+        // Testing if blindings for signature.e are equal
         assert_eq!(self.proof_vc_1.responses.first().cmp(&self.proof_vc_4.responses.first()), Ordering::Equal);
         
         // If everything worked!
-        return Ok(PoKOfSignatureProofStatus::Success);
+        return Ok(PoKOfTicketProofStatus::Success);
     }
 }
 
