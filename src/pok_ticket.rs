@@ -1,4 +1,4 @@
-use std::{io::Cursor, collections::{BTreeMap, BTreeSet}};
+use std::{io::Cursor, collections::{BTreeMap, BTreeSet}, cmp::Ordering};
 
 use ff_zeroize::{Field, PrimeField};
 use pairing_plus::{bls12_381::{G1, Fr, Bls12, G2, Fq12, FrRepr}, CurveProjective, serdes::SerDes, CurveAffine, Engine};
@@ -656,9 +656,11 @@ impl PoKOfTicketProof{
             return Ok(PoKOfSignatureProofStatus::BadHiddenMessage);
         }
 
+        // Testing if blinding for signature.e are equal
+        assert_eq!(self.proof_vc_1.responses.first().cmp(&self.proof_vc_4.responses.first()), Ordering::Equal);
+        
         // If everything worked!
         return Ok(PoKOfSignatureProofStatus::Success);
-        // TODO: test if e's are equal!
     }
 }
 
