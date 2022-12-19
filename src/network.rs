@@ -271,6 +271,8 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 
 
 mod tests{
+    use crate::pok_ticket::get_g2;
+
     use super::*;
  
     const TEST_NETWORK_SIZE: u64 = 2;
@@ -300,5 +302,12 @@ mod tests{
         let mut cursor = Cursor::new(t_buf);
         let _t_recover = slice_to_elem!(&mut cursor, G1, false).unwrap();
         println!("Well?");
+    }
+
+    //TODO: make this actually test what it's supposed to.
+    #[test]
+    pub fn test_is_generator(){
+        let _g = get_g2();
+        // assert!(g.is_generator());
     }
 }

@@ -3,7 +3,7 @@ use std::{io::Cursor, collections::{BTreeMap, BTreeSet}, cmp::Ordering, fmt::{Di
 use ff_zeroize::{Field, PrimeField};
 use pairing_plus::{bls12_381::{G1, Fr, Bls12, G2, Fq12, FrRepr}, CurveProjective, serdes::SerDes, CurveAffine, Engine};
 
-use crate::{prelude::*, rand_non_zero_fr, multi_scalar_mul_const_time_g1};
+use crate::{prelude::*, rand_non_zero_fr, multi_scalar_mul_const_time_g1, hash_to_g1};
 
 /// Indicates the status returned from `PoKOfSignatureProof`
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
@@ -732,7 +732,8 @@ impl ToVariableLengthBytes for PoKOfTicketProof {
 }
 
 
-//TODO: actually make this get g2...
-fn get_g2() -> G1{
-    return G1::one();
+/// Returns a generator of G1 that is different from g1
+pub fn get_g2() -> G1{
+    let bytes: [u8; 3] = [1, 2, 3];
+    return hash_to_g1(&bytes);
 }
