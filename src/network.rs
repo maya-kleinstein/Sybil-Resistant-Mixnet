@@ -113,47 +113,55 @@ impl Network {
 pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64){
     let mut data: Vec<u8> = data;
     let mut x: u64 = 0;
+
+    // Onion Encrypt the data using the keys matching the calculated tickets
+    // Note to Maya: for i in [0,1,2] (python)
+    for i in (0..3).rev(){
+        (data, x) = wrap_packet(data, client, network, i);
+    }
+    return (data, x);
+}
+
+
+// Layer Packet
+fn wrap_packet(data: Vec<u8>, client: &Client, network: &Network, layer: u64) -> (Vec<u8>, u64) {
+    let mut data = data;
     let proof_messages = vec![
         pm_revealed!(b"Testing"),
     ];
 
-    // Onion Encrypt the data using the keys matching the calculated tickets
-    // Note to Maya: for i in [0,1,2] (python)
-    // TODO: make the for loop functionality into a function (if you can)
-    for i in (0..3).rev(){
-        // t = b^e, where b=H0(layer, RoundID, SysRand) and e is part of signature
-         let (b, t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.e);
-        // server x = H(t) % network size, H: {0,1}^* -> Zp
-        x = calculate_next_server(t, network.size);
+    // t = b^e, where b=H0(layer, RoundID, SysRand) and e is part of signature
+    let (b, t) = calculate_ticket(layer, network.round_id, network.sys_rand, client.signature.e);
+    // server x = H(t) % network size, H: {0,1}^* -> Zp
+    let x = calculate_next_server(t, network.size);
 
-        // Building proof for ticket + signature
-        let ticket_pok = PoKOfTicket::init(
-            &client.signature, 
-            &network.id_provider.bbs_keys.0, 
-            proof_messages.as_slice(),
-            t,
-            b
-        ).unwrap();
+    // Building proof for ticket + signature
+    let ticket_pok = PoKOfTicket::init(
+        &client.signature, 
+        &network.id_provider.bbs_keys.0, 
+        proof_messages.as_slice(),
+        t,
+        b
+    ).unwrap();
 
-        // TODO: beware weak fiat shamir
-        let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
-        let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
+    // TODO: beware weak fiat shamir
+    let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
+    let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
 
-        // serialize t into buffer
-        let mut t_buf = Vec::new();
-        t.serialize(&mut t_buf, false).unwrap();
+    // serialize t into buffer
+    let mut t_buf = Vec::new();
+    t.serialize(&mut t_buf, false).unwrap();
 
-        let packet = Packet{
-            ticket: t_buf,
-            proof: proof.to_bytes_uncompressed_form(),
-            data,
-        };
-        let encoded_packet = bincode::serialize(&packet).unwrap();
-        // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
-        let wrapped_data = DryocBox::seal_to_vecbox(&encoded_packet, &network.servers[x as usize].key_pair.public_key.clone()).expect("Unable to seal");
-        data = bincode::serialize(&wrapped_data).unwrap();
-    }
-    return (data, x);
+    let packet = Packet{
+        ticket: t_buf,
+        proof: proof.to_bytes_uncompressed_form(),
+        data,
+    };
+    let encoded_packet = bincode::serialize(&packet).unwrap();
+    // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
+    let wrapped_data = DryocBox::seal_to_vecbox(&encoded_packet, &network.servers[x as usize].key_pair.public_key.clone()).expect("Unable to seal");
+    data = bincode::serialize(&wrapped_data).unwrap();
+    return (data, x)
 }
 
 

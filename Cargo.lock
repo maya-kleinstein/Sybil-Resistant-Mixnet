@@ -74,6 +74,7 @@ dependencies = [
  "ff-zeroize",
  "hex",
  "hkdf",
+ "lazy_static",
  "pairing-plus",
  "rand 0.7.3",
  "rand 0.8.5",

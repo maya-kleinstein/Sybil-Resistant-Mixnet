@@ -35,6 +35,9 @@ compile_error!("wasm does not support rayon. Remove the dependency on rayon.");
 #[macro_use]
 extern crate arrayref;
 
+#[macro_use]
+extern crate lazy_static;
+
 use blake2::digest::{generic_array::GenericArray, Input, VariableOutput};
 use errors::prelude::*;
 use ff_zeroize::{Field, PrimeField};

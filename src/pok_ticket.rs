@@ -5,6 +5,11 @@ use pairing_plus::{bls12_381::{G1, Fr, Bls12, G2, Fq12, FrRepr}, CurveProjective
 
 use crate::{prelude::*, rand_non_zero_fr, multi_scalar_mul_const_time_g1, hash_to_g1};
 
+
+lazy_static! {
+    static ref G2_VALUE: G1 = get_g2();
+}
+
 /// Indicates the status returned from `PoKOfSignatureProof`
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -242,7 +247,7 @@ impl PoKOfTicket {
 
         let mut c = G1::one();
         c.mul_assign(rho1);
-        let mut g2_rho2 = get_g2();
+        let mut g2_rho2 = *G2_VALUE;
         g2_rho2.mul_assign(rho2);
         c.add_assign(&g2_rho2);
 
@@ -254,7 +259,7 @@ impl PoKOfTicket {
         committing_3.commit(&GeneratorG1(G1::one()));
         secrets_3.push(rho1);
         // For g2^{rho2}
-        committing_3.commit(&GeneratorG1(get_g2()));
+        committing_3.commit(&GeneratorG1(*G2_VALUE));
         secrets_3.push(rho2);
         let pok_vc_3 = committing_3.finish();
 
@@ -271,7 +276,7 @@ impl PoKOfTicket {
         committing_4.commit(&GeneratorG1(G1::one()));
         secrets_4.push(beta1);
         // For g2^{beta2}
-        committing_4.commit(&GeneratorG1(get_g2()));
+        committing_4.commit(&GeneratorG1(*G2_VALUE));
         secrets_4.push(beta2);
         let pok_vc_4 = committing_4.finish();
 
@@ -551,7 +556,7 @@ impl PoKOfTicketProof{
             .unwrap();
 
         G1::one().serialize(&mut bytes, false).unwrap();
-        get_g2().serialize(&mut bytes, false).unwrap();
+        G2_VALUE.serialize(&mut bytes, false).unwrap();
         self.proof_vc_3
             .commitment
             .serialize(&mut bytes, false)
@@ -559,7 +564,7 @@ impl PoKOfTicketProof{
         
         self.c.serialize(&mut bytes, false).unwrap();
         G1::one().serialize(&mut bytes, false).unwrap();
-        get_g2().serialize(&mut bytes, false).unwrap();
+        G2_VALUE.serialize(&mut bytes, false).unwrap();
         self.proof_vc_4
             .commitment
             .serialize(&mut bytes, false)
@@ -665,7 +670,7 @@ impl PoKOfTicketProof{
         }
 
         // Verifying proof_vc_3
-        let bases = [GeneratorG1(G1::one()), GeneratorG1(get_g2())];
+        let bases = [GeneratorG1(G1::one()), GeneratorG1(*G2_VALUE)];
         if !self
             .proof_vc_3
             .verify(&bases, &Commitment(self.c), challenge)?
@@ -674,7 +679,7 @@ impl PoKOfTicketProof{
         }
 
         // Verifying proof_vc_4
-        let bases = [GeneratorG1(self.c),GeneratorG1(G1::one()), GeneratorG1(get_g2())];
+        let bases = [GeneratorG1(self.c),GeneratorG1(G1::one()), GeneratorG1(*G2_VALUE)];
         if !self
             .proof_vc_4
             .verify(&bases, &Commitment(G1::zero()), challenge)?
@@ -725,7 +730,6 @@ impl ToVariableLengthBytes for PoKOfTicketProof {
 
 
 /// Returns a generator of G1 that is different from g1
-/// TODO: use lazy static to call once to generate the value (and not hash each time)
 pub fn get_g2() -> G1{
     let bytes: [u8; 3] = [1, 2, 3];
     return hash_to_g1(&bytes);
