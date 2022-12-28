@@ -344,17 +344,16 @@ impl PoKOfTicket {
         self,
         challenge_hash: &ProofChallenge,
     ) -> Result<PoKOfTicketProof, BBSError> {
-        // TODO: isn't there a prettier way to do this? like for-each?
         let secrets_1: Vec<_> = self
-        .secrets_1
-        .iter()
-        .map(|s| SignatureMessage(*s))
-        .collect();
+            .secrets_1
+            .iter()
+            .map(|s| SignatureMessage(*s))
+            .collect();
         let secrets_2: Vec<_> = self
-        .secrets_2
-        .iter()
-        .map(|s| SignatureMessage(*s))
-        .collect();
+            .secrets_2
+            .iter()
+            .map(|s| SignatureMessage(*s))
+            .collect();
         let secrets_3: Vec<_> = self
             .secrets_3
             .iter()
@@ -441,7 +440,7 @@ impl PoKOfTicketProof{
         output
     }
 
-           /// Convert the byte slice into a proof
+    /// Convert the byte slice into a proof
     pub(crate) fn from_bytes(
         data: &[u8],
         g1_size: usize,
@@ -576,7 +575,7 @@ impl PoKOfTicketProof{
         bytes
     }
 
-        /// Validate the proof
+    /// Validate the proof
     pub fn verify(
         &self,
         vk: &PublicKey,
@@ -666,9 +665,7 @@ impl PoKOfTicketProof{
         }
 
         // Verifying proof_vc_3
-        let mut bases = vec![];
-        bases.push(GeneratorG1(G1::one()));
-        bases.push(GeneratorG1(get_g2()));
+        let bases = [GeneratorG1(G1::one()), GeneratorG1(get_g2())];
         if !self
             .proof_vc_3
             .verify(&bases, &Commitment(self.c), challenge)?
@@ -677,10 +674,7 @@ impl PoKOfTicketProof{
         }
 
         // Verifying proof_vc_4
-        let mut bases = vec![];
-        bases.push(GeneratorG1(self.c));
-        bases.push(GeneratorG1(G1::one()));
-        bases.push(GeneratorG1(get_g2()));
+        let bases = [GeneratorG1(self.c),GeneratorG1(G1::one()), GeneratorG1(get_g2())];
         if !self
             .proof_vc_4
             .verify(&bases, &Commitment(G1::zero()), challenge)?
@@ -689,9 +683,7 @@ impl PoKOfTicketProof{
         }
 
         // Verifying proof_vc_5
-        let mut bases = vec![];
-        bases.push(GeneratorG1(b));
-        bases.push(GeneratorG1(t));
+        let bases = [GeneratorG1(b), GeneratorG1(t)];
         if !self
             .proof_vc_5
             .verify(&bases, &Commitment(G1::zero()), challenge)?
@@ -733,6 +725,7 @@ impl ToVariableLengthBytes for PoKOfTicketProof {
 
 
 /// Returns a generator of G1 that is different from g1
+/// TODO: use lazy static to call once to generate the value (and not hash each time)
 pub fn get_g2() -> G1{
     let bytes: [u8; 3] = [1, 2, 3];
     return hash_to_g1(&bytes);

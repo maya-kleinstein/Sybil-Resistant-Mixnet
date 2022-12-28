@@ -20,6 +20,9 @@ fn decrypt_packet_benchmark(c: &mut Criterion){
     c.bench_function("decrypt_packet", |b| b.iter(|| decrypt_packet(enc_data.clone(), first_server, &network)));
 }
 
+// TODO: add a benchmark for creating a proof and verifying a proof (of max length)
+// TODO: bench single layer (change 3 to 1)
+
 
 criterion_group!(benches, generate_packet_benchmark, decrypt_packet_benchmark);
 criterion_main!(benches);

@@ -118,8 +118,9 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     ];
 
     // Onion Encrypt the data using the keys matching the calculated tickets
-    // TODO: don't make the amount of layers == network size... weird and unnecessary
-    for i in (0..network.size-1).rev(){
+    // Note to Maya: for i in [0,1,2] (python)
+    // TODO: make the for loop functionality into a function (if you can)
+    for i in (0..3).rev(){
         // t = b^e, where b=H0(layer, RoundID, SysRand) and e is part of signature
          let (b, t) = calculate_ticket(i, network.round_id, network.sys_rand, client.signature.e);
         // server x = H(t) % network size, H: {0,1}^* -> Zp
@@ -134,6 +135,7 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
             b
         ).unwrap();
 
+        // TODO: beware weak fiat shamir
         let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
         let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
 
@@ -148,7 +150,7 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
         };
         let encoded_packet = bincode::serialize(&packet).unwrap();
         // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
-        let wrapped_data = DryocBox::seal_to_vecbox(&encoded_packet, &network.servers[x as usize].key_pair.public_key.clone()).expect("Unable to seal"); // DELETE
+        let wrapped_data = DryocBox::seal_to_vecbox(&encoded_packet, &network.servers[x as usize].key_pair.public_key.clone()).expect("Unable to seal");
         data = bincode::serialize(&wrapped_data).unwrap();
     }
     return (data, x);
@@ -171,7 +173,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
     for i in &revealed_indices {
         revealed_msgs.insert(i.clone(), messages[*i]);
     }
-    for i in 0..(network.size-1){
+    for i in 0..3{
         // Decrypt Packet 
         let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&data).unwrap();
         let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
@@ -270,9 +272,8 @@ fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
 }
 
 
+#[cfg(test)]
 mod tests{
-    use crate::pok_ticket::get_g2;
-
     use super::*;
  
     const TEST_NETWORK_SIZE: u64 = 2;
@@ -304,10 +305,4 @@ mod tests{
         println!("Well?");
     }
 
-    //TODO: make this actually test what it's supposed to.
-    #[test]
-    pub fn test_is_generator(){
-        let _g = get_g2();
-        // assert!(g.is_generator());
-    }
 }
