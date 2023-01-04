@@ -2,7 +2,6 @@ use std::collections::{BTreeSet, BTreeMap};
 
 use bbs::{network::*, SignatureMessage, HashElem};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use dryoc::{types::StackByteArray, dryocbox::DryocBox};
 
 // Things I want to test: Time to generate a ticket, time to verify a *ticket* and signature, Time to decrypt a packet
 
