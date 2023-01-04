@@ -725,11 +725,11 @@ impl PoKOfTicketProof{
         }
 
         // Batch Verifying the equations e(a_prime, w) = e(a_bar, g_2) 
-        // TODO: This can't just 
-        let mut a_prime_product = G1::one();
+        // TODO: This can't just do a product - there need to be different exponents for each proof
+        let mut a_prime_product = G1::zero();
         batch.iter().for_each(|x| a_prime_product.add_assign(&x.0.a_prime));
 
-        let mut a_bar_product = G1::one();
+        let mut a_bar_product = G1::zero();
         batch.iter().for_each(|x| a_bar_product.sub_assign(&x.0.a_bar));
 
         match Bls12::final_exponentiation(&Bls12::miller_loop(&[

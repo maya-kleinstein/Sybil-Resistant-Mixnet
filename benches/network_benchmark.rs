@@ -45,5 +45,34 @@ fn verify_layer_benchmark(c: &mut Criterion){
 }
 
 
-criterion_group!(benches, generate_packet_benchmark, decrypt_packet_benchmark, verify_layer_benchmark);
+fn verify_batch_benchmark(c: &mut Criterion){
+    let network = black_box(Network::new(2));
+    let clients = black_box(vec![
+        Client::new(&network),
+        Client::new(&network),
+        Client::new(&network)]);
+
+    let packets = black_box(vec![
+        generate_layer(vec![1, 2, 3], &clients[0], &network, 0).0,
+        generate_layer(vec![1, 2, 3], &clients[1], &network, 0).0,
+        generate_layer(vec![1, 2, 3], &clients[2], &network, 0).0]);
+
+    // Set up msg.'s info before decrypting
+    let messages = black_box(vec![
+        SignatureMessage::hash(b"Testing"),
+    ]);
+    
+    let mut revealed_indices = black_box(BTreeSet::new());
+    revealed_indices.insert(0);
+
+    let mut revealed_msgs = black_box(BTreeMap::new());
+    for i in &revealed_indices {
+        revealed_msgs.insert(i.clone(), messages[*i]);
+    }
+    c.bench_function("verify_batch", |b| b.iter(|| verify_batch(&packets, &network, 0)));
+}
+
+
+
+criterion_group!(benches, verify_batch_benchmark, generate_packet_benchmark, decrypt_packet_benchmark, verify_layer_benchmark);
 criterion_main!(benches);
