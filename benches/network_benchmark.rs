@@ -46,14 +46,5 @@ fn verify_layer_benchmark(c: &mut Criterion){
 }
 
 
-
-
-
-
-
-// TODO: add a benchmark for creating a proof and verifying a proof (of max length)
-// TODO: bench single layer (change 3 to 1)
-
-
 criterion_group!(benches, generate_packet_benchmark, decrypt_packet_benchmark, verify_layer_benchmark);
 criterion_main!(benches);
