@@ -22,6 +22,7 @@ use dryoc::dryocbox::DryocBox;
 /// Contains network related functionality
 /// Entities Included: ID provider, Server, Client, Tickets, etc.
 
+pub const NUM_LAYERS: u64 = 3;
 
 /// IDprovider configuration
 pub struct IDProvider{
@@ -113,19 +114,27 @@ impl Network {
 pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64){
     let mut data: Vec<u8> = data;
     let mut x: u64 = 0;
+    let mut packet: Packet;
 
     // Onion Encrypt the data using the keys matching the calculated tickets
     // Note to Maya: for i in [0,1,2] (python)
-    for i in (0..3).rev(){
-        (data, x) = wrap_packet(data, client, network, i);
+    for i in (0..NUM_LAYERS).rev(){
+        // Creates packet layer (proof + ticket)
+        (packet, x) = generate_layer(data, client, network, i);
+
+        // Serialize packet
+        let encoded_packet = bincode::serialize(&packet).unwrap();
+        
+        // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
+        let wrapped_data = DryocBox::seal_to_vecbox(&encoded_packet, &network.servers[x as usize].key_pair.public_key.clone()).expect("Unable to seal");
+        data = bincode::serialize(&wrapped_data).unwrap();
     }
     return (data, x);
 }
 
 
-// Layer Packet
-fn wrap_packet(data: Vec<u8>, client: &Client, network: &Network, layer: u64) -> (Vec<u8>, u64) {
-    let mut data = data;
+/// Create packet with data proof and ticket
+pub fn generate_layer(data: Vec<u8>, client: &Client, network: &Network, layer: u64) -> (Packet, u64){
     let proof_messages = vec![
         pm_revealed!(b"Testing"),
     ];
@@ -157,11 +166,7 @@ fn wrap_packet(data: Vec<u8>, client: &Client, network: &Network, layer: u64) ->
         proof: proof.to_bytes_uncompressed_form(),
         data,
     };
-    let encoded_packet = bincode::serialize(&packet).unwrap();
-    // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
-    let wrapped_data = DryocBox::seal_to_vecbox(&encoded_packet, &network.servers[x as usize].key_pair.public_key.clone()).expect("Unable to seal");
-    data = bincode::serialize(&wrapped_data).unwrap();
-    return (data, x)
+    return (packet, x);
 }
 
 
@@ -181,26 +186,14 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
     for i in &revealed_indices {
         revealed_msgs.insert(i.clone(), messages[*i]);
     }
-    for i in 0..3{
+    for i in 0..NUM_LAYERS{
         // Decrypt Packet 
         let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&data).unwrap();
         let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
-        let packet: Packet = bincode::deserialize(&decrypted).unwrap();
-        // Calculating next server using the ticket
-        let mut cursor = Cursor::new(packet.ticket);
-        let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
-        x = calculate_next_server(t_recovered, network.size);
+        let mut packet: Packet = bincode::deserialize(&decrypted).unwrap();
 
-        // Recovering the value of b
-        let ticket_vals = TicketValues{
-            layer: i,
-            round_id: network.round_id,
-            sys_rand: network.sys_rand,
-        };
-        let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
-        let b_recovered =  h_0(ticket_vals_bytes);
         // Verify ticket and proof (done by x)
-        verify_packet(packet.proof, &network.id_provider.bbs_keys.0, &revealed_msgs, b_recovered, t_recovered);
+        x = verify_packet(&mut packet, &network, &revealed_msgs, i);
         // Retrieving data and next server 
         data = packet.data;
     }
@@ -208,20 +201,34 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 }
 
 
-// Verify the proof of knowledge of the signature and the ticket
-fn verify_packet(proof_bytes: Vec<u8>, verkey: &PublicKey, revealed_msgs: &BTreeMap<usize, SignatureMessage>, b: G1, t: G1){
+/// Verify the proof of knowledge of the signature and the ticket
+pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTreeMap<usize, SignatureMessage>, layer: u64) -> u64 {
+    // Calculating next server using the ticket
+    let mut cursor = Cursor::new(&packet.ticket);
+    let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
+    let x = calculate_next_server(t_recovered, network.size);
+
+    // Recovering the value of b
+    let ticket_vals = TicketValues{
+        layer,
+        round_id: network.round_id,
+        sys_rand: network.sys_rand,
+    };
+    let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
+    let b_recovered =  h_0(ticket_vals_bytes);
     // getting proof from bytes
-    let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&proof_bytes).unwrap();
+    let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packet.proof).unwrap();
     // Setting up revealed indices
     let mut revealed_indices = BTreeSet::new();
     revealed_indices.insert(0);
     // The verifier generates the challenge on its own.
-    let challenge_bytes = proof.get_bytes_for_challenge(revealed_indices.clone(), &verkey, b, t);
+    let challenge_bytes = proof.get_bytes_for_challenge(revealed_indices.clone(), &network.id_provider.bbs_keys.0, b_recovered, t_recovered);
     let challenge_verifier = ProofChallenge::hash(&challenge_bytes);
     assert!(proof
-        .verify(&verkey, &revealed_msgs, &challenge_verifier, b, t)
+        .verify(&network.id_provider.bbs_keys.0, &revealed_msgs, &challenge_verifier, b_recovered, t_recovered)
         .unwrap()
         .is_valid());
+    return x;
 }
 
 

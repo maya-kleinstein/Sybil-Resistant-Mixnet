@@ -97,8 +97,6 @@ pub struct PoKOfTicket {
     pok_vc_2: ProverCommittedG1,
     /// The blinding factors
     secrets_2: Vec<Fr>,
-    /// revealed messages
-    pub(crate) revealed_messages: BTreeMap<usize, SignatureMessage>,
     // For proving relation C = g1^rho1*g2^rho2
     pok_vc_3: ProverCommittedG1,
     /// The blinding factors
@@ -304,7 +302,6 @@ impl PoKOfTicket {
             secrets_1,
             pok_vc_2,
             secrets_2,
-            revealed_messages,
             pok_vc_3,
             secrets_3,
             pok_vc_4,
