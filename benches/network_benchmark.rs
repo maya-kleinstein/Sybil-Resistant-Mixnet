@@ -47,15 +47,20 @@ fn verify_layer_benchmark(c: &mut Criterion){
 
 fn verify_batch_benchmark(c: &mut Criterion){
     let network = black_box(Network::new(2));
-    let clients = black_box(vec![
-        Client::new(&network),
-        Client::new(&network),
-        Client::new(&network)]);
+    let batch_size = 40;
 
-    let packets = black_box(vec![
-        generate_layer(vec![1, 2, 3], &clients[0], &network, 0).0,
-        generate_layer(vec![1, 2, 3], &clients[1], &network, 0).0,
-        generate_layer(vec![1, 2, 3], &clients[2], &network, 0).0]);
+    let mut clients =  black_box(Vec::new());
+    clients.reserve(batch_size);
+    for _ in 0..batch_size {
+        clients.push(Client::new(&network));
+    }
+
+    let mut packets = black_box(Vec::new());
+    packets.reserve(batch_size);
+
+    for _ in 0..batch_size {
+        packets.push(generate_layer(vec![1, 2, 3], &clients[0], &network, 0).0);
+    }
 
     // Set up msg.'s info before decrypting
     let messages = black_box(vec![

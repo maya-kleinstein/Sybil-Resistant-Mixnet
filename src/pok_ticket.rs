@@ -721,7 +721,7 @@ impl PoKOfTicketProof{
         revealed_msgs: &BTreeMap<usize, SignatureMessage>,
     ) -> Result<PoKOfTicketProofStatus, BBSError>  {
         for (proof, challenge, b, t) in batch.iter() {
-            proof.verify_without_pairing(vk, revealed_msgs, challenge, *b, *t)?;
+            assert!(proof.verify_without_pairing(vk, revealed_msgs, challenge, *b, *t).unwrap().is_valid());
         }
 
         // Batch Verifying the equations e(a_prime, w) = e(a_bar, g_2) 
