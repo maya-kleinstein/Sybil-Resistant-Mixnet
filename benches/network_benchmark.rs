@@ -78,6 +78,5 @@ fn verify_batch_benchmark(c: &mut Criterion){
 }
 
 
-
 criterion_group!(benches, verify_batch_benchmark, generate_packet_benchmark, decrypt_packet_benchmark, verify_layer_benchmark);
 criterion_main!(benches);
