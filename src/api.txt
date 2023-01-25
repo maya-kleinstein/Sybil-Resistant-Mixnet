@@ -1,4 +1,0 @@
-Onion Encryption API:
-- generate_ticket(cred, k, RoundID, SysRand)
-- msg_enc(msg, k)
-- msg_dec(msg, k)

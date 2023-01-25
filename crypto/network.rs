@@ -204,6 +204,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 /// Verify the proof of knowledge of the signature and the ticket
 pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTreeMap<usize, SignatureMessage>, layer: u64) -> u64 {
     // Calculating next server using the ticket
+    // TODO: try implementing without it. to see the percentage that it takes of the original.
     let mut cursor = Cursor::new(&packet.ticket);
     let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
@@ -256,6 +257,7 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
         let _x = calculate_next_server(t_recovered, network.size);
 
         // Recovering the value of b
+        // TODO: value for b is the same for everybody - compute once!
         let ticket_vals = TicketValues{
             layer,
             round_id: network.round_id,
