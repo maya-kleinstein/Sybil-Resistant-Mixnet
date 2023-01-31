@@ -77,11 +77,5 @@ fn verify_batch_benchmark(c: &mut Criterion){
     c.bench_function("verify_batch", |b| b.iter(|| verify_batch(&packets, &network, 0)));
 }
 
-
-<<<<<<< HEAD
-
 criterion_group!(benches, verify_batch_benchmark);
-=======
-criterion_group!(benches, verify_batch_benchmark, generate_packet_benchmark, decrypt_packet_benchmark, verify_layer_benchmark);
->>>>>>> 6908934d0c11f684655b5e02c834070fc4af6686
 criterion_main!(benches);

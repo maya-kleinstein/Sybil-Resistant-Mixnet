@@ -41,6 +41,7 @@ dryoc = {version = "0.4.0", features = ["serde"]}
 lazy_static = "1.4.0"
 tonic = "0.8.3"
 prost = "0.11.6"
+tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 criterion = "0.4.0"
@@ -51,3 +52,10 @@ harness=false
 
 [profile.bench]
 debug = true
+
+[build-dependencies]
+tonic-build = "0.8.4"
+
+[[bin]]
+name = "client"
+path = "client/client.rs"
