@@ -1,7 +1,8 @@
-use tonic::{Request, Response, Status};
+use tonic::{Request, Response, Status, Streaming};
 use client::{client_server::Client};
 use client::{GenerateMessagesRequest, GenerateMessagesResponse};
 use client::{SubmitMessagesRequest, SubmitMessagesResponse};
+use client::{AddMessagesRequest, AddMessagesResponse};
 use bbs::network::Client as crypto;
 use bbs::network::Network;
 use bbs::network::{Packet, generate_packet};
@@ -23,10 +24,19 @@ impl Client for ClientService {
         &self,
         request: Request<GenerateMessagesRequest>
     ) -> Result<Response<GenerateMessagesResponse>, Status> {
-        // TODO: generate message for next round, increase round number by 1
+        // TODO: generate message for next round for server "I'm open!", increase round number by 1
         // let data = vec![1,2,3];
         // let packet = generate_packet(data, &self.crypto, &self.network);
         Ok(Response::new(client::GenerateMessagesResponse {}))
+    }
+
+        
+    async fn add_messages(
+        &self,
+        request: tonic::Request<Streaming<AddMessagesRequest>>
+    ) -> Result<Response<AddMessagesResponse>, Status> {
+        // TODO: send all messages to the next mixes or clients (mixes info based on public file)
+        Ok(Response::new(client::AddMessagesResponse {}))
     }
     
     async fn submit_messages(

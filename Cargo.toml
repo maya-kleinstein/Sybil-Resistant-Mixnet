@@ -63,3 +63,7 @@ path = "client/client.rs"
 [[bin]]
 name = "mix"
 path = "mix/mix.rs"
+
+[[bin]]
+name = "config"
+path = "config/config.rs"

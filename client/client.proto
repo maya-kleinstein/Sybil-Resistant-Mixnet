@@ -4,6 +4,7 @@ package client;
 service Client {
   rpc GenerateMessages(GenerateMessagesRequest) returns (GenerateMessagesResponse) {}
   rpc SubmitMessages(SubmitMessagesRequest) returns (SubmitMessagesResponse) {}
+  rpc AddMessages(stream AddMessagesRequest) returns (AddMessagesResponse) {}
 }
 
 message GenerateMessagesRequest {
@@ -17,3 +18,12 @@ message SubmitMessagesRequest {
 }
 
 message SubmitMessagesResponse {}
+
+message AddMessagesRequest {
+  fixed64 round = 1;
+  repeated bytes messages = 2;
+}
+
+message AddMessagesResponse {
+
+}
