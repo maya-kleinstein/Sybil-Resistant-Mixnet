@@ -25,12 +25,13 @@ use dryoc::dryocbox::DryocBox;
 pub const NUM_LAYERS: u64 = 3;
 
 /// IDprovider configuration
+#[derive(Debug)]
 pub struct IDProvider{
     bbs_keys: (PublicKey, SecretKey),
 }
 
 /// Server configuration
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Server{
     key_pair: dryocbox::KeyPair,
 }
@@ -45,6 +46,7 @@ impl Server {
 }
 
 /// Client configuration
+#[derive(Debug)]
 pub struct Client {
     signature: Signature,
 }
@@ -80,6 +82,7 @@ pub struct Packet{
 }
 
 /// Network configuration
+#[derive(Debug)]
 pub struct Network{
     id_provider: IDProvider,
     sys_rand: i32,

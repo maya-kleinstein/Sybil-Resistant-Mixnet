@@ -1,0 +1,33 @@
+syntax = "proto3";
+package mix;
+
+service Mix {
+    rpc AddMessages(stream AddMessagesRequest) returns (AddMessagesResponse) {}
+    rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse) {}
+    rpc StartRound(StartRoundRequest) returns (StartRoundResponse) {}
+}
+
+message AddMessagesRequest {
+    fixed64 round = 1;
+    repeated bytes messages = 2;
+  }
+  
+  message AddMessagesResponse {
+  
+  }
+  
+  message StartRoundRequest {
+    fixed64 round = 1;
+  }
+  
+  message StartRoundResponse {
+  
+  }
+  
+  message GetMessagesRequest {
+    fixed64 round = 1;
+  }
+  
+  message GetMessagesResponse {
+    repeated bytes messages = 1;
+  }

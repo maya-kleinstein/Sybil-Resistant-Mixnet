@@ -59,3 +59,7 @@ tonic-build = "0.8.4"
 [[bin]]
 name = "client"
 path = "client/client.rs"
+
+[[bin]]
+name = "mix"
+path = "mix/mix.rs"
