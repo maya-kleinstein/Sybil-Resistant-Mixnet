@@ -1,7 +1,6 @@
 use tonic::{Request, Response, Status, Streaming};
 use client::{client_server::Client};
 use client::{GenerateMessagesRequest, GenerateMessagesResponse};
-use client::{SubmitMessagesRequest, SubmitMessagesResponse};
 use client::{AddMessagesRequest, AddMessagesResponse};
 use bbs::network::Client as crypto;
 use bbs::network::Network;
@@ -39,15 +38,6 @@ impl Client for ClientService {
         Ok(Response::new(client::AddMessagesResponse {}))
     }
     
-    async fn submit_messages(
-        &self,
-        request: Request<SubmitMessagesRequest>
-    ) -> Result<Response<SubmitMessagesResponse>, Status> {
-        // TODO: send message of current round to the server from db
-        // let r = request.into_inner();
-        Ok(Response::new(client::SubmitMessagesResponse {}))
-    }
-
 }
 
 pub fn main(){

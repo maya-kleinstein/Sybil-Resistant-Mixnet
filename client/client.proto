@@ -3,7 +3,6 @@ package client;
 
 service Client {
   rpc GenerateMessages(GenerateMessagesRequest) returns (GenerateMessagesResponse) {}
-  rpc SubmitMessages(SubmitMessagesRequest) returns (SubmitMessagesResponse) {}
   rpc AddMessages(stream AddMessagesRequest) returns (AddMessagesResponse) {}
 }
 
@@ -12,12 +11,6 @@ message GenerateMessagesRequest {
 }
 
 message GenerateMessagesResponse {}
-
-message SubmitMessagesRequest {
-  fixed64 round = 1;
-}
-
-message SubmitMessagesResponse {}
 
 message AddMessagesRequest {
   fixed64 round = 1;
