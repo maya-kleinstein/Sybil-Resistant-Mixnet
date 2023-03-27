@@ -9,13 +9,13 @@ service Mix {
     // rpc Start()
 }
 
-// grpc context (messaes for round i, from mix in layer l, for mix in layer l')
+// grpc context (messages for round i, from mix in layer l, for mix in layer l')
 message AddMessagesRequest {
     // fixed64 round = 1;
     // string mixId = 3;
     // string senderId = 4;
 
-    repeated bytes messages = 1;
+    repeated bytes packets = 1;
   }
   
   message AddMessagesResponse {

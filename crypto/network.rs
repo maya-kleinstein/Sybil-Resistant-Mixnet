@@ -87,7 +87,8 @@ pub struct Network{
     id_provider: IDProvider,
     sys_rand: i32,
     round_id: u32,
-    size: u64,
+    /// Amount of servers in the network
+    pub size: u64,
     servers: Vec<Server>,
 }
 
@@ -203,6 +204,31 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
     return data;
 }
 
+/// unwraps single layer of packet, given the current server and layer
+pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64) -> (Vec<u8>, u64) {
+    // Set up msg.'s info before decrypting
+    let messages = vec![
+        SignatureMessage::hash(b"Testing"),
+    ];
+    
+    let mut revealed_indices = BTreeSet::new();
+    revealed_indices.insert(0);
+
+    let mut revealed_msgs = BTreeMap::new();
+    for i in &revealed_indices {
+        revealed_msgs.insert(i.clone(), messages[*i]);
+    }
+
+    // Decrypt Packet 
+    let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&enc_packet).unwrap();
+    let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
+    let mut packet: Packet = bincode::deserialize(&decrypted).unwrap();
+
+    // Verify ticket and proof (done by x)
+    let next_server = verify_packet(&mut packet, &network, &revealed_msgs, layer);
+    // Retrieving data and next server 
+    return (packet.data, next_server);
+}
 
 /// Verify the proof of knowledge of the signature and the ticket
 pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTreeMap<usize, SignatureMessage>, layer: u64) -> u64 {
