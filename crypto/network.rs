@@ -25,12 +25,13 @@ use dryoc::dryocbox::DryocBox;
 pub const NUM_LAYERS: u64 = 3;
 
 /// IDprovider configuration
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IDProvider{
     bbs_keys: (PublicKey, SecretKey),
 }
 
 /// Server configuration
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Server{
     key_pair: dryocbox::KeyPair,
 }
@@ -45,6 +46,7 @@ impl Server {
 }
 
 /// Client configuration
+#[derive(Debug)]
 pub struct Client {
     signature: Signature,
 }
@@ -80,11 +82,13 @@ pub struct Packet{
 }
 
 /// Network configuration
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Network{
     id_provider: IDProvider,
     sys_rand: i32,
     round_id: u32,
-    size: u64,
+    /// Amount of servers in the network
+    pub size: u64,
     servers: Vec<Server>,
 }
 
@@ -200,10 +204,36 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
     return data;
 }
 
+/// unwraps single layer of packet, given the current server and layer
+pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64) -> (Vec<u8>, u64) {
+    // Set up msg.'s info before decrypting
+    let messages = vec![
+        SignatureMessage::hash(b"Testing"),
+    ];
+    
+    let mut revealed_indices = BTreeSet::new();
+    revealed_indices.insert(0);
+
+    let mut revealed_msgs = BTreeMap::new();
+    for i in &revealed_indices {
+        revealed_msgs.insert(i.clone(), messages[*i]);
+    }
+
+    // Decrypt Packet 
+    let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&enc_packet).unwrap();
+    let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
+    let mut packet: Packet = bincode::deserialize(&decrypted).unwrap();
+
+    // Verify ticket and proof (done by x)
+    let next_server = verify_packet(&mut packet, &network, &revealed_msgs, layer);
+    // Retrieving data and next server 
+    return (packet.data, next_server);
+}
 
 /// Verify the proof of knowledge of the signature and the ticket
 pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTreeMap<usize, SignatureMessage>, layer: u64) -> u64 {
     // Calculating next server using the ticket
+    // TODO: try implementing without it. to see the percentage that it takes of the original.
     let mut cursor = Cursor::new(&packet.ticket);
     let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
@@ -229,6 +259,53 @@ pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTr
         .unwrap()
         .is_valid());
     return x;
+}
+
+
+/// Verify batch
+pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
+   // Set up msg.'s info before decrypting
+    let messages = vec![
+        SignatureMessage::hash(b"Testing"),
+    ];
+    
+    let mut revealed_indices = BTreeSet::new();
+    revealed_indices.insert(0);
+
+    let mut revealed_msgs = BTreeMap::new();
+    for i in &revealed_indices {
+        revealed_msgs.insert(i.clone(), messages[*i]);
+    }
+
+    let mut batch: Vec<(PoKOfTicketProof, ProofChallenge, G1, G1)> = Vec::with_capacity(packets.len());
+
+    for i in 0..packets.len(){
+        // Calculating next server using the ticket
+        let mut cursor = Cursor::new(&packets[i].ticket);
+        let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
+        let _x = calculate_next_server(t_recovered, network.size);
+
+        // Recovering the value of b
+        // TODO: value for b is the same for everybody - compute once!
+        let ticket_vals = TicketValues{
+            layer,
+            round_id: network.round_id,
+            sys_rand: network.sys_rand,
+        };
+        let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
+        let b_recovered =  h_0(ticket_vals_bytes);
+        // getting proof from bytes
+        let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packets[i].proof).unwrap();
+
+        // The verifier generates the challenge on its own.
+        let challenge_bytes = proof.get_bytes_for_challenge(revealed_indices.clone(), &network.id_provider.bbs_keys.0, b_recovered, t_recovered);
+        let challenge_verifier = ProofChallenge::hash(&challenge_bytes);
+        batch.push((proof, challenge_verifier, b_recovered, t_recovered))
+    }
+    // Verify ticket and proof (done by x)
+    assert!(PoKOfTicketProof::batch_verify(batch, &network.id_provider.bbs_keys.0, &revealed_msgs)
+        .unwrap()
+        .is_valid());
 }
 
 
@@ -307,6 +384,34 @@ mod tests{
         let dec_data = decrypt_packet(enc_data, first_server, &network);
 
         println!("dec_data: {:?}", dec_data);
+    }
+
+    #[test]
+    pub fn test_batch_verification(){
+        let network = Network::new(2);
+        let clients = vec![
+            Client::new(&network),
+            Client::new(&network),
+            Client::new(&network)];
+    
+        let packets = vec![
+            generate_layer(vec![1, 2, 3], &clients[0], &network, 0).0,
+            generate_layer(vec![1, 2, 3], &clients[1], &network, 0).0,
+            generate_layer(vec![1, 2, 3], &clients[2], &network, 0).0];
+    
+        // Set up msg.'s info before decrypting
+        let messages = vec![
+            SignatureMessage::hash(b"Testing"),
+        ];
+        
+        let mut revealed_indices = BTreeSet::new();
+        revealed_indices.insert(0);
+    
+        let mut revealed_msgs = BTreeMap::new();
+        for i in &revealed_indices {
+            revealed_msgs.insert(i.clone(), messages[*i]);
+        }
+        verify_batch(&packets, &network, 0);
     }
 
     #[test]

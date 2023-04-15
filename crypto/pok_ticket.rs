@@ -111,7 +111,6 @@ pub struct PoKOfTicket {
 }
 
 
-
 impl PoKOfTicket {
     /// Creates the initial proof data before a Fiat-Shamir calculation
     pub fn init(
@@ -576,8 +575,9 @@ impl PoKOfTicketProof{
         bytes
     }
 
-    /// Validate the proof
-    pub fn verify(
+
+    /// Verify all equations other then the pairing equation
+    pub fn verify_without_pairing(        
         &self,
         vk: &PublicKey,
         revealed_msgs: &BTreeMap<usize, SignatureMessage>,
@@ -597,28 +597,6 @@ impl PoKOfTicketProof{
         if self.a_prime.is_zero() {
             return Ok(PoKOfTicketProofStatus::BadSignature);
         }
-
-        // Verifying the equation e(a_prime, w) = e(a_bar, g_2) 
-        let mut a_bar = self.a_bar;
-        a_bar.negate();
-        match Bls12::final_exponentiation(&Bls12::miller_loop(&[
-            (
-                &self.a_prime.into_affine().prepare(),
-                &vk.w.0.into_affine().prepare(),
-            ),
-            (
-                &a_bar.into_affine().prepare(),
-                &G2::one().into_affine().prepare(),
-            ),
-        ])) {
-            None => return Ok(PoKOfTicketProofStatus::BadSignature),
-            Some(product) => {
-                if product != Fq12::one() {
-                    return Ok(PoKOfTicketProofStatus::BadSignature);
-                }
-            }
-        };
-
 
         // Verifying proof_vc_1
         let mut bases = vec![];
@@ -698,7 +676,84 @@ impl PoKOfTicketProof{
         // If everything worked!
         return Ok(PoKOfTicketProofStatus::Success);
     }
+
+
+    /// Validate the proof
+    pub fn verify(
+        &self,
+        vk: &PublicKey,
+        revealed_msgs: &BTreeMap<usize, SignatureMessage>,
+        challenge: &ProofChallenge,
+        b: G1,
+        t: G1,
+    ) -> Result<PoKOfTicketProofStatus, BBSError> {
+        // Verifying all the non pairing equations
+        self.verify_without_pairing(vk, revealed_msgs, challenge, b, t)?;
+
+        // Verifying the equation e(a_prime, w) = e(a_bar, g_2) 
+        let mut a_bar = self.a_bar;
+        a_bar.negate();
+        match Bls12::final_exponentiation(&Bls12::miller_loop(&[
+            (
+                &self.a_prime.into_affine().prepare(),
+                &vk.w.0.into_affine().prepare(),
+            ),
+            (
+                &a_bar.into_affine().prepare(),
+                &G2::one().into_affine().prepare(),
+            ),
+        ])) {
+            None => return Ok(PoKOfTicketProofStatus::BadSignature),
+            Some(product) => {
+                if product != Fq12::one() {
+                    return Ok(PoKOfTicketProofStatus::BadSignature);
+                }
+            }
+        };
+
+        return Ok(PoKOfTicketProofStatus::Success);
+    }
+
+    /// Batch Verify Proofs
+    pub fn batch_verify(
+        batch: Vec<(PoKOfTicketProof, ProofChallenge, G1, G1)>, 
+        vk: &PublicKey,
+        revealed_msgs: &BTreeMap<usize, SignatureMessage>,
+    ) -> Result<PoKOfTicketProofStatus, BBSError>  {
+        for (proof, challenge, b, t) in batch.iter() {
+            assert!(proof.verify_without_pairing(vk, revealed_msgs, challenge, *b, *t).unwrap().is_valid());
+        }
+
+        // Batch Verifying the equations e(a_prime, w) = e(a_bar, g_2) 
+        // TODO: This can't just do a product - there need to be different exponents for each proof
+        let mut a_prime_product = G1::zero();
+        batch.iter().for_each(|x| a_prime_product.add_assign(&x.0.a_prime));
+
+        let mut a_bar_product = G1::zero();
+        batch.iter().for_each(|x| a_bar_product.sub_assign(&x.0.a_bar));
+
+        match Bls12::final_exponentiation(&Bls12::miller_loop(&[
+            (
+                &a_prime_product.into_affine().prepare(),
+                &vk.w.0.into_affine().prepare(),
+            ),
+            (
+                &a_bar_product.into_affine().prepare(),
+                &G2::one().into_affine().prepare(),
+            ),
+        ])) {
+            None => return Ok(PoKOfTicketProofStatus::BadSignature),
+            Some(product) => {
+                if product != Fq12::one() {
+                    return Ok(PoKOfTicketProofStatus::BadSignature);
+                }
+            }
+        };
+
+        return Ok(PoKOfTicketProofStatus::Success);
+    }
 }
+
 
 
 impl ToVariableLengthBytes for PoKOfTicketProof {

@@ -1,0 +1,31 @@
+syntax = "proto3";
+package mix;
+
+service Mix {
+    rpc AddMessages(stream AddMessagesRequest) returns (AddMessagesResponse) {}
+
+    // only coordinator calls this:
+    rpc GetMessages(GetMessagesRequest) returns (stream GetMessagesResponse) {}
+    // rpc Start()
+}
+
+// grpc context (messages for round i, from mix in layer l, for mix in layer l')
+message AddMessagesRequest {
+    // fixed64 round = 1;
+    // string mixId = 3;
+    // string senderId = 4;
+
+    repeated bytes packets = 1;
+  }
+  
+  message AddMessagesResponse {
+  
+  }
+
+  message GetMessagesRequest {
+    fixed64 round = 1;
+  }
+  
+  message GetMessagesResponse {
+    repeated bytes messages = 1;
+  }
