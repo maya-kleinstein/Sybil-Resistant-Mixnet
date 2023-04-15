@@ -1,10 +1,10 @@
 use tokio_stream::StreamExt;
 use tonic::transport::Channel;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
-use mix::{mix_server::Mix};
+use mix::{mix_server::Mix, mix_client::MixClient};
 use mix::{AddMessagesRequest, AddMessagesResponse};
 use mix::{GetMessagesRequest, GetMessagesResponse};
-use bbs::network::{Server as crypto_server};
+use bbs::network::{Server as crypto_server, decrypt_layer, decrypt_packet};
 use bbs::network::Network;
 use tokio_stream::wrappers::ReceiverStream;
 use std::env;
@@ -12,6 +12,8 @@ use local_ip_address::local_ip;
 use std::net::SocketAddr;
 use serde_json;
 use std::{thread, time};
+use std::sync::atomic::AtomicBlock;
+use rand::seq::SliceRandom;
 
 use crate::mix::mix_server::MixServer;
 
@@ -26,8 +28,11 @@ pub struct MixService {
     crypto: crypto_server,
     network: Network,
     connections: Vec<Channel>,
+    recv_count: u64,
     output_buffer: Vec<Vec<Vec<u8>>>,
 }
+
+// TODO: if in feature decide to do multiple rounds, will need to change things.
 
 #[tonic::async_trait]
 impl Mix for MixService {
@@ -37,29 +42,57 @@ impl Mix for MixService {
         &self,
         request: tonic::Request<Streaming<AddMessagesRequest>>
     ) -> Result<Response<AddMessagesResponse>, Status> {
+        let cur_layer = self.recv_count.div_euclid(self.network.size);
         let mut stream = request.into_inner();
         while let Some(add_msg_request) = stream.try_next().await? {
-            // unwrap packets from this source and add them to the correct buffer
-            let mut packets = add_msg_request.packets;
-
+            // decrypt packets from this source and add them to the correct buffer
+            let packets = add_msg_request.packets;
+            for packet in packets {
+                let (decrypted_packet, next_mix) = decrypt_layer(packet, self.my_id, &self.network, cur_layer);
+                self.output_buffer[next_mix as usize].push(decrypted_packet);
+            }
         }
-        // mix buffer
-        // verify all messages in buffer
-        // TODO: later on, fix it so they're batch verified
+        // TODO: verify packets (already done in decrypt layer right now... fix later to allow for batching)
+        // TODO: no need for atomic block... fix later
+        let atomic_block = AtomicBlock::new();
+        let result = atomic_block.run(|| {
+            self.recv_count += 1;
+            if self.recv_count % self.network.size == 0 {
+                for i in 0..self.output_buffer.len(){
+                    // mix the output
+                    self.output_buffer[i].shuffle(&mut rand::thread_rng());
 
-        /* 
-        send messages to next mix using AddMessages rpc 
-        UNLESS it's last layer, then use getMessages to return to coordinator
-        */ 
+                    // send the buffer using rpc of choice.
+                    let mut client = MixClient::new(self.connections[i]);
+                    let request = tonic::Request::new(AddMessagesRequest {
+                        packets : self.output_buffer[i]
+                    });
+                    let response = client.send(request).await?.into_inner();
+                    // Clear output buffer
+
+                }
+                self.output_buffer.clear();
+            }
+        });
 
         Ok(Response::new(mix::AddMessagesResponse {}))
     }
+            // ATOMICALLY: layer_count += 1
+        // IF layer count % amount_mixes == 0 (got messages from everyone)
+        /* ATOMICALLY: 
+            verify all messages in buffer (at first one by one, fix later),
+            mix buffer,
+            send messages to next mix using AddMessages rpc 
+            UNLESS it's last layer, then use getMessages to return to coordinator
+        */ 
+
     
     async fn get_messages(
         &self,
         request: Request<GetMessagesRequest>
     ) -> Result<Response<Self::GetMessagesStream>, Status> {
-        // TODO: get all the messages from previous mixes or clients (mixes info based on public file)
+        // This function is called when all output buffers are ready
+        // Send in a stream all packets,
         std::unimplemented!()
     }
 }
@@ -91,13 +124,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
     create_mixnet_channels(&mut channels, network.size);
 
     // make new service, wait a few seconds to ensure all servers managed to load and listen for clients
+    // NOTE: output_buffer is of size size, it can be of size-1 but for simplicity I chose otherwise
     let mix_service = MixService {
         address: addr,
         crypto: crypto,
         network: network,
         connections: channels,
         my_id: mix_id_int,
-        output_buffer: Vec::new(),
+        recv_count: 0,
+        output_buffer: (0..network.size).map(|_| Vec::new()).collect(),
     };
 
     Server::builder().add_service(MixServer::new(mix_service)).serve(addr).await?;
