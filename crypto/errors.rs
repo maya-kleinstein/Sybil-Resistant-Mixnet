@@ -1,5 +1,5 @@
-use crate::crypto::pok_sig::PoKOfSignatureProofStatus;
-use crate::crypto::pok_vc::PoKVCError;
+use crate::pok_sig::PoKOfSignatureProofStatus;
+use crate::pok_vc::PoKVCError;
 use failure::{Backtrace, Context, Fail};
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;

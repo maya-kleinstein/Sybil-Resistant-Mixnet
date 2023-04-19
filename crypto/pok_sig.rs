@@ -1,9 +1,9 @@
-use crate::crypto::errors::prelude::*;
-use crate::crypto::keys::PublicKey;
-use crate::crypto::messages::*;
-use crate::crypto::pok_vc::prelude::*;
-use crate::crypto::signature::Signature;
-use crate::crypto::{
+use crate::errors::prelude::*;
+use crate::keys::PublicKey;
+use crate::messages::*;
+use crate::pok_vc::prelude::*;
+use crate::signature::Signature;
+use crate::{
     multi_scalar_mul_const_time_g1, rand_non_zero_fr, Commitment, CommitmentBuilder, GeneratorG1,
     ProofChallenge, SignatureMessage, ToVariableLengthBytes, G1_COMPRESSED_SIZE,
     G1_UNCOMPRESSED_SIZE,
@@ -530,8 +530,8 @@ wasm_slice_impl!(PoKOfSignatureProof);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::keys::generate;
-    use crate::crypto::{HashElem, ProofNonce, RandomElem};
+    use crate::keys::generate;
+    use crate::{HashElem, ProofNonce, RandomElem};
 
     #[test]
     fn pok_signature_no_revealed_messages() {

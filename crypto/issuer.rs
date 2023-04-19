@@ -1,6 +1,6 @@
-use crate::crypto::errors::prelude::*;
-use crate::crypto::keys::prelude::*;
-use crate::crypto::signature::prelude::*;
+use crate::errors::prelude::*;
+use crate::keys::prelude::*;
+use crate::signature::prelude::*;
 /// The issuer generates keys and uses those to sign
 /// credentials. There are two types of public keys:
 /// `PublicKey` which generates all generators at random and
@@ -8,7 +8,7 @@ use crate::crypto::signature::prelude::*;
 /// to the secret key. `DeterministicPublicKey` can be converted to a
 /// `PublicKey` later. The latter is primarily used for storing a shorter
 /// key and looks just like a regular ECC key.
-use crate::crypto::{BlindSignatureContext, ProofNonce, RandomElem, SignatureMessage};
+use crate::{BlindSignatureContext, ProofNonce, RandomElem, SignatureMessage};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// This struct represents an Issuer of signatures or Signer.

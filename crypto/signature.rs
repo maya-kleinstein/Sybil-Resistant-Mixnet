@@ -1,6 +1,6 @@
-use crate::crypto::errors::prelude::*;
-use crate::crypto::keys::prelude::*;
-use crate::crypto::{
+use crate::errors::prelude::*;
+use crate::keys::prelude::*;
+use crate::{
     multi_scalar_mul_const_time_g1, multi_scalar_mul_var_time_g1, rand_non_zero_fr, Commitment,
     RandomElem, SignatureBlinding, SignatureMessage, FR_COMPRESSED_SIZE, G1_COMPRESSED_SIZE,
     G1_UNCOMPRESSED_SIZE,
@@ -390,9 +390,9 @@ wasm_slice_impl!(Signature);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::keys::generate;
-    use crate::crypto::pok_vc::ProverCommittingG1;
-    use crate::crypto::CommitmentBuilder;
+    use crate::keys::generate;
+    use crate::pok_vc::ProverCommittingG1;
+    use crate::CommitmentBuilder;
     use rand::prelude::*;
 
     #[test]
