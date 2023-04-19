@@ -1,7 +1,8 @@
 use std::sync::{Arc};//, Condvar, Mutex};
-use std::thread::{sleep};
+use std::thread::sleep;
 use std::time;
 use tokio::sync::Semaphore;
+use tokio::task::JoinHandle;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
@@ -17,19 +18,27 @@ pub mod mix_service {
 
 #[derive(Debug)]
 pub struct MyServer {
+    id : u16,
     notify:Arc<Semaphore>,
+}
+
+// TODO: semaphore is overkill, do lock
+
+impl MyServer{
+    fn new(id: u16) -> Self {
+        return MyServer { id, notify: Arc::new(Semaphore::new(0)) }
+    }
 }
 
 #[tonic::async_trait]
 impl Mix for MyServer {
-    // TODO: type GetStream = ReceiverStream<Result<GetResponse, Status>>;
     type GetStream = Box<dyn Stream<Item = Result<GetResponse, Status>> + Send + Unpin>;
 
     async fn add(
         &self,
         request: tonic::Request<Streaming<AddRequest>>,
     ) -> Result<Response<AddResponse>, Status> {
-        println!("Got an add request: {:?}", request);
+        println!("I, mix {} got an add request: {:?}", self.id, request);
         
         self.notify.add_permits(1);
         
@@ -42,9 +51,10 @@ impl Mix for MyServer {
         &self,
         request: Request<GetRequest>,
     ) -> Result<Response<Self::GetStream>, Status>  {
-        println!("Got a get request: {:?}", request);
+        println!("I, mix {} got a get request: {:?}", self.id, request);
         let mut i = 0;
         while i < NUM_MIXES {
+            // 
             let _ = self.notify.acquire().await;
             i += 1;
         }
@@ -56,25 +66,29 @@ impl Mix for MyServer {
     }
 }
 
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let arg = std::env::args().nth(1).expect("no pattern given");
-    let id: u16 = arg.parse().unwrap();
-
-    let mix = MyServer {
-        notify: Arc::new(Semaphore::new(0)),
-    };
-
-    println!("#### Start #####");
-
+fn run_service(mix: MyServer) -> JoinHandle<()>{
+    let id = mix.id;
     let server_thread = tokio::spawn(async move {
         Server::builder()
             .add_service(MixServer::new(mix))
             .serve(format!("[::1]:{}", BASE_PORT + id).parse().unwrap()).await.unwrap();
     });
 
-    println!("#### Server Up #####");
+    return server_thread;
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let arg = std::env::args().nth(1).expect("no pattern given");
+    let id: u16 = arg.parse().unwrap();
+
+    let mix = MyServer::new(id);
+
+    println!("#### Start mix {} #####", id);
+
+    let server_thread = run_service(mix);
+
+    println!("#### Server Up mix {} #####", id);
 
     // Servers up and get requests recieved
     sleep(time::Duration::from_secs(10));
@@ -83,11 +97,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut client =
             MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await?;
         
-        println!("#### Connected to {} mix #####", i);
+        println!("#### Mix {} connected to {} mix #####", id, i);
         
         let add_req = vec![AddRequest { packets: vec![vec![0x01]] }];
         let _response = client.add(Request::new(futures::stream::iter(add_req.clone()))).await?;
-        // println!("RESPONSE={:?}", _response);
     }
 
     server_thread.await.unwrap();
