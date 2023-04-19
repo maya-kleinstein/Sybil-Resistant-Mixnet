@@ -14,7 +14,7 @@ maintenance = { status = "actively-developed" }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-path = "crypto/lib.rs"
+path = "src/lib.rs"
 
 [features]
 default = ["rayon"]
