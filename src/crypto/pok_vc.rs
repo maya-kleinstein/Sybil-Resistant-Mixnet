@@ -11,8 +11,8 @@
 //! `Proof` can then be verified by the verifier.
 
 #[cfg(feature = "wasm")]
-use crate::errors::{BBSError, BBSErrorKind};
-use crate::{
+use crate::crypto::errors::{BBSError, BBSErrorKind};
+use crate::crypto::{
     hash_to_fr, multi_scalar_mul_const_time_g1, rand_non_zero_fr, Commitment, GeneratorG1,
     ProofChallenge, SignatureMessage, ToVariableLengthBytes, FR_COMPRESSED_SIZE,
     G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE,
@@ -525,7 +525,7 @@ macro_rules! test_PoK_VC {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RandomElem;
+    use crate::crypto::RandomElem;
 
     #[test]
     fn test_pok_vc_g1() {

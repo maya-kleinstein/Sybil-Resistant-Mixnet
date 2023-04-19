@@ -1,14 +1,14 @@
-use crate::errors::prelude::*;
-use crate::keys::prelude::*;
-use crate::messages::*;
-use crate::pok_sig::prelude::*;
-use crate::pok_vc::prelude::*;
-use crate::signature::prelude::*;
+use crate::crypto::errors::prelude::*;
+use crate::crypto::keys::prelude::*;
+use crate::crypto::messages::*;
+use crate::crypto::pok_sig::prelude::*;
+use crate::crypto::pok_vc::prelude::*;
+use crate::crypto::signature::prelude::*;
 /// The prover of a signature or credential receives it from an
 /// issuer and later proves to a verifier.
 /// The prover can either have the issuer sign all messages
 /// or can have some (0 to all) messages blindly signed by the issuer.
-use crate::{
+use crate::crypto::{
     BlindSignatureContext, CommitmentBuilder, HashElem, ProofChallenge, ProofNonce, ProofRequest,
     RandomElem, SignatureBlinding, SignatureMessage, SignatureProof,
 };

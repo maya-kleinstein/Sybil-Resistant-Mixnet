@@ -57,7 +57,7 @@ macro_rules! pm_hidden_raw {
     };
 }
 
-use crate::{ProofNonce, SignatureMessage};
+use crate::crypto::crypto::{ProofNonce, SignatureMessage};
 
 /// A message classification by the prover
 pub enum ProofMessage {

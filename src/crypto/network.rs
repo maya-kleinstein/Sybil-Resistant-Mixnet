@@ -1,5 +1,5 @@
-use crate::pok_ticket::{PoKOfTicket, PoKOfTicketProof};
-use crate::prelude::{*, PublicKey};
+use crate::crypto::pok_ticket::{PoKOfTicket, PoKOfTicketProof};
+use crate::crypto::prelude::{*, PublicKey};
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryInto;
 use std::io::Cursor;

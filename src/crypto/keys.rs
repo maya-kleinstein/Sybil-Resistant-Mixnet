@@ -1,5 +1,5 @@
-use crate::errors::prelude::*;
-use crate::{
+use crate::crypto::errors::prelude::*;
+use crate::crypto::{
     hash_to_g2, GeneratorG1, GeneratorG2, HashElem, RandomElem, ToVariableLengthBytes,
     FR_COMPRESSED_SIZE, FR_UNCOMPRESSED_SIZE, G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE,
     G2_COMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,

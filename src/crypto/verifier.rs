@@ -1,9 +1,9 @@
-use crate::errors::prelude::*;
-use crate::keys::prelude::*;
-use crate::pok_sig::prelude::*;
+use crate::crypto::errors::prelude::*;
+use crate::crypto::keys::prelude::*;
+use crate::crypto::pok_sig::prelude::*;
 /// The verifier of a signature or credential asks for messages to be revealed from
 /// a prover and checks the signature proof of knowledge against a trusted issuer's public key.
-use crate::{
+use crate::crypto::{
     HashElem, ProofChallenge, ProofNonce, ProofRequest, RandomElem, SignatureMessage,
     SignatureProof,
 };
