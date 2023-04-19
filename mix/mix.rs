@@ -8,11 +8,9 @@ use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use crate::mix_service::mix_client::MixClient;
 use futures::Stream;
-// TODO: for future reference use bbs::pok_ticket::{PoKOfTicket, PoKOfTicketProof};
 
 const BASE_PORT: u16 = 50500;
 const NUM_MIXES: u16 = 3;
-const NUM_LAYERS: u16 = 1;
 
 pub mod mix_service {
     tonic::include_proto!("mix");
@@ -23,6 +21,8 @@ pub struct MyServer {
     id : u16,
     notify:Arc<Semaphore>,
 }
+
+// TODO: semaphore is overkill, do lock
 
 impl MyServer{
     fn new(id: u16) -> Self {
@@ -53,7 +53,7 @@ impl Mix for MyServer {
     ) -> Result<Response<Self::GetStream>, Status>  {
         println!("I, mix {} got a get request: {:?}", self.id, request);
         let mut i = 0;
-        while i < NUM_MIXES*NUM_LAYERS {
+        while i < NUM_MIXES {
             // 
             let _ = self.notify.acquire().await;
             i += 1;
