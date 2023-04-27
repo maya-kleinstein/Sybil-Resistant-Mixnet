@@ -9,7 +9,7 @@ use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use crate::mix_service::mix_client::MixClient;
 use futures::Stream;
 
-const BASE_PORT: u16 = 50500;
+const BASE_PORT: u16 = 50550;
 const NUM_MIXES: u16 = 3;
 
 pub mod mix_service {
@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let add_req = vec![AddRequest { packets: vec![vec![0x01]] }];
         let _response = client.add(Request::new(futures::stream::iter(add_req.clone()))).await?;
     }
-
+    
     server_thread.await.unwrap();
     Ok(())
 }

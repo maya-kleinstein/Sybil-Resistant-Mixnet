@@ -32,7 +32,7 @@ time.sleep(0.5)
 
 
 # Cleanup
-print("cleanup processes")
-for p in mprocesses:
-    os.kill(p.pid, signal.SIGINT)
-os.kill(config_p.pid, signal.SIGINT)
+# print("cleanup processes")
+# for p in mprocesses:
+#     os.kill(p.pid, signal.SIGINT)
+# os.kill(config_p.pid, signal.SIGINT)

@@ -1,7 +1,7 @@
 use mix_client::mix_client::MixClient;
 use mix_client::GetRequest;
 
-const BASE_PORT: u16 = 50500;
+const BASE_PORT: u16 = 50550;
 const NUM_MIXES: u16 = 3;
 
 pub mod mix_client {
@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for task in tasks {
         let response = task.await.unwrap();
-        println!("Response: {:?}", response);
+        println!("Response Config Recv'd: {:?}", response);
     }
 
     Ok(())
