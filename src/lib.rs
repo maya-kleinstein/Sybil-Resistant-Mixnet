@@ -17,13 +17,11 @@
 //! BBS+ signatures can be used for TPM DAA attestations or Verifiable Credentials.
 
 #![deny(
-    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
     unconditional_recursion,
     unused_import_braces,
     unused_lifetimes,
-    unused_qualifications,
     unused_extern_crates,
     unused_parens,
     while_true
@@ -108,6 +106,10 @@ pub mod verifier;
 pub mod network;
 /// Methods and structs for creating tickets proof of knowledge
 pub mod pok_ticket;
+/// Code for Mixes in Mixnet
+pub mod mix;
+/// Configuration code for Mixnet
+pub mod config;
 
 /// Trait for structs that have variable length bytes but use compressed Bls12 elements
 pub trait ToVariableLengthBytes {

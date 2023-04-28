@@ -1,12 +1,6 @@
-use mix_client::mix_client::MixClient;
-use mix_client::GetRequest;
-
-const BASE_PORT: u16 = 50550;
-const NUM_MIXES: u16 = 3;
-
-pub mod mix_client {
-    tonic::include_proto!("mix");
-}
+use bbs::config::*;
+use bbs::config::mix_client::mix_client::MixClient;
+use bbs::config::mix_client::GetRequest;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
