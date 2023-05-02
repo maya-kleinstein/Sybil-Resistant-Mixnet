@@ -1,13 +1,11 @@
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinError};
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use futures::Stream;
 use crate::config::*;
-use std::thread::sleep;
-use std::time;
 use mix_service::mix_client::MixClient;
 
 /// Service created from proto file
@@ -70,38 +68,33 @@ impl Mix for MyServer {
 /// Run MyServer instance as Server
 pub fn run_service(mix: MyServer) -> JoinHandle<()>{
     let id = mix.id;
-    let server_thread = tokio::spawn(async move {
+    return tokio::spawn(async move {
         Server::builder()
             .add_service(MixServer::new(mix))
             .serve(format!("[::1]:{}", BASE_PORT + id).parse().unwrap()).await.unwrap();
     });
-
-    return server_thread;
 }
 
 
-pub async fn run_mix(id: u16) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_mix(id: u16) -> Result<(), JoinError> {
     let mix = MyServer::new(id);
 
-    println!("#### Start mix {} #####", id);
+    let mix_str = "\"".repeat(id.into());
+    println!("{}Start mix {}{}", mix_str, id, mix_str);
 
     let server_thread = run_service(mix);
 
-    println!("#### Server Up mix {} #####", id);
-
-    // Servers up and get requests recieved
-    sleep(time::Duration::from_secs(10));
+    println!("{}Server Up mix {}{}", mix_str, id, mix_str);
 
     for i in 0..NUM_MIXES {
         let mut client =
-            MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await?;
+            MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap();
         
-        println!("#### Mix {} connected to {} mix #####", id, i);
+        println!("{}Mix {} connected to {} mix{}", mix_str, id, i, mix_str);
         
         let add_req = vec![AddRequest { packets: vec![vec![0x01]] }];
-        let _response = client.add(Request::new(futures::stream::iter(add_req.clone()))).await?;
+        let _response = client.add(Request::new(futures::stream::iter(add_req.clone()))).await;
     }
     
-    server_thread.await.unwrap();
-    Ok(())
+    server_thread.await
 }
