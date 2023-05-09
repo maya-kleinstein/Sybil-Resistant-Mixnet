@@ -1,20 +1,48 @@
 use bbs::mix::*;
 use bbs::config::*;
+use futures::future::join_all;
+use std::thread;
+
 
 #[tokio::test]
 async fn system_test(){
+    // waitgroup(NUM_MIXES);
+    let mut tasks = vec![];
+
     for i in 0..NUM_MIXES {
-        tokio::spawn(async move {
-            run_mix(i).await.unwrap();
-        });
+        tasks.push(run_mix(i));
     }
-    let result = tokio::spawn(async move {
-        return run_config().await.unwrap();
+
+    futures::join!(async {
+        join_all(tasks).await;
+    }, async {
+        run_config().await;
     });
-    result.await.unwrap();
 }
 
 
-fn marshal_test(){
+#[tokio::test]
+async fn how_tf_tasks(){
+    let mut tasks = Vec::new();
 
+    for i in 0..20 {
+        tasks.push(tokio::spawn(async move {
+            println!("{}", i);
+        }));
+    }
+    join_all(tasks).await;
+}
+
+#[test]
+fn how_tf_threads(){
+    let mut threads = Vec::new();
+    for i in 0..20 {
+        threads.push(thread::spawn( move || {
+            println!("{}", i)
+        }))
+    }
+
+    for t in threads {
+        t.join().unwrap();
+    }
 }

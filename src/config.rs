@@ -1,31 +1,35 @@
+use std::time::Duration;
+
 use mix_client::mix_client::MixClient;
 use mix_client::GetRequest;
 
+// use crate::network::{self, Network};
+use futures::future::join_all;
+use tokio::time::sleep;
+
 /// The port for the first mix
-pub const BASE_PORT: u16 = 50590;
+pub const BASE_PORT: u16 = 50650;
 /// The number of mixes
 pub const NUM_MIXES: u16 = 3;
+/// The number of expected clients
+pub const NUM_CLIENTS: u64 = 30;
 
 pub mod mix_client {
     tonic::include_proto!("mix");
 }
 
-pub async fn run_config() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_config(){
+    sleep(Duration::from_secs(6)).await;
     let mut tasks = Vec::with_capacity(NUM_MIXES.into());
-    for i in 0..NUM_MIXES{
-        let mut mix = MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await?;
+    for i in 0..NUM_MIXES {
+        let mut mix = MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap();
         println!("CONFIG connected to mix {}", i);
-        let request = tonic::Request::new(GetRequest {});
-        tasks.push(tokio::spawn(async move {
-            let response = mix.get(request);
-            response.await
-        }));
+        let task = tokio::spawn(async move {
+            let request = tonic::Request::new(GetRequest {});
+            mix.get(request).await.unwrap();
+            println!("CONFIG recv'd get response from mix {}", i);
+        });
+        tasks.push(task);
     }
-
-    for task in tasks {
-        let response = task.await.unwrap();
-        println!("CONFIG recvd response: {:?}", response);
-    }
-
-    Ok(())
+    join_all(tasks).await;
 }

@@ -1,6 +1,6 @@
 use bbs::config::*;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
     run_config().await
 }

@@ -1,12 +1,13 @@
 use std::sync::Arc;
+use futures::future::join_all;
 use tokio::sync::Semaphore;
-use tokio::task::{JoinHandle, JoinError};
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use futures::Stream;
 use crate::config::*;
 use mix_service::mix_client::MixClient;
+use tokio::time::{sleep, Duration};
 
 /// Service created from proto file
 pub mod mix_service {
@@ -65,36 +66,41 @@ impl Mix for MyServer {
     }
 }
 
-/// Run MyServer instance as Server
-pub fn run_service(mix: MyServer) -> JoinHandle<()>{
-    let id = mix.id;
-    return tokio::spawn(async move {
-        Server::builder()
-            .add_service(MixServer::new(mix))
-            .serve(format!("[::1]:{}", BASE_PORT + id).parse().unwrap()).await.unwrap();
-    });
-}
-
-
-pub async fn run_mix(id: u16) -> Result<(), JoinError> {
+/// runs Mix
+pub async fn run_mix(id: u16){
     let mix = MyServer::new(id);
 
     let mix_str = "\"".repeat(id.into());
     println!("{}Start mix {}{}", mix_str, id, mix_str);
 
-    let server_thread = run_service(mix);
+    let server_task = tokio::spawn(async move {
+        Server::builder()
+            .add_service(MixServer::new(mix))
+            .serve(format!("[::1]:{}", BASE_PORT + id).parse().unwrap())
+    });
 
     println!("{}Server Up mix {}{}", mix_str, id, mix_str);
-
+    // server.Listen()
+    // waitgroup.done()
+    sleep(Duration::from_secs(5)).await;
+    // waitgroup.WaitAll()
+    let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
+    // TODO: wrong in general mix, the connecting and sending should also be done concurrently.
     for i in 0..NUM_MIXES {
-        let mut client =
-            MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap();
+        let task = tokio::spawn(async move {
+            println!("{} {}", i, id);
+            let mut client =
+                MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap();
         
-        println!("{}Mix {} connected to {} mix{}", mix_str, id, i, mix_str);
+            println!("Mix {} connected to {} mix", id, i);
         
-        let add_req = vec![AddRequest { packets: vec![vec![0x01]] }];
-        let _response = client.add(Request::new(futures::stream::iter(add_req.clone()))).await;
+            let add_req = vec![AddRequest { packets: vec![vec![0x01]] }];
+            client.add(Request::new(futures::stream::iter(add_req.clone()))).await.expect("Failed to send add");
+        });
+
+        mix_tasks.push(task);
     }
-    
-    server_thread.await
+
+    server_task.await.unwrap().await.expect("Failed to run Server");
+    join_all(mix_tasks).await;
 }
