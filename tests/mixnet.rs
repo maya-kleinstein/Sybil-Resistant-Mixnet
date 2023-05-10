@@ -8,7 +8,7 @@ use std::thread;
 async fn system_test(){
     // waitgroup(NUM_MIXES);
     let mut tasks = vec![];
-
+    
     for i in 0..NUM_MIXES {
         tasks.push(run_mix(i));
     }
