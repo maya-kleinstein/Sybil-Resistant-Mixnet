@@ -103,10 +103,8 @@ pub async fn run_mix(id: u16){
 
     for i in 0..NUM_MIXES {
         let task = tokio::spawn(async move {
-            sleep(Duration::from_secs(3)).await;
             establish_conn(i, id).await;
         });
-
         mix_tasks.push(task);
     }
 
