@@ -1,5 +1,6 @@
 use bbs::mix::*;
 use bbs::config::*;
+use bbs::marshal::*;
 use futures::future::join_all;
 use std::thread;
 
@@ -20,8 +21,18 @@ async fn system_test(){
 }
 
 
+#[test]
+fn marshalling_test() {
+    setup_files();
+    for i in 0..NUM_MIXES {
+        let packets = get_init_packets(i);
+        println!("{} recv'd {} packets", i, packets.len());
+    }
+}
+
+
 #[tokio::test]
-async fn how_tf_tasks(){
+async fn how_tf_tasks_work(){
     let mut tasks = Vec::new();
 
     for i in 0..20 {
@@ -33,7 +44,7 @@ async fn how_tf_tasks(){
 }
 
 #[test]
-fn how_tf_threads(){
+fn how_tf_threads_work(){
     let mut threads = Vec::new();
     for i in 0..20 {
         threads.push(thread::spawn( move || {

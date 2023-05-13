@@ -1,14 +1,12 @@
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Semaphore;
-use futures::future::join_all;
-use tokio::time::sleep;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
-use futures::Stream;
-use crate::config::*;
 use mix_service::mix_client::MixClient;
+use futures::Stream;
+use futures::future::join_all;
+use crate::config::*;
 
 /// Service created from proto file
 pub mod mix_service {
@@ -39,7 +37,7 @@ impl Mix for MyServer {
         &self,
         request: Request<Streaming<AddRequest>>,
     ) -> Result<Response<AddResponse>, Status> {
-        println!("I, mix {} got an add request: {:?}", self.id, request);
+        println!("Mix {} got an add request: {:?}", self.id, request);
         
         self.notify.add_permits(1);
         
@@ -52,7 +50,7 @@ impl Mix for MyServer {
         &self,
         request: Request<GetRequest>,
     ) -> Result<Response<Self::GetStream>, Status>  {
-        println!("I, mix {} got a get request: {:?}", self.id, request);
+        println!("Mix {} got a get request: {:?}", self.id, request);
         let mut i = 0;
         while i < NUM_MIXES {
             // 

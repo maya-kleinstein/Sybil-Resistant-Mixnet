@@ -10,9 +10,11 @@ use tokio::time::sleep;
 /// The port for the first mix
 pub const BASE_PORT: u16 = 50650;
 /// The number of mixes
-pub const NUM_MIXES: u16 = 3;
+pub const NUM_MIXES: u16 = 4;
 /// The number of expected clients
-pub const NUM_CLIENTS: u64 = 30;
+pub const NUM_CLIENTS: u64 = 100;
+/// The number of layers in the mixnet
+pub const NUM_LAYERS: u64 = 3;
 
 pub mod mix_client {
     tonic::include_proto!("mix");

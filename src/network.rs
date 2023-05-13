@@ -16,13 +16,11 @@ use blake2::VarBlake2b;
 use blake2::digest::{Input, VariableOutput};
 use dryoc::dryocbox;
 use dryoc::dryocbox::DryocBox;
-
+use crate::config::NUM_LAYERS;
 
 /// Network module
 /// Contains network related functionality
 /// Entities Included: ID provider, Server, Client, Tickets, etc.
-
-pub const NUM_LAYERS: u64 = 3;
 
 /// IDprovider configuration
 #[derive(Debug, Serialize, Deserialize)]
@@ -179,17 +177,8 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
     let mut data = enc_packet;
     let mut x = x_0;
     // Set up msg.'s info before decrypting
-    let messages = vec![
-        SignatureMessage::hash(b"Testing"),
-    ];
+    let revealed_msgs = setup_default_msgs();
     
-    let mut revealed_indices = BTreeSet::new();
-    revealed_indices.insert(0);
-
-    let mut revealed_msgs = BTreeMap::new();
-    for i in &revealed_indices {
-        revealed_msgs.insert(i.clone(), messages[*i]);
-    }
     for i in 0..NUM_LAYERS{
         // Decrypt Packet 
         let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&data).unwrap();
@@ -207,17 +196,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 /// unwraps single layer of packet, given the current server and layer
 pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64) -> (Vec<u8>, u64) {
     // Set up msg.'s info before decrypting
-    let messages = vec![
-        SignatureMessage::hash(b"Testing"),
-    ];
-    
-    let mut revealed_indices = BTreeSet::new();
-    revealed_indices.insert(0);
-
-    let mut revealed_msgs = BTreeMap::new();
-    for i in &revealed_indices {
-        revealed_msgs.insert(i.clone(), messages[*i]);
-    }
+    let revealed_msgs = setup_default_msgs();
 
     // Decrypt Packet 
     let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&enc_packet).unwrap();
@@ -229,6 +208,7 @@ pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64)
     // Retrieving data and next server 
     return (packet.data, next_server);
 }
+
 
 /// Verify the proof of knowledge of the signature and the ticket
 pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTreeMap<usize, SignatureMessage>, layer: u64) -> u64 {
@@ -356,6 +336,21 @@ fn calculate_next_server(t: G1, size: u64)->u64{
     return x;
 }
 
+
+fn setup_default_msgs() -> BTreeMap<usize, SignatureMessage> {
+    let messages = vec![
+        SignatureMessage::hash(b"Testing"),
+    ];
+    
+    let mut revealed_indices = BTreeSet::new();
+    revealed_indices.insert(0);
+
+    let mut revealed_msgs = BTreeMap::new();
+    for i in &revealed_indices {
+        revealed_msgs.insert(i.clone(), messages[*i]);
+    }
+    return revealed_msgs
+}
 
 // H0: {0,1}^* -> G1
 fn h_0<I: AsRef<[u8]>>(data: I) -> G1 {
