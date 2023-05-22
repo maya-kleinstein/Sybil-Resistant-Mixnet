@@ -25,7 +25,7 @@ use crate::config::NUM_LAYERS;
 /// IDprovider configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IDProvider{
-    bbs_keys: (PublicKey, SecretKey),
+    pub bbs_keys: (PublicKey, SecretKey),
 }
 
 /// Server configuration
@@ -36,7 +36,7 @@ pub struct Server{
 
 
 impl Server {
-    fn new() -> Server {
+    pub fn new() -> Server {
         Server {
             key_pair: dryocbox::KeyPair::gen(),
         }
@@ -82,12 +82,12 @@ pub struct Packet{
 /// Network configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Network{
-    id_provider: IDProvider,
-    sys_rand: i32,
-    round_id: u32,
+    pub id_provider: IDProvider,
+    pub sys_rand: i32,
+    pub round_id: u32,
     /// Amount of servers in the network
     pub size: u64,
-    servers: Vec<Server>,
+    pub servers: Vec<Server>,
 }
 
 

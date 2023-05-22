@@ -1,6 +1,7 @@
 use bbs::mix::*;
 use bbs::config::*;
 use bbs::marshal::*;
+use bbs::network::Network;
 use futures::future::join_all;
 use std::thread;
 
@@ -55,4 +56,18 @@ fn how_tf_threads_work(){
     for t in threads {
         t.join().unwrap();
     }
+}
+
+
+#[test]
+fn marshal_network_test(){
+    let x = Network::new(NUM_MIXES.into());
+    let filename = "testt";
+    serialize_network(&x, filename).unwrap();
+    let network: Network = deserialize_network(filename).unwrap();
+    let y = network;
+    // TODO: The public keys aren't acutally equal!!! wtf...
+    assert_eq!(x.id_provider.bbs_keys.1, y.id_provider.bbs_keys.1);
+    assert_eq!(x.id_provider.bbs_keys.0, y.id_provider.bbs_keys.0);
+    let _ = std::fs::remove_file("testt");
 }
