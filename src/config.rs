@@ -4,8 +4,6 @@ use mix_client::GetRequest;
 // use crate::network::{self, Network};
 use futures::future::join_all;
 
-use crate::messages;
-
 /// The port for the first mix
 pub const BASE_PORT: u16 = 50650;
 /// The number of mixes

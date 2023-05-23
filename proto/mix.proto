@@ -12,6 +12,7 @@ service Mix {
 // grpc context (for round i, from mix m in layer l, for mix n in layer l+1 OR for cordinator)
 message AddRequest {
     repeated bytes packets = 1;
+    uint32 layer = 2;
   }
   
   message AddResponse {
