@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-use crate::{network::{Network, Client, generate_packet, decrypt_layer, Server, IDProvider}, config::{NUM_MIXES, NUM_CLIENTS}, G1_COMPRESSED_SIZE, ToVariableLengthBytes};
+use crate::{network::{Network, Client, generate_packet, decrypt_layer, Server, IDProvider}, config::{NUM_MIXES, NUM_CLIENTS}, ToVariableLengthBytes};
 use std::{fs::File, convert::TryInto};
 use std::io::{Read, Write};
 
