@@ -49,8 +49,10 @@ impl Mix for MyServer {
         println!("mix {} got an add request: {:?}", self.id ,request);
         self.parse_input(request).await;
 
-        self.check_and_send_layer().await;
-
+        if self.check_if_middle_layer().await {
+            self.send_middle_layer().await;
+        }
+    
         // Notify config
         self.notify.add_permits(1);
         let reply = AddResponse {};
@@ -62,20 +64,9 @@ impl Mix for MyServer {
         request: Request<GetRequest>,
     ) -> Result<Response<Self::GetStream>, Status>  {
         println!("mix {} got a get request: {:?}", self.id, request);
-        // Wait til the mix is done getting add requests for this layer
+        // Wait til the mix is done getting add requests for all layers
         let _ = self.notify.acquire_many((NUM_MIXES as u32)*((NUM_LAYERS - 1) as u32)).await.unwrap();
-        // Process last layer
-        let buffer_guard = self.output_buffer.lock().await;
-        let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty");
-        let messages: Vec<GetResponse> = vec![
-            GetResponse {
-                messages: (0..NUM_MIXES).map(|i| 
-                    (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
-                ).flatten().collect::<Vec<Vec<u8>>>()
-            }
-        ];
-
-        // Send this back to Config
+        let messages = self.output_all().await;
         let stream = futures::stream::iter(messages.into_iter().map(Ok));
         return Ok(Response::new(Box::new(Box::pin(stream))));
     }
@@ -104,40 +95,57 @@ impl MyServer {
         }
     }
 
-    /// Check if at the "end of layer", 
-    /// If so: send add to all mixes/get
-    async fn check_and_send_layer(
+    /// Send add from current layer to all mixes
+    async fn send_middle_layer(
         &self,
     ) -> () {      
         let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
-        let check: bool;
         {
-            let guard = self.output_buffer.lock().await;
-            let current_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
-            let counter: u32 = (*guard).get(&current_layer).unwrap().1;
-            check = counter % (NUM_MIXES as u32) == 0 &&
-                    (current_layer as u64) != NUM_LAYERS;
-        }
-        if check {
+            // IMPORTANT NOTE: this is in a seperate scope in order to release guard and avoid deadlock
             let mut guard = self.output_buffer.lock().await;
             // TODO: verify!!!
-            // verify + send through add to other mixes
-            let send_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
-            // TODO: Shuffle buffer using real random NOT poser random
-            let mut output_buffer = (*guard).remove(&send_layer).unwrap();
+            // Verify + Send to all mixes
+            let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+            let mut output_buffer = (*guard).remove(&layer).unwrap();
             for i in (0..NUM_MIXES).rev() {
-                println!("packets for layer {} sent from mix {} to {}", send_layer + 1, self.id, i);
+                println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
                 // TODO: Shuffle before sending!
                 let packets = output_buffer.0.pop().unwrap();
                 let id = self.id;
                 let task = tokio::spawn(async move {
-                    connect_and_send(i, id, packets, send_layer).await;
+                    connect_and_send(i, id, packets, layer).await;
                 });
                 mix_tasks.push(task);
             }
-            // If last layer: do nothing, it'll be sent through get to config
         }
         join_all(mix_tasks).await;
+    }
+
+    /// Process all layers into single output message
+    async fn output_all(
+        &self,
+    ) -> Vec<GetResponse> {
+        let buffer_guard = self.output_buffer.lock().await;
+        let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty");
+        let messages: Vec<GetResponse> = vec![
+            GetResponse {
+                messages: (0..NUM_MIXES).map(|i| 
+                    (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
+                ).flatten().collect::<Vec<Vec<u8>>>()
+            }
+        ];
+        return messages;
+    }
+
+    async fn check_if_middle_layer(
+        &self,
+    ) -> bool {
+        let guard = self.output_buffer.lock().await;
+        let current_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+        let counter: u32 = (*guard).get(&current_layer).unwrap().1;
+        return counter % (NUM_MIXES as u32) == 0 &&
+                (current_layer as u64) != NUM_LAYERS;
+
     }
 }
 
