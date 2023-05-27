@@ -49,62 +49,12 @@ impl Mix for MyServer {
         request: Request<Streaming<AddRequest>>,
     ) -> Result<Response<AddResponse>, Status> {
         println!("mix {} got an add request: {:?}", self.id ,request);
-        // Process incoming stream to proper output buffer (decrypt)
-        // TODO: sometimes layers cross eachother, fix by using map for each layer + layer field in AddRequest
-        let input_stream = request.into_inner().message().await.unwrap().into_iter();
-        for packets in input_stream {
-            for packet in packets.packets {
-                let mut buffer_guard = self.output_buffer.lock().await;
-                let (dec_packet, next) = decrypt_layer(packet, self.id.into(), &self.network_info, 0);
-                // Check if layer new or not
-                if !(*buffer_guard).contains_key(&packets.layer) {
-                    (*buffer_guard).insert(packets.layer, (vec![vec![].into(); NUM_MIXES.into()], 0));
-                }
-                // Insert decrypted packet to output_buffer
-                (*buffer_guard).entry(packets.layer).and_modify(|e| {
-                    e.0[next as usize].push(dec_packet)
-                });
-              }
-            // Adjust counter
-            let mut buffer_guard = self.output_buffer.lock().await;
-            (*buffer_guard).entry(packets.layer).and_modify(|e| {
-                e.1 += 1;
-            });
-        }
-         
+        self.parse_input(request).await;
 
-        // Check if at the "end of layer", 
-        // If so: batch verify/other optimizations send add to all mixes/get
-        let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
-        let check: bool;
-        {
-            let layer_guard = self.output_buffer.lock().await;
-            let current_layer = (*layer_guard).keys().min().expect("HashMap is Empty").clone();
-            let value: u32 = (*layer_guard).get(&current_layer).unwrap().1;
-            check = value % (NUM_MIXES as u32) == 0 && (value as u16) != ((NUM_LAYERS - 1) as u16)*NUM_MIXES;
-        }
-        if check {
-             // TODO: verify!!!
-            // verify + send through add to other mixes
-            let mut buffer_guard = self.output_buffer.lock().await;
-            let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty").clone();
-            // TODO: Shuffle buffer using real random NOT poser random
-            let mut output_buffer = (*buffer_guard).remove(&send_layer).unwrap();
-            for i in (0..NUM_MIXES).rev() {
-                println!("packet for layer {} send from mix {} to {}", send_layer + 1, self.id, i);
-                let packets = output_buffer.0.pop().unwrap();
-                let id = self.id;
-                let task = tokio::spawn(async move {
-                    connect_and_send(i, id, packets, send_layer + 1).await;
-                });
-                mix_tasks.push(task);
-            }
-            // If last layer: do nothing, it'll be sent through get to config
-        }
-        // Notify config when you're done
+        self.check_and_send_layer().await;
+
+        // Notify config
         self.notify.add_permits(1);
-
-        join_all(mix_tasks).await;
         let reply = AddResponse {};
         Ok(Response::new(reply)) // Send back our formatted greeting
     }
@@ -125,6 +75,65 @@ impl Mix for MyServer {
         // Send this back to Config
         let stream = futures::stream::iter(messages.into_iter().map(Ok));
         return Ok(Response::new(Box::new(Box::pin(stream))));
+    }
+}
+
+impl MyServer {
+    /// Process (decrypt) incoming stream to proper output buffer 
+    async fn parse_input(
+        &self,
+        request: Request<Streaming<AddRequest>>,
+    ) -> () {
+        let input_stream = request.into_inner().message().await.unwrap().into_iter();
+        for packets in input_stream {
+            let mut buffer_guard = self.output_buffer.lock().await;
+            (*buffer_guard).entry(packets.layer)
+                    .or_insert((vec![vec![].into(); NUM_MIXES.into()], 0))
+                    .1 += 1;
+            for packet in packets.packets {
+                let (dec_packet, next) = decrypt_layer(packet, self.id.into(), &self.network_info, 0);
+                // Insert decrypted packet to output_buffer
+                (*buffer_guard).entry(packets.layer)
+                    .and_modify(|e| { 
+                        e.0[next as usize].push(dec_packet);
+                    });  
+            }
+        }
+    }
+
+    /// Check if at the "end of layer", 
+    /// If so: send add to all mixes/get
+    async fn check_and_send_layer(
+        &self,
+    ) -> () {      
+        let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
+        let mut guard = self.output_buffer.lock().await;
+        let check: bool;
+        {
+            let current_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+            let counter: u32 = (*guard).get(&current_layer).unwrap().1;
+            check = counter % (NUM_MIXES as u32) == 0 &&
+                    (counter as u16) != ((NUM_LAYERS - 1) as u16)*NUM_MIXES;
+        }
+        if check {
+             // TODO: verify!!!
+            // verify + send through add to other mixes
+            let send_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+            // TODO: Shuffle buffer using real random NOT poser random
+            let mut output_buffer = (*guard).remove(&send_layer).unwrap();
+            for i in (0..NUM_MIXES).rev() {
+                println!("packet for layer {} send from mix {} to {}", send_layer + 1, self.id, i);
+                // TODO: Shuffle before sending!
+                let packets = output_buffer.0.pop().unwrap();
+                let id = self.id;
+                let task = tokio::spawn(async move {
+                    connect_and_send(i, id, packets, send_layer + 1).await;
+                });
+                mix_tasks.push(task);
+            }
+            // If last layer: do nothing, it'll be sent through get to config
+        }
+        join_all(mix_tasks).await;
     }
 }
 
@@ -163,7 +172,7 @@ pub async fn run_mix(id: u16){
     for i in (0..NUM_MIXES).rev() {
         let packets = init_buffer.pop().unwrap();
         let task = tokio::spawn(async move {
-            connect_and_send(i, id, packets, 1).await;
+            connect_and_send(i, id, packets, 0).await;
         });
         mix_tasks.push(task);
     }
