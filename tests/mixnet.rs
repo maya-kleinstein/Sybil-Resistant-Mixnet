@@ -1,6 +1,6 @@
-use bbs::mix::*;
 use bbs::config::*;
 use bbs::marshal::*;
+use bbs::mixnet::*;
 use bbs::network::Network;
 use futures::future::join_all;
 use std::thread;
@@ -8,17 +8,7 @@ use std::thread;
 
 #[tokio::test]
 async fn system_test(){
-    let mut tasks = vec![];
-
-    for i in 0..NUM_MIXES {
-        tasks.push(run_mix(i));
-    }
-
-    futures::join!(async {
-        join_all(tasks).await;
-    }, async {
-        run_config().await;
-    });
+    run_system().await;
 }
 
 

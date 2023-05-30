@@ -112,6 +112,8 @@ pub mod mix;
 pub mod config;
 /// Marshaling code for Mixnet
 pub mod marshal;
+/// Mixnet system code
+pub mod mixnet;
 
 /// Trait for structs that have variable length bytes but use compressed Bls12 elements
 pub trait ToVariableLengthBytes {

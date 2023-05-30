@@ -1,15 +1,16 @@
 use std::sync::Arc;
-use tokio::sync::{Semaphore, Mutex};
+use tokio::sync::{Semaphore, Mutex, oneshot::Receiver};
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use mix_service::mix_client::MixClient;
-use futures::Stream;
+use futures::{Stream, FutureExt};
 use futures::future::join_all;
 use crate::config::*;
 use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{Network, decrypt_layer};
 use std::collections::HashMap;
+use tokio::time::{Duration, Instant};
 
 /// Service created from proto file
 pub mod mix_service {
@@ -150,6 +151,7 @@ impl MyServer {
 }
 
 async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
+    // TODO: save connections between the mixes
     let mut client =
         MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await.unwrap();
 
@@ -163,22 +165,27 @@ async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32
 }
 
 
-async fn start_server(id: u16) {
+async fn start_server(id: u16, rx: Receiver<u8>) {
     let mix = MyServer::new(id);
     println!("Start mix {}", id);
+    // Measuring time
+    let start = Instant::now();
     let task = tokio::spawn(async move {
         Server::builder()
             .add_service(MixServer::new(mix))
-            .serve(format!("[::1]:{}", BASE_PORT + id).parse().unwrap())
+            .serve_with_shutdown(format!("[::1]:{}", BASE_PORT + id).parse().unwrap(), rx.map(drop))
     });
-
     task.await.unwrap().await.expect("Failed to Start Server");
+
+    // Measuring time
+    let duration = start.elapsed();
+    println!("Time elapsed in expensive_function() is: {:?}", duration);
 }
 
 
 /// runs Mix
-pub async fn run_mix(id: u16){
-    let server_task = start_server(id);
+pub async fn run_mix(id: u16, rx: Receiver<u8>){
+    let server_task = start_server(id, rx);
     let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
     let mut init_buffer = process_init_packets(get_init_packets(id), id, &get_network_info(), 0);
     for i in (0..NUM_MIXES).rev() {

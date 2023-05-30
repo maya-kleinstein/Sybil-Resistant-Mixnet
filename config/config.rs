@@ -1,6 +1,6 @@
 use bbs::config::*;
 
-#[tokio::main]
-async fn main() {
-    run_config().await
+// #[tokio::main]
+pub fn main() {
+    // run_config().await
 }
