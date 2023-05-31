@@ -41,7 +41,7 @@ dryoc = {version = "0.4.0", features = ["serde"]}
 lazy_static = "1.4.0"
 tonic = "0.8.3"
 prost = "0.11.6"
-tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread", "full"] }
 tokio-stream = "0.1.12"
 local-ip-address = "0.5.1"
 serde_json = "1.0.94"

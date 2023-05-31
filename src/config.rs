@@ -3,22 +3,22 @@ use mix_client::GetRequest;
 
 // use crate::network::{self, Network};
 use futures::future::join_all;
-use tokio::sync::oneshot::Sender;
 
 /// The port for the first mix
-pub const BASE_PORT: u16 = 50650;
+pub const BASE_PORT: u16 = 50600;
 /// The number of mixes
-pub const NUM_MIXES: u16 = 3;
+pub const NUM_MIXES: u16 = 2;
 /// The number of expected clients
-pub const NUM_CLIENTS: u64 = 100;
+pub const NUM_CLIENTS: u64 = 10;
 /// The number of layers in the mixnet
-pub const NUM_LAYERS: u64 = 5;
+pub const NUM_LAYERS: u64 = 3;
+
 
 pub mod mix_client {
     tonic::include_proto!("mix");
 }
 
-pub async fn run_config(tx_vec: Vec<Sender<u8>>){
+pub async fn run_config(){
     //sleep(Duration::from_secs(2)).await;
     let mut tasks = Vec::with_capacity(NUM_MIXES.into());
     for i in 0..NUM_MIXES {
@@ -37,9 +37,4 @@ pub async fn run_config(tx_vec: Vec<Sender<u8>>){
         tasks.push(task);
     }
     join_all(tasks).await;
-    for tx in tx_vec {
-        if let Err(_) = tx.send(1) {
-            println!("the receiver dropped");
-        }
-    }
 }
