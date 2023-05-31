@@ -11,6 +11,8 @@ use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{Network, decrypt_layer};
 use std::collections::HashMap;
 use tokio::time::Instant;
+use rand::thread_rng;
+use rand::seq::SliceRandom;
 
 /// Service created from proto file
 pub mod mix_service {
@@ -110,8 +112,9 @@ impl MyServer {
             let mut output_buffer = (*guard).remove(&layer).unwrap();
             for i in (0..NUM_MIXES).rev() {
                 println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
-                // TODO: Shuffle before sending!
-                let packets = output_buffer.0.pop().unwrap();
+                let mut packets = output_buffer.0.pop().unwrap();
+                // Shuffle the mix output
+                packets.shuffle(&mut thread_rng());
                 let id = self.id;
                 let task = tokio::spawn(async move {
                     connect_and_send(i, id, packets, layer).await;
@@ -128,11 +131,14 @@ impl MyServer {
     ) -> Vec<GetResponse> {
         let buffer_guard = self.output_buffer.lock().await;
         let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty");
+        let mut messages = (0..NUM_MIXES).map(|i| 
+                (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
+            ).flatten().collect::<Vec<Vec<u8>>>();
+        // Shuffle the mix output
+        messages.shuffle(&mut thread_rng());
         let messages: Vec<GetResponse> = vec![
             GetResponse {
-                messages: (0..NUM_MIXES).map(|i| 
-                    (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
-                ).flatten().collect::<Vec<Vec<u8>>>()
+                messages,
             }
         ];
         return messages;

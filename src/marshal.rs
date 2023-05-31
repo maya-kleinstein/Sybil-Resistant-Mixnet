@@ -21,8 +21,8 @@ pub fn setup_files(){
     let network = Network::new(NUM_MIXES.into());
     let mut clients: Vec<Client> = Vec::new();
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); NUM_MIXES.into()];
-    for _ in 0..NUM_CLIENTS {
-        let data = vec![0x91, 0x92, 0x93];
+    for i in 0..NUM_CLIENTS {
+        let data = vec![i as u8; 3];
         let client = Client::new(&network);
         let (packet, first_server) = generate_packet(data, &client, &network);
         clients.push(client);
