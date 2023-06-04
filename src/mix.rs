@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::{Semaphore, Mutex};
+use tokio::task::JoinHandle;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
@@ -27,6 +28,7 @@ pub struct MyServer {
     output_buffer: Mutex<HashMap<u32, (Vec<Vec<Vec<u8>>>, u32)>>,
     network_info: Network,
     notify:Arc<Semaphore>,
+    time: Mutex<Instant>,
 }
 
 impl MyServer{
@@ -37,6 +39,7 @@ impl MyServer{
             output_buffer: Mutex::new(HashMap::new()),
             network_info: get_network_info(),
             notify: Arc::new(Semaphore::new(0)),
+            time: Mutex::new(Instant::now()),
         }
     }
 }
@@ -70,6 +73,10 @@ impl Mix for MyServer {
         // Wait til the mix is done getting add requests for all layers
         let _ = self.notify.acquire_many((NUM_MIXES as u32)*((NUM_LAYERS - 1) as u32)).await.unwrap();
         let messages = self.output_all().await;
+        // Measure time
+        let mut time_guard = self.time.lock().await;
+        println!("Time this round took for mix {} is: {:?}", self.id, time_guard.elapsed());
+        *time_guard = Instant::now();
         let stream = futures::stream::iter(messages.into_iter().map(Ok));
         return Ok(Response::new(Box::new(Box::pin(stream))));
     }
@@ -106,8 +113,8 @@ impl MyServer {
         {
             // IMPORTANT NOTE: this is in a seperate scope in order to release guard and avoid deadlock
             let mut guard = self.output_buffer.lock().await;
-            // TODO: verify!!!
-            // Verify + Send to all mixes
+            // Send to all mixes
+            // Also Batch/Verify Only Edge Cases
             let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
             let mut output_buffer = (*guard).remove(&layer).unwrap();
             for i in (0..NUM_MIXES).rev() {
@@ -116,6 +123,7 @@ impl MyServer {
                 // Shuffle the mix output
                 packets.shuffle(&mut thread_rng());
                 let id = self.id;
+                // TODO: don't connect each time here, save connections in self...
                 let task = tokio::spawn(async move {
                     connect_and_send(i, id, packets, layer).await;
                 });
@@ -171,30 +179,7 @@ async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32
 }
 
 
-async fn start_server(id: u16) {
-    let mix = MyServer::new(id);
-    println!("Start mix {}", id);
-    // Measuring time
-    let start = Instant::now();
-    let task = tokio::spawn(async move {
-        Server::builder()
-            .add_service(MixServer::new(mix))
-            .serve_with_shutdown(format!("[::1]:{}", BASE_PORT + id).parse().unwrap(), async {
-                // Wait for a SIGINT signal
-                tokio::signal::ctrl_c().await.unwrap();
-            })
-    });
-    task.await.unwrap().await.expect("Failed to Start Server");
-
-    // Measuring time
-    let duration = start.elapsed();
-    println!("Time elapsed in expensive_function() is: {:?}", duration);
-}
-
-
-/// runs Mix
-pub async fn run_mix(id: u16){
-    let server_task = start_server(id);
+fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
     let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
     let mut init_buffer = process_init_packets(get_init_packets(id), id, &get_network_info(), 0);
     for i in (0..NUM_MIXES).rev() {
@@ -204,7 +189,29 @@ pub async fn run_mix(id: u16){
         });
         mix_tasks.push(task);
     }
+    return mix_tasks
+}
 
+
+async fn start_server(id: u16) {
+    let mix = MyServer::new(id);
+    println!("Start mix {}", id);
+    let task = tokio::spawn(async move {
+        Server::builder()
+            .add_service(MixServer::new(mix))
+            .serve_with_shutdown(format!("[::1]:{}", BASE_PORT + id).parse().unwrap(), async {
+                // Wait for a SIGINT signal
+                tokio::signal::ctrl_c().await.unwrap();
+            })
+    });
+    task.await.unwrap().await.expect("Failed to Start Server");
+}
+
+
+/// runs Mix
+pub async fn run_mix(id: u16){
+    let server_task = start_server(id);
+    let mix_tasks = send_init_packets(id);
     server_task.await;
     join_all(mix_tasks).await;
 }

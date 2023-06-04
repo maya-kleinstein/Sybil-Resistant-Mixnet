@@ -110,7 +110,6 @@ impl Network {
 
 
 //TODO: eventually take care of private-public values (e.g. Network can see all private keys)
-//TODO: maybe t should be part of proof? Why should it be seperate portion of packet?
 
 /// Generate a packet from the client to the network with the given data
 pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64){
@@ -119,7 +118,6 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     let mut packet: Packet;
 
     // Onion Encrypt the data using the keys matching the calculated tickets
-    // Note to Maya: for i in [0,1,2] (python)
     for i in (0..NUM_LAYERS).rev(){
         // Creates packet layer (proof + ticket)
         (packet, x) = generate_layer(data, client, network, i);
@@ -213,7 +211,6 @@ pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64)
 /// Verify the proof of knowledge of the signature and the ticket
 pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTreeMap<usize, SignatureMessage>, layer: u64) -> u64 {
     // Calculating next server using the ticket
-    // TODO: try implementing without it. to see the percentage that it takes of the original.
     let mut cursor = Cursor::new(&packet.ticket);
     let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
@@ -245,17 +242,10 @@ pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTr
 /// Verify batch
 pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
    // Set up msg.'s info before decrypting
-    let messages = vec![
-        SignatureMessage::hash(b"Testing"),
-    ];
-    
     let mut revealed_indices = BTreeSet::new();
     revealed_indices.insert(0);
 
-    let mut revealed_msgs = BTreeMap::new();
-    for i in &revealed_indices {
-        revealed_msgs.insert(i.clone(), messages[*i]);
-    }
+    let revealed_msgs = setup_default_msgs();
 
     let mut batch: Vec<(PoKOfTicketProof, ProofChallenge, G1, G1)> = Vec::with_capacity(packets.len());
 
@@ -394,18 +384,6 @@ mod tests{
             generate_layer(vec![1, 2, 3], &clients[1], &network, 0).0,
             generate_layer(vec![1, 2, 3], &clients[2], &network, 0).0];
     
-        // Set up msg.'s info before decrypting
-        let messages = vec![
-            SignatureMessage::hash(b"Testing"),
-        ];
-        
-        let mut revealed_indices = BTreeSet::new();
-        revealed_indices.insert(0);
-    
-        let mut revealed_msgs = BTreeMap::new();
-        for i in &revealed_indices {
-            revealed_msgs.insert(i.clone(), messages[*i]);
-        }
         verify_batch(&packets, &network, 0);
     }
 

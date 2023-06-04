@@ -4,6 +4,14 @@ use mix_client::GetRequest;
 // use crate::network::{self, Network};
 use futures::future::join_all;
 
+/// Choose the verification format for the mixnet
+pub enum MixnetVerification{
+    NoVerification,
+    Verify,
+    BatchVerify,
+    VerifyEdgeCases,
+}
+
 /// The port for the first mix
 pub const BASE_PORT: u16 = 50600;
 /// The number of mixes
@@ -12,6 +20,8 @@ pub const NUM_MIXES: u16 = 2;
 pub const NUM_CLIENTS: u64 = 10;
 /// The number of layers in the mixnet
 pub const NUM_LAYERS: u64 = 3;
+/// The mixnet verification type
+pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::NoVerification;
 
 
 pub mod mix_client {
