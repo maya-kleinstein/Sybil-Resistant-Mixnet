@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::{Semaphore, Mutex};
 use tokio::task::JoinHandle;
+use tonic::transport::Channel;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
@@ -26,6 +27,8 @@ pub struct MyServer {
     id : u16,
     // Maps between layer to (layer output buffer, layer add request counter)
     output_buffer: Mutex<HashMap<u32, (Vec<Vec<Vec<u8>>>, u32)>>,
+    // Maps between mix id to connection
+    channels: Mutex<HashMap<u32, MixClient<Channel>>>,
     network_info: Network,
     notify:Arc<Semaphore>,
     time: Mutex<Instant>,
@@ -37,6 +40,7 @@ impl MyServer{
         return MyServer { 
             id,
             output_buffer: Mutex::new(HashMap::new()),
+            channels: Mutex::new(HashMap::new()),
             network_info: get_network_info(),
             notify: Arc::new(Semaphore::new(0)),
             time: Mutex::new(Instant::now()),
@@ -73,10 +77,12 @@ impl Mix for MyServer {
         // Wait til the mix is done getting add requests for all layers
         let _ = self.notify.acquire_many((NUM_MIXES as u32)*((NUM_LAYERS - 1) as u32)).await.unwrap();
         let messages = self.output_all().await;
+
         // Measure time
         let mut time_guard = self.time.lock().await;
-        println!("Time this round took for mix {} is: {:?}", self.id, time_guard.elapsed());
+        println!("Time this round took mix {} {:?} seconds", self.id, time_guard.elapsed());
         *time_guard = Instant::now();
+
         let stream = futures::stream::iter(messages.into_iter().map(Ok));
         return Ok(Response::new(Box::new(Box::pin(stream))));
     }
@@ -113,24 +119,39 @@ impl MyServer {
         {
             // IMPORTANT NOTE: this is in a seperate scope in order to release guard and avoid deadlock
             let mut guard = self.output_buffer.lock().await;
+            
             // Send to all mixes
-            // Also Batch/Verify Only Edge Cases
             let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
             let mut output_buffer = (*guard).remove(&layer).unwrap();
             for i in (0..NUM_MIXES).rev() {
                 println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
                 let mut packets = output_buffer.0.pop().unwrap();
-                // Shuffle the mix output
                 packets.shuffle(&mut thread_rng());
-                let id = self.id;
-                // TODO: don't connect each time here, save connections in self...
-                let task = tokio::spawn(async move {
-                    connect_and_send(i, id, packets, layer).await;
-                });
+
+                let task = self.send_to_mix(i, layer, packets);
+
                 mix_tasks.push(task);
             }
         }
         join_all(mix_tasks).await;
+    }
+
+
+    async fn send_to_mix(
+        &self,
+        i: u16,
+        layer: u32,
+        packets: Vec<Vec<u8>>,
+    )-> () {
+        let add_req = vec![AddRequest {
+            packets: packets,
+            layer: layer
+        }];
+
+        let mut channels_guard = self.channels.lock().await;
+        (*channels_guard).entry(i.into())
+            .or_insert(MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap())
+            .add(Request::new(futures::stream::iter(add_req.clone()))).await.expect("Failed to send add");
     }
 
     /// Process all layers into single output message
@@ -169,7 +190,7 @@ async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32
     let mut client =
         MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await.unwrap();
 
-    println!("mix {} connected to {} mix", src, dst);
+    println!("mix {} connected and sent to {} mix", src, dst);
 
     let add_req = vec![AddRequest {
         packets: packets,

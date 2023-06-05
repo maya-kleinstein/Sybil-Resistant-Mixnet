@@ -21,7 +21,9 @@ pub const NUM_CLIENTS: u64 = 10;
 /// The number of layers in the mixnet
 pub const NUM_LAYERS: u64 = 3;
 /// The mixnet verification type
-pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::NoVerification;
+pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::Verify;
+/// The number of rounds to run
+pub const NUM_ROUNDS: u64 = 1;
 
 
 pub mod mix_client {

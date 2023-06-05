@@ -16,7 +16,7 @@ use blake2::VarBlake2b;
 use blake2::digest::{Input, VariableOutput};
 use dryoc::dryocbox;
 use dryoc::dryocbox::DryocBox;
-use crate::config::NUM_LAYERS;
+use crate::config::*;
 
 /// Network module
 /// Contains network related functionality
@@ -135,35 +135,24 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
 
 /// Create packet with data proof and ticket
 pub fn generate_layer(data: Vec<u8>, client: &Client, network: &Network, layer: u64) -> (Packet, u64){
-    let proof_messages = vec![
-        pm_revealed!(b"Testing"),
-    ];
-
     // t = b^e, where b=H0(layer, RoundID, SysRand) and e is part of signature
     let (b, t) = calculate_ticket(layer, network.round_id, network.sys_rand, client.signature.e);
     // server x = H(t) % network size, H: {0,1}^* -> Zp
     let x = calculate_next_server(t, network.size);
 
-    // Building proof for ticket + signature
-    let ticket_pok = PoKOfTicket::init(
-        &client.signature, 
-        &network.id_provider.bbs_keys.0, 
-        proof_messages.as_slice(),
-        t,
-        b
-    ).unwrap();
-
-    // TODO: beware weak fiat shamir
-    let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
-    let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
-
     // serialize t into buffer
     let mut t_buf = Vec::new();
     t.serialize(&mut t_buf, false).unwrap();
 
+    let mut proof: Vec<u8> = Vec::new();
+    match MIX_VERIFICATION {
+        MixnetVerification::NoVerification => (),
+        _ => proof = get_ticket_proof(client, network, t, b).to_bytes_uncompressed_form(),
+    };
+
     let packet = Packet{
         ticket: t_buf,
-        proof: proof.to_bytes_uncompressed_form(),
+        proof,
         data,
     };
     return (packet, x);
@@ -214,6 +203,11 @@ pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTr
     let mut cursor = Cursor::new(&packet.ticket);
     let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
+
+    match MIX_VERIFICATION {
+        MixnetVerification::Verify => (),
+        _ => return x,
+    };
 
     // Recovering the value of b
     let ticket_vals = TicketValues{
@@ -326,6 +320,26 @@ fn calculate_next_server(t: G1, size: u64)->u64{
     return x;
 }
 
+// Calculate ticket proof
+fn get_ticket_proof(client: &Client, network: &Network, t: G1, b:G1) -> PoKOfTicketProof {
+    let proof_messages = vec![
+        pm_revealed!(b"Testing"),
+    ];
+
+    // Building proof for ticket + signature
+    let ticket_pok = PoKOfTicket::init(
+        &client.signature, 
+        &network.id_provider.bbs_keys.0, 
+        proof_messages.as_slice(),
+        t,
+        b
+    ).unwrap();
+
+    // TODO: beware weak fiat shamir
+    let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
+    let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
+    return proof;
+}
 
 fn setup_default_msgs() -> BTreeMap<usize, SignatureMessage> {
     let messages = vec![
@@ -364,11 +378,10 @@ mod tests{
 
         println!("{}, is the first server", first_server);
         println!("{}, is the length of the data", enc_data.len());
-        println!("enc_data: {:?}", enc_data);
 
         let dec_data = decrypt_packet(enc_data, first_server, &network);
 
-        println!("dec_data: {:?}", dec_data);
+        assert_eq!(dec_data, vec![b'a', b'b', b'c']);
     }
 
     #[test]
