@@ -21,11 +21,14 @@ pub mod mix_service {
     tonic::include_proto!("mix");
 }
 
+// TODO: add typedef for vec<u8> raw_packet
+
 #[derive(Debug)]
 /// Mix server struct
 pub struct MyServer {
     id : u16,
     // Maps between layer to (layer output buffer, layer add request counter)
+    // HashMap<u32, Mutex<(Vec<Vec<Vec<u8>>>, u32)>>
     output_buffer: Mutex<HashMap<u32, (Vec<Vec<Vec<u8>>>, u32)>>,
     // Maps between mix id to connection
     channels: Mutex<HashMap<u32, MixClient<Channel>>>,
@@ -59,9 +62,7 @@ impl Mix for MyServer {
         println!("mix {} got an add request: {:?}", self.id ,request);
         self.parse_input(request).await;
 
-        if self.check_if_middle_layer().await {
-            self.send_middle_layer().await;
-        }
+        self.handle_middle_layer().await;
     
         // Notify config
         self.notify.add_permits(1);
@@ -88,6 +89,7 @@ impl Mix for MyServer {
     }
 }
 
+
 impl MyServer {
     /// Process (decrypt) incoming stream to proper output buffer 
     async fn parse_input(
@@ -96,6 +98,7 @@ impl MyServer {
     ) -> () {
         let input_stream = request.into_inner().message().await.unwrap().into_iter();
         for packets in input_stream {
+            // TODO: try to interlock instead of locking
             let mut buffer_guard = self.output_buffer.lock().await;
             (*buffer_guard).entry(packets.layer + 1)
                     .or_insert((vec![vec![].into(); NUM_MIXES.into()], 0))
@@ -105,14 +108,14 @@ impl MyServer {
                 // Insert decrypted packet to output_buffer
                 (*buffer_guard).entry(packets.layer + 1)
                     .and_modify(|e| { 
-                        e.0[next as usize].push(dec_packet);
+                        e.0[next as usize].push(dec_packet.data);
                     });  
             }
         }
     }
 
     /// Send add from current layer to all mixes
-    async fn send_middle_layer(
+    async fn handle_middle_layer(
         &self,
     ) -> () {      
         let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
@@ -120,6 +123,16 @@ impl MyServer {
             // IMPORTANT NOTE: this is in a seperate scope in order to release guard and avoid deadlock
             let mut guard = self.output_buffer.lock().await;
             
+            // Check if it is a middle layer
+            if (*guard).is_empty() {
+                return
+            }
+            let current_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+            let counter: u32 = (*guard).get(&current_layer).unwrap().1;
+            if !is_middle_layer(current_layer, counter) {
+                    return
+            }
+
             // Send to all mixes
             let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
             let mut output_buffer = (*guard).remove(&layer).unwrap();
@@ -172,17 +185,6 @@ impl MyServer {
         ];
         return messages;
     }
-
-    async fn check_if_middle_layer(
-        &self,
-    ) -> bool {
-        let guard = self.output_buffer.lock().await;
-        let current_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
-        let counter: u32 = (*guard).get(&current_layer).unwrap().1;
-        return counter % (NUM_MIXES as u32) == 0 &&
-                (current_layer as u64) != NUM_LAYERS;
-
-    }
 }
 
 async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
@@ -199,7 +201,6 @@ async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32
     client.add(Request::new(futures::stream::iter(add_req.clone()))).await.expect("Failed to send add");
 }
 
-
 fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
     let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
     let mut init_buffer = process_init_packets(get_init_packets(id), id, &get_network_info(), 0);
@@ -214,6 +215,11 @@ fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
 }
 
 
+fn is_middle_layer(current_layer: u32, counter: u32) -> bool {
+    return counter % (NUM_MIXES as u32) == 0 && (current_layer as u64) != NUM_LAYERS;
+}
+
+
 async fn start_server(id: u16) {
     let mix = MyServer::new(id);
     println!("Start mix {}", id);
@@ -221,7 +227,7 @@ async fn start_server(id: u16) {
         Server::builder()
             .add_service(MixServer::new(mix))
             .serve_with_shutdown(format!("[::1]:{}", BASE_PORT + id).parse().unwrap(), async {
-                // Wait for a SIGINT signal
+                // Wait for a SIGINT signal to shutdown
                 tokio::signal::ctrl_c().await.unwrap();
             })
     });

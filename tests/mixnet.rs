@@ -4,12 +4,21 @@ use bbs::mixnet::*;
 use bbs::network::Network;
 use futures::future::join_all;
 use std::thread;
+use tokio as tokio1;
 
 
-#[tokio::test]
-async fn system_test(){
-    run_system().await;
+#[test]
+fn system_test() {
+    tokio1::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            run_system().await;
+        })
 }
+
+
 
 
 #[test]
@@ -22,16 +31,22 @@ fn marshalling_test() {
 }
 
 
-#[tokio::test]
-async fn how_tf_tasks_work(){
-    let mut tasks = Vec::new();
+#[test]
+fn how_tf_tasks_work(){
+    tokio1::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            let mut tasks = Vec::new();
 
-    for i in 0..20 {
-        tasks.push(tokio::spawn(async move {
-            println!("{}", i);
-        }));
-    }
-    join_all(tasks).await;
+            for i in 0..20 {
+                tasks.push(tokio::spawn(async move {
+                    println!("{}", i);
+                }));
+            }
+            join_all(tasks).await;
+        })
 }
 
 #[test]

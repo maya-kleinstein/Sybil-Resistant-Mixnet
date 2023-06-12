@@ -76,7 +76,7 @@ struct TicketValues{
 pub struct Packet{
     ticket: Vec<u8>,
     proof: Vec<u8>, 
-    data: Vec<u8>,
+    pub data: Vec<u8>,
 }
 
 /// Network configuration
@@ -181,7 +181,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 }
 
 /// unwraps single layer of packet, given the current server and layer
-pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64) -> (Vec<u8>, u64) {
+pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64) -> (Packet, u64) {
     // Set up msg.'s info before decrypting
     let revealed_msgs = setup_default_msgs();
 
@@ -193,7 +193,7 @@ pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64)
     // Verify ticket and proof (done by x)
     let next_server = verify_packet(&mut packet, &network, &revealed_msgs, layer);
     // Retrieving data and next server 
-    return (packet.data, next_server);
+    return (packet, next_server);
 }
 
 
@@ -247,7 +247,6 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
         // Calculating next server using the ticket
         let mut cursor = Cursor::new(&packets[i].ticket);
         let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
-        let _x = calculate_next_server(t_recovered, network.size);
 
         // Recovering the value of b
         // TODO: value for b is the same for everybody - compute once!

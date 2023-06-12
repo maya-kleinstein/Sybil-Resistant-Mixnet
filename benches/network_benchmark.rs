@@ -76,5 +76,18 @@ pub fn verify_batch_benchmark(c: &mut Criterion){
     c.bench_function("verify_batch", |b| b.iter(|| verify_batch(&packets, &network, 0)));
 }
 
-criterion_group!(crypto_benches, decrypt_packet_benchmark);
+fn cpu_work() -> Vec<u64>{
+    let mut vecs = vec![];
+    for i in 0..10000000 {
+        vecs.push(i*i);
+    }
+    return vecs;
+}
+
+/// Benchmark for how long to generate packet
+pub fn bench_cpu_test(c: &mut Criterion) {
+    c.bench_function("generate_packet", |b| b.iter(|| cpu_work()));
+}
+
+criterion_group!(crypto_benches, bench_cpu_test);
 criterion_main!(crypto_benches);

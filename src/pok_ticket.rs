@@ -725,7 +725,7 @@ impl PoKOfTicketProof{
         }
 
         // Batch Verifying the equations e(a_prime, w) = e(a_bar, g_2) 
-        // TODO: This can't just do a product - there need to be different exponents for each proof
+        // TODO: This can't just do a product - there need to be different exponents for each component
         let mut a_prime_product = G1::zero();
         batch.iter().for_each(|x| a_prime_product.add_assign(&x.0.a_prime));
 
