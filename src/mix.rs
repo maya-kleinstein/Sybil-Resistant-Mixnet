@@ -12,7 +12,7 @@ use crate::config::*;
 use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{Network, decrypt_layer};
 use std::collections::HashMap;
-use tokio::time::Instant;
+use tokio::time::{sleep, Duration, Instant};
 use rand::thread_rng;
 use rand::seq::SliceRandom;
 
@@ -189,8 +189,21 @@ impl MyServer {
 
 async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
     // TODO: save connections between the mixes
-    let mut client =
-        MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await.unwrap();
+    let mut conn_result =
+            MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
+    loop {
+        match conn_result {
+            Ok(ref _result) => {
+                break;
+            }
+            Err(error) => {
+                println!("Failed to connect mix {} to mix {}: {:?}", dst, src, error);
+                sleep(Duration::from_micros(1)).await;
+                conn_result =
+                    MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
+            }
+        }
+    }
 
     println!("mix {} connected and sent to {} mix", src, dst);
 
@@ -198,7 +211,8 @@ async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32
         packets: packets,
         layer: layer
     }];
-    client.add(Request::new(futures::stream::iter(add_req.clone()))).await.expect("Failed to send add");
+
+    conn_result.unwrap().add(Request::new(futures::stream::iter(add_req.clone()))).await.expect("Failed to send add");
 }
 
 fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{

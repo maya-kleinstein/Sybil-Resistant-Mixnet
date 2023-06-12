@@ -17,7 +17,7 @@ pub const BASE_PORT: u16 = 50600;
 /// The number of mixes
 pub const NUM_MIXES: u16 = 2;
 /// The number of expected clients
-pub const NUM_CLIENTS: u64 = 100;
+pub const NUM_CLIENTS: u64 = 30;
 /// The number of layers in the mixnet
 pub const NUM_LAYERS: u64 = 3;
 /// The mixnet verification type
