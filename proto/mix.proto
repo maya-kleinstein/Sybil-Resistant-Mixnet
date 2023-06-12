@@ -2,7 +2,7 @@ syntax = "proto3";
 package mix;
 
 service Mix {
-    rpc Add(stream AddRequest) returns (AddResponse) {}
+    rpc Add(AddRequest) returns (AddResponse) {}
 
     // only coordinator calls this:
     rpc Get(GetRequest) returns (stream GetResponse) {}

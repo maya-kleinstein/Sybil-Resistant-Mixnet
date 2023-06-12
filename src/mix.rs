@@ -1,8 +1,9 @@
 use std::sync::Arc;
 use tokio::sync::{Semaphore, Mutex};
 use tokio::task::JoinHandle;
+use tokio::time::{sleep, Duration, Instant};
 use tonic::transport::Channel;
-use tonic::{transport::Server, Request, Response, Status, Streaming};
+use tonic::{transport::Server, Request, Response, Status};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use mix_service::mix_client::MixClient;
@@ -12,7 +13,6 @@ use crate::config::*;
 use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{Network, decrypt_layer};
 use std::collections::HashMap;
-use tokio::time::{sleep, Duration, Instant};
 use rand::thread_rng;
 use rand::seq::SliceRandom;
 
@@ -57,9 +57,9 @@ impl Mix for MyServer {
 
     async fn add(
         &self,
-        request: Request<Streaming<AddRequest>>,
+        request: Request<AddRequest>,
     ) -> Result<Response<AddResponse>, Status> {
-        println!("mix {} got an add request: {:?}", self.id ,request);
+        println!("mix {} got an add request", self.id);
         self.parse_input(request).await;
 
         self.handle_middle_layer().await;
@@ -72,9 +72,9 @@ impl Mix for MyServer {
 
     async fn get(
         &self,
-        request: Request<GetRequest>,
+        _request: Request<GetRequest>,
     ) -> Result<Response<Self::GetStream>, Status>  {
-        println!("mix {} got a get request: {:?}", self.id, request);
+        println!("mix {} got a get request", self.id);
         // Wait til the mix is done getting add requests for all layers
         let _ = self.notify.acquire_many((NUM_MIXES as u32)*((NUM_LAYERS - 1) as u32)).await.unwrap();
         let messages = self.output_all().await;
@@ -94,23 +94,21 @@ impl MyServer {
     /// Process (decrypt) incoming stream to proper output buffer 
     async fn parse_input(
         &self,
-        request: Request<Streaming<AddRequest>>,
+        request: Request<AddRequest>,
     ) -> () {
-        let input_stream = request.into_inner().message().await.unwrap().into_iter();
-        for packets in input_stream {
-            // TODO: try to interlock instead of locking
-            let mut buffer_guard = self.output_buffer.lock().await;
-            (*buffer_guard).entry(packets.layer + 1)
-                    .or_insert((vec![vec![].into(); NUM_MIXES.into()], 0))
-                    .1 += 1;
-            for packet in packets.packets {
-                let (dec_packet, next) = decrypt_layer(packet, self.id.into(), &self.network_info, 0);
-                // Insert decrypted packet to output_buffer
-                (*buffer_guard).entry(packets.layer + 1)
-                    .and_modify(|e| { 
-                        e.0[next as usize].push(dec_packet.data);
-                    });  
-            }
+        let add_req = request.into_inner();
+        // TODO: try to interlock instead of locking
+        let mut buffer_guard = self.output_buffer.lock().await;
+        (*buffer_guard).entry(add_req.layer + 1)
+                .or_insert((vec![vec![].into(); NUM_MIXES.into()], 0))
+                .1 += 1;
+        for packet in add_req.packets {
+            let (dec_packet, next) = decrypt_layer(packet, self.id.into(), &self.network_info, 0);
+            // Insert decrypted packet to output_buffer
+            (*buffer_guard).entry(add_req.layer + 1)
+                .and_modify(|e| { 
+                    e.0[next as usize].push(dec_packet.data);
+                });  
         }
     }
 
@@ -156,15 +154,15 @@ impl MyServer {
         layer: u32,
         packets: Vec<Vec<u8>>,
     )-> () {
-        let add_req = vec![AddRequest {
+        let add_req = AddRequest {
             packets: packets,
             layer: layer
-        }];
+        };
 
         let mut channels_guard = self.channels.lock().await;
         (*channels_guard).entry(i.into())
             .or_insert(MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap())
-            .add(Request::new(futures::stream::iter(add_req.clone()))).await.expect("Failed to send add");
+            .add(Request::new(add_req)).await.expect("Failed to send add");
     }
 
     /// Process all layers into single output message
@@ -188,7 +186,6 @@ impl MyServer {
 }
 
 async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
-    // TODO: save connections between the mixes
     let mut conn_result =
             MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
     loop {
@@ -207,12 +204,12 @@ async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32
 
     println!("mix {} connected and sent to {} mix", src, dst);
 
-    let add_req = vec![AddRequest {
+    let add_req = AddRequest {
         packets: packets,
         layer: layer
-    }];
+    };
 
-    conn_result.unwrap().add(Request::new(futures::stream::iter(add_req.clone()))).await.expect("Failed to send add");
+    conn_result.unwrap().add(Request::new(add_req)).await.expect("Failed to send add");
 }
 
 fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
