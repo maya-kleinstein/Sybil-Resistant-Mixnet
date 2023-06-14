@@ -5,7 +5,7 @@ service Mix {
     rpc Add(AddRequest) returns (AddResponse) {}
 
     // only coordinator calls this:
-    rpc Get(GetRequest) returns (stream GetResponse) {}
+    rpc Get(GetRequest) returns (GetResponse) {}
     // rpc Start()
 }
 

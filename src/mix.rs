@@ -7,7 +7,6 @@ use tonic::{transport::Server, Request, Response, Status};
 use mix_service::mix_server::{MixServer, Mix};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use mix_service::mix_client::MixClient;
-use futures::Stream;
 use futures::future::join_all;
 use crate::config::*;
 use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
@@ -53,8 +52,6 @@ impl MyServer{
 
 #[tonic::async_trait]
 impl Mix for MyServer {
-    type GetStream = Box<dyn Stream<Item = Result<GetResponse, Status>> + Send + Unpin>;
-
     async fn add(
         &self,
         request: Request<AddRequest>,
@@ -73,19 +70,19 @@ impl Mix for MyServer {
     async fn get(
         &self,
         _request: Request<GetRequest>,
-    ) -> Result<Response<Self::GetStream>, Status>  {
+    ) -> Result<Response<GetResponse>, Status>  {
         println!("mix {} got a get request", self.id);
         // Wait til the mix is done getting add requests from all layers
         let _ = self.notify.acquire_many((NUM_MIXES as u32)*((NUM_LAYERS - 1) as u32)).await.unwrap();
         let messages = self.output_all().await;
 
         // Measure time
-        let mut time_guard = self.time.lock().await;
+        let time_guard = self.time.lock().await;
         println!("Time this round took mix {} {:?} seconds", self.id, time_guard.elapsed());
-        *time_guard = Instant::now();
+        drop(time_guard);
 
-        let stream = futures::stream::iter(messages.into_iter().map(Ok));
-        return Ok(Response::new(Box::new(Box::pin(stream))));
+        let reply = GetResponse {messages};
+        Ok(Response::new(reply))
     }
 }
 
@@ -129,6 +126,11 @@ impl MyServer {
                 return
         }
 
+        if current_layer == FIRST_MIDDLE_LAYER {
+            let mut time_guard = self.time.lock().await;
+            *time_guard = Instant::now();
+        }
+
         // Send to all mixes
         let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
         let mut output_buffer = (*guard).remove(&layer).unwrap();
@@ -165,7 +167,7 @@ impl MyServer {
     /// Process all layers into single output message
     async fn output_all(
         &self,
-    ) -> Vec<GetResponse> {
+    ) -> Vec<Vec<u8>> {
         let buffer_guard = self.output_buffer.lock().await;
         let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty");
         let mut messages = (0..NUM_MIXES).map(|i| 
@@ -173,18 +175,13 @@ impl MyServer {
             ).flatten().collect::<Vec<Vec<u8>>>();
         // Shuffle the mix output
         messages.shuffle(&mut thread_rng());
-        let messages: Vec<GetResponse> = vec![
-            GetResponse {
-                messages,
-            }
-        ];
         return messages;
     }
 }
 
 async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
     // Try connecting until success
-    let mut conn = connect_to_server(dst, src).await;
+    let mut conn = connect_to_server(dst).await;
 
     println!("mix {} connected to {} mix", src, dst);
 
@@ -210,7 +207,8 @@ fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
 }
 
 
-async fn connect_to_server(dst: u16, src: u16) -> MixClient<Channel>{
+/// Try connecting to server dst until success
+pub async fn connect_to_server(dst: u16) -> MixClient<Channel>{
     let mut conn_result =
     MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
     loop {
@@ -219,7 +217,7 @@ async fn connect_to_server(dst: u16, src: u16) -> MixClient<Channel>{
                 break;
             }
             Err(error) => {
-                println!("Failed to connect mix {} to mix {}: {:?}", dst, src, error);
+                println!("Failed to connect to mix {}: {:?}", dst, error);
                 sleep(Duration::from_micros(1)).await;
                 conn_result =
                     MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
