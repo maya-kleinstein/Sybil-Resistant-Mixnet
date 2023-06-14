@@ -89,5 +89,5 @@ pub fn bench_cpu_test(c: &mut Criterion) {
     c.bench_function("generate_packet", |b| b.iter(|| cpu_work()));
 }
 
-criterion_group!(crypto_benches, bench_cpu_test);
+criterion_group!(crypto_benches, decrypt_packet_benchmark);
 criterion_main!(crypto_benches);

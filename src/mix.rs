@@ -31,7 +31,7 @@ pub struct MyServer {
     // HashMap<u32, Mutex<(Vec<Vec<Vec<u8>>>, u32)>>
     output_buffer: Mutex<HashMap<u32, (Vec<Vec<Vec<u8>>>, u32)>>,
     // Maps between mix id to connection
-    channels: Mutex<HashMap<u32, MixClient<Channel>>>,
+    channels: Arc<Mutex<HashMap<u32, MixClient<Channel>>>>,
     network_info: Network,
     notify:Arc<Semaphore>,
     time: Mutex<Instant>,
@@ -43,7 +43,7 @@ impl MyServer{
         return MyServer { 
             id,
             output_buffer: Mutex::new(HashMap::new()),
-            channels: Mutex::new(HashMap::new()),
+            channels: Arc::new(Mutex::new(HashMap::new())),
             network_info: get_network_info(),
             notify: Arc::new(Semaphore::new(0)),
             time: Mutex::new(Instant::now()),
@@ -75,7 +75,7 @@ impl Mix for MyServer {
         _request: Request<GetRequest>,
     ) -> Result<Response<Self::GetStream>, Status>  {
         println!("mix {} got a get request", self.id);
-        // Wait til the mix is done getting add requests for all layers
+        // Wait til the mix is done getting add requests from all layers
         let _ = self.notify.acquire_many((NUM_MIXES as u32)*((NUM_LAYERS - 1) as u32)).await.unwrap();
         let messages = self.output_all().await;
 
@@ -117,32 +117,29 @@ impl MyServer {
         &self,
     ) -> () {      
         let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
-        {
-            // IMPORTANT NOTE: this is in a seperate scope in order to release guard and avoid deadlock
-            let mut guard = self.output_buffer.lock().await;
-            
-            // Check if it is a middle layer
-            if (*guard).is_empty() {
+        
+        let mut guard = self.output_buffer.lock().await;
+        // Check if it is a middle layer
+        if (*guard).is_empty() {
+            return
+        }
+        let current_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+        let counter: u32 = (*guard).get(&current_layer).unwrap().1;
+        if !is_middle_layer(current_layer, counter) {
                 return
-            }
-            let current_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
-            let counter: u32 = (*guard).get(&current_layer).unwrap().1;
-            if !is_middle_layer(current_layer, counter) {
-                    return
-            }
+        }
 
-            // Send to all mixes
-            let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
-            let mut output_buffer = (*guard).remove(&layer).unwrap();
-            for i in (0..NUM_MIXES).rev() {
-                println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
-                let mut packets = output_buffer.0.pop().unwrap();
-                packets.shuffle(&mut thread_rng());
+        // Send to all mixes
+        let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+        let mut output_buffer = (*guard).remove(&layer).unwrap();
+        drop(guard);
+        for i in (0..NUM_MIXES).rev() {
+            println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
+            let mut packets = output_buffer.0.pop().unwrap();
+            packets.shuffle(&mut thread_rng());
 
-                let task = self.send_to_mix(i, layer, packets);
-
-                mix_tasks.push(task);
-            }
+            let task = self.send_to_mix(i, layer, packets);
+            mix_tasks.push(task);
         }
         join_all(mix_tasks).await;
     }
@@ -158,11 +155,11 @@ impl MyServer {
             packets: packets,
             layer: layer
         };
-
         let mut channels_guard = self.channels.lock().await;
-        (*channels_guard).entry(i.into())
-            .or_insert(MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap())
-            .add(Request::new(add_req)).await.expect("Failed to send add");
+        let mut channel = (*channels_guard).entry(i.into())
+            .or_insert(MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap()).clone();
+        drop(channels_guard);
+        channel.add(Request::new(add_req)).await.expect("Failed to send add");
     }
 
     /// Process all layers into single output message
@@ -186,30 +183,17 @@ impl MyServer {
 }
 
 async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
-    let mut conn_result =
-            MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
-    loop {
-        match conn_result {
-            Ok(ref _result) => {
-                break;
-            }
-            Err(error) => {
-                println!("Failed to connect mix {} to mix {}: {:?}", dst, src, error);
-                sleep(Duration::from_micros(1)).await;
-                conn_result =
-                    MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
-            }
-        }
-    }
+    // Try connecting until success
+    let mut conn = connect_to_server(dst, src).await;
 
-    println!("mix {} connected and sent to {} mix", src, dst);
+    println!("mix {} connected to {} mix", src, dst);
 
     let add_req = AddRequest {
         packets: packets,
         layer: layer
     };
 
-    conn_result.unwrap().add(Request::new(add_req)).await.expect("Failed to send add");
+    conn.add(Request::new(add_req)).await.expect("Failed to send add");
 }
 
 fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
@@ -223,6 +207,26 @@ fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
         mix_tasks.push(task);
     }
     return mix_tasks
+}
+
+
+async fn connect_to_server(dst: u16, src: u16) -> MixClient<Channel>{
+    let mut conn_result =
+    MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
+    loop {
+        match conn_result {
+            Ok(ref _result) => {
+                break;
+            }
+            Err(error) => {
+                println!("Failed to connect mix {} to mix {}: {:?}", dst, src, error);
+                sleep(Duration::from_micros(1)).await;
+                conn_result =
+                    MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
+            }
+        }
+    }
+    return conn_result.unwrap();
 }
 
 
@@ -242,6 +246,7 @@ async fn start_server(id: u16) {
                 tokio::signal::ctrl_c().await.unwrap();
             })
     });
+
     task.await.unwrap().await.expect("Failed to Start Server");
 }
 
