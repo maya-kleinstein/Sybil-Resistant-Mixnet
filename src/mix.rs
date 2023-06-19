@@ -93,18 +93,24 @@ impl MyServer {
         request: Request<AddRequest>,
     ) -> () {
         let add_req = request.into_inner();
+        let mut dec_packets = Vec::new();
+        for packet in add_req.packets {
+            let (dec_packet, next) = decrypt_layer(packet, self.id.into(), &self.network_info, 0);
+            dec_packets.push((dec_packet, next));
+        }
+
         let mut buffer_guard = self.output_buffer.lock().await;
         (*buffer_guard).entry(add_req.layer + 1)
                 .or_insert((vec![vec![].into(); NUM_MIXES.into()], 0))
                 .1 += 1;
-        for packet in add_req.packets {
-            let (dec_packet, next) = decrypt_layer(packet, self.id.into(), &self.network_info, 0);
-            // Insert decrypted packet to output_buffer
+
+        // Insert decrypted packets to output_buffer
+        for (dec_packet, next) in dec_packets {
             (*buffer_guard).entry(add_req.layer + 1)
                 .and_modify(|e| { 
                     e.0[next as usize].push(dec_packet.data);
-                });  
-        }
+                }); 
+        } 
     }
 
     /// Send add from current layer to all mixes
