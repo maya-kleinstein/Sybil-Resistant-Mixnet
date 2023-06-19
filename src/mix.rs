@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::collections::HashMap;
 use tokio::sync::{Semaphore, Mutex};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration, Instant};
@@ -11,7 +12,6 @@ use futures::future::join_all;
 use crate::config::*;
 use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{Network, decrypt_layer};
-use std::collections::HashMap;
 use rand::thread_rng;
 use rand::seq::SliceRandom;
 
@@ -27,7 +27,6 @@ pub mod mix_service {
 pub struct MyServer {
     id : u16,
     // Maps between layer to (layer output buffer, layer add request counter)
-    // HashMap<u32, Mutex<(Vec<Vec<Vec<u8>>>, u32)>>
     output_buffer: Mutex<HashMap<u32, (Vec<Vec<Vec<u8>>>, u32)>>,
     // Maps between mix id to connection
     channels: Arc<Mutex<HashMap<u32, MixClient<Channel>>>>,
@@ -94,7 +93,6 @@ impl MyServer {
         request: Request<AddRequest>,
     ) -> () {
         let add_req = request.into_inner();
-        // TODO: try to interlock instead of locking
         let mut buffer_guard = self.output_buffer.lock().await;
         (*buffer_guard).entry(add_req.layer + 1)
                 .or_insert((vec![vec![].into(); NUM_MIXES.into()], 0))

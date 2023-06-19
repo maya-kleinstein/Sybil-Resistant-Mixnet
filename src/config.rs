@@ -14,7 +14,7 @@ pub enum MixnetVerification{
 }
 
 /// The port for the first mix
-pub const BASE_PORT: u16 = 50600;
+pub const BASE_PORT: u16 = 50700;
 /// The number of mixes
 pub const NUM_MIXES: u16 = 2;
 /// The number of expected clients
@@ -38,7 +38,6 @@ pub async fn run_config(){
             let request = Request::new(GetRequest {});
             let response = mix.get(request).await.unwrap().into_inner();
             println!("Config recv'd get response from mix {}: {:?}", i, response);
-            // println!("Config recv'd get response from mix {}: {:?}", i, z);
         });
         tasks.push(task);
     }

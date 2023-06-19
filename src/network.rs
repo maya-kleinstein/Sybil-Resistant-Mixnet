@@ -75,7 +75,7 @@ struct TicketValues{
 #[derive(Serialize, Deserialize)]
 pub struct Packet{
     ticket: Vec<u8>,
-    proof: Vec<u8>, 
+    pub proof: Vec<u8>, 
     pub data: Vec<u8>,
 }
 
@@ -272,6 +272,30 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
 }
 
 
+/// Generating packets with false proofs
+pub fn generate_bad_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64){
+    let mut data: Vec<u8> = data;
+    let mut x: u64 = 0;
+    let mut packet: Packet;
+
+    // Onion Encrypt the data using the keys matching the calculated tickets
+    for i in (0..NUM_LAYERS).rev(){
+        // Creates packet layer (proof + ticket)
+        (packet, x) = generate_layer(data, client, network, i);
+
+        // Mess with packet
+        packet.proof[0] ^= 1;
+
+        // Serialize packet
+        let encoded_packet = bincode::serialize(&packet).unwrap();
+        
+        // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
+        let wrapped_data = DryocBox::seal_to_vecbox(&encoded_packet, &network.servers[x as usize].key_pair.public_key.clone()).expect("Unable to seal");
+        data = bincode::serialize(&wrapped_data).unwrap();
+    }
+    return (data, x);
+}
+
 /// Creating a new network of size size
 pub fn create_network(network: &mut Network, size: u64){
     let bbs_keys: (PublicKey, SecretKey) = Issuer::new_keys(1).unwrap();
@@ -319,6 +343,7 @@ fn calculate_next_server(t: G1, size: u64)->u64{
     return x;
 }
 
+
 // Calculate ticket proof
 fn get_ticket_proof(client: &Client, network: &Network, t: G1, b:G1) -> PoKOfTicketProof {
     let proof_messages = vec![
@@ -339,6 +364,7 @@ fn get_ticket_proof(client: &Client, network: &Network, t: G1, b:G1) -> PoKOfTic
     let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
     return proof;
 }
+
 
 fn setup_default_msgs() -> BTreeMap<usize, SignatureMessage> {
     let messages = vec![
