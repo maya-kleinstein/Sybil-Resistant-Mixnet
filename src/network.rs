@@ -72,7 +72,7 @@ struct TicketValues{
 }
 
 /// Packet configuration
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Packet{
     ticket: Vec<u8>,
     pub proof: Vec<u8>, 
@@ -234,7 +234,7 @@ pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTr
 
 
 /// Verify batch
-pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
+pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64){
    // Set up msg.'s info before decrypting
     let mut revealed_indices = BTreeSet::new();
     revealed_indices.insert(0);

@@ -11,7 +11,7 @@ use mix_service::mix_client::MixClient;
 use futures::future::join_all;
 use crate::config::*;
 use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
-use crate::network::{Network, decrypt_layer};
+use crate::network::{Network, decrypt_layer, Packet, verify_batch};
 use rand::thread_rng;
 use rand::seq::SliceRandom;
 
@@ -27,7 +27,7 @@ pub mod mix_service {
 pub struct MyServer {
     id : u16,
     // Maps between layer to (layer output buffer, layer add request counter)
-    output_buffer: Mutex<HashMap<u32, (Vec<Vec<Vec<u8>>>, u32)>>,
+    output_buffer: Mutex<HashMap<u32, (Vec<Vec<Packet>>, u32)>>,
     // Maps between mix id to connection
     channels: Arc<Mutex<HashMap<u32, MixClient<Channel>>>>,
     network_info: Network,
@@ -108,7 +108,7 @@ impl MyServer {
         for (dec_packet, next) in dec_packets {
             (*buffer_guard).entry(add_req.layer + 1)
                 .and_modify(|e| { 
-                    e.0[next as usize].push(dec_packet.data);
+                    e.0[next as usize].push(dec_packet);
                 }); 
         } 
     }
@@ -142,9 +142,18 @@ impl MyServer {
         for i in (0..NUM_MIXES).rev() {
             println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
             let mut packets = output_buffer.0.pop().unwrap();
+            match MIX_VERIFICATION {
+                MixnetVerification::BatchVerify => 
+                    verify_batch(&packets, &self.network_info, (layer - 1) as u64),
+                _ => 
+                    (),
+            }
             packets.shuffle(&mut thread_rng());
-
-            let task = self.send_to_mix(i, layer, packets);
+            let mut packets_data = Vec::new();
+            while !packets.is_empty() {
+                packets_data.push(packets.pop().unwrap().data);
+            }
+            let task = self.send_to_mix(i, layer, packets_data);
             mix_tasks.push(task);
         }
         join_all(mix_tasks).await;
@@ -174,9 +183,21 @@ impl MyServer {
     ) -> Vec<Vec<u8>> {
         let buffer_guard = self.output_buffer.lock().await;
         let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty");
-        let mut messages = (0..NUM_MIXES).map(|i| 
+        let mut packets = (0..NUM_MIXES).map(|i| 
                 (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
-            ).flatten().collect::<Vec<Vec<u8>>>();
+            ).flatten().collect::<Vec<Packet>>();
+
+        match MIX_VERIFICATION {
+            MixnetVerification::BatchVerify => 
+                verify_batch(&packets, &self.network_info, (*send_layer - 1) as u64),
+            _ => 
+                (),
+        }
+
+        let mut messages = Vec::new();
+            while !packets.is_empty() {
+                messages.push(packets.pop().unwrap().data);
+        }
         // Shuffle the mix output
         messages.shuffle(&mut thread_rng());
         return messages;

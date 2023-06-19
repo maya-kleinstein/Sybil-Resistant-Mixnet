@@ -24,7 +24,7 @@ pub const NUM_LAYERS: u64 = 5;
 /// The first "middle" layer
 pub const FIRST_MIDDLE_LAYER : u32 = 2;
 /// The mixnet verification type
-pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::Verify;
+pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::BatchVerify;
 /// The number of rounds to run
 pub const NUM_ROUNDS: u64 = 1;
 
