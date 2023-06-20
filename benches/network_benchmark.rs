@@ -43,7 +43,7 @@ pub fn verify_layer_benchmark(c: &mut Criterion){
     for i in &revealed_indices {
         revealed_msgs.insert(i.clone(), messages[*i]);
     }
-    c.bench_function("verify_layer", |b| b.iter(|| verify_packet(&mut packet, &network, &revealed_msgs, 0)));
+    c.bench_function("verify_layer", |b| b.iter(|| verify_packet(&mut packet, &network, 0)));
 }
 
 

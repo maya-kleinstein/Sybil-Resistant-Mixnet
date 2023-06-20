@@ -163,9 +163,7 @@ pub fn generate_layer(data: Vec<u8>, client: &Client, network: &Network, layer: 
 pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u8>{
     let mut data = enc_packet;
     let mut x = x_0;
-    // Set up msg.'s info before decrypting
-    let revealed_msgs = setup_default_msgs();
-    
+
     for i in 0..NUM_LAYERS{
         // Decrypt Packet 
         let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&data).unwrap();
@@ -173,7 +171,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
         let mut packet: Packet = bincode::deserialize(&decrypted).unwrap();
 
         // Verify ticket and proof (done by x)
-        x = verify_packet(&mut packet, &network, &revealed_msgs, i);
+        x = verify_packet(&mut packet, &network, i);
         // Retrieving data and next server 
         data = packet.data;
     }
@@ -182,32 +180,32 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 
 /// unwraps single layer of packet, given the current server and layer
 pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64) -> (Packet, u64) {
-    // Set up msg.'s info before decrypting
-    let revealed_msgs = setup_default_msgs();
-
     // Decrypt Packet 
     let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&enc_packet).unwrap();
     let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
-    let mut packet: Packet = bincode::deserialize(&decrypted).unwrap();
+    let packet: Packet = bincode::deserialize(&decrypted).unwrap();
 
+    let next_server : u64;
     // Verify ticket and proof (done by x)
-    let next_server = verify_packet(&mut packet, &network, &revealed_msgs, layer);
+    match MIX_VERIFICATION {
+        MixnetVerification::Verify => 
+            next_server = verify_packet(&packet, &network, layer),
+        _ => 
+            next_server = get_next_server_from_packet(&packet, &network),
+    };
     // Retrieving data and next server 
     return (packet, next_server);
 }
 
 
 /// Verify the proof of knowledge of the signature and the ticket
-pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTreeMap<usize, SignatureMessage>, layer: u64) -> u64 {
+pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> u64 {
+    let revealed_msgs = setup_default_msgs();
+
     // Calculating next server using the ticket
     let mut cursor = Cursor::new(&packet.ticket);
     let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
-
-    match MIX_VERIFICATION {
-        MixnetVerification::Verify => (),
-        _ => return x,
-    };
 
     // Recovering the value of b
     let ticket_vals = TicketValues{
@@ -232,6 +230,12 @@ pub fn verify_packet(packet: &mut Packet, network: &Network, revealed_msgs: &BTr
     return x;
 }
 
+pub fn get_next_server_from_packet(packet: &Packet, network: &Network) -> u64 {
+    let mut cursor = Cursor::new(&packet.ticket);
+    let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
+    let x = calculate_next_server(t_recovered, network.size);
+    return x;
+}
 
 /// Verify batch
 pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64){

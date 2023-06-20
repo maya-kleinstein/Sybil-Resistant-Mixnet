@@ -93,13 +93,11 @@ impl MyServer {
         request: Request<AddRequest>,
     ) -> () {
         let add_req = request.into_inner();
-        let mut dec_packets = Vec::new();
-        for packet in add_req.packets {
-            let (dec_packet, next) = decrypt_layer(packet, self.id.into(), &self.network_info, 0);
-            dec_packets.push((dec_packet, next));
-        }
-
+        // Decrypt packets - Verify as well in case of MixnetVerification::Verify
+        let dec_packets = decrypt_incoming_packets(add_req.packets, self.id, add_req.layer, &self.network_info);
+        
         let mut buffer_guard = self.output_buffer.lock().await;
+        // Update counter
         (*buffer_guard).entry(add_req.layer + 1)
                 .or_insert((vec![vec![].into(); NUM_MIXES.into()], 0))
                 .1 += 1;
@@ -121,16 +119,11 @@ impl MyServer {
         
         let mut guard = self.output_buffer.lock().await;
         // Check if it is a middle layer
-        if (*guard).is_empty() {
-            return
-        }
-        let current_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
-        let counter: u32 = (*guard).get(&current_layer).unwrap().1;
-        if !is_middle_layer(current_layer, counter) {
+        if !is_middle_layer(&*guard) {
                 return
         }
 
-        if current_layer == FIRST_MIDDLE_LAYER {
+        if (*guard).keys().min().unwrap().clone() == FIRST_MIDDLE_LAYER {
             let mut time_guard = self.time.lock().await;
             *time_guard = Instant::now();
         }
@@ -139,15 +132,13 @@ impl MyServer {
         let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
         let mut output_buffer = (*guard).remove(&layer).unwrap();
         drop(guard);
+        // For edge case mixnet verification
+        let edge_case = get_edge_case(&output_buffer.0);
         for i in (0..NUM_MIXES).rev() {
             println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
             let mut packets = output_buffer.0.pop().unwrap();
-            match MIX_VERIFICATION {
-                MixnetVerification::BatchVerify => 
-                    verify_batch(&packets, &self.network_info, (layer - 1) as u64),
-                _ => 
-                    (),
-            }
+            // Verify packets if needed
+            handle_verify_on_output(&packets, &self.network_info, layer, self.id, Some(i), edge_case);
             packets.shuffle(&mut thread_rng());
             let mut packets_data = Vec::new();
             while !packets.is_empty() {
@@ -187,12 +178,7 @@ impl MyServer {
                 (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
             ).flatten().collect::<Vec<Packet>>();
 
-        match MIX_VERIFICATION {
-            MixnetVerification::BatchVerify => 
-                verify_batch(&packets, &self.network_info, (*send_layer - 1) as u64),
-            _ => 
-                (),
-        }
+        handle_verify_on_output(&packets, &self.network_info, send_layer.clone(), self.id, None, 0);
 
         let mut messages = Vec::new();
             while !packets.is_empty() {
@@ -253,8 +239,69 @@ pub async fn connect_to_server(dst: u16) -> MixClient<Channel>{
 }
 
 
-fn is_middle_layer(current_layer: u32, counter: u32) -> bool {
+fn decrypt_incoming_packets(
+    packets: Vec<Vec<u8>>,
+    id: u16,
+    layer: u32,
+    network_info: &Network,
+) -> Vec<(Packet, u64)> {
+    let mut dec_packets = Vec::new();
+    for packet in packets {
+        let (dec_packet, next) = decrypt_layer(packet, id.into(), network_info, layer as u64);
+        dec_packets.push((dec_packet, next));
+    }
+    return dec_packets;
+}
+
+
+/// Verify outgoing packets when MIX_VERIFICATION is set to BatchVerify OR OnlyVerifyEdgeCases
+fn handle_verify_on_output(
+    packets: &Vec<Packet>,
+    network_info: &Network,
+    layer: u32,
+    src: u16,
+    dst: Option<u16>, // None if output is to client
+    edge_case: usize,
+) {
+    match MIX_VERIFICATION {
+        MixnetVerification::BatchVerify => 
+            verify_batch(&packets, network_info, (layer - 1) as u64),
+        MixnetVerification::OnlyVerifyEdgeCases =>
+            match dst {
+                Some(dst) => {
+                    if dst == edge_case as u16 {
+                        println!("mix {} is verifying edge case to mix {}", src, dst);
+                        verify_batch(&packets, network_info, (layer - 1) as u64);
+                    }
+                }
+                None => (),
+            },
+        _ => 
+            (),
+    }  
+}
+
+
+fn is_middle_layer(guard: &HashMap<u32, (Vec<Vec<Packet>>, u32)>) -> bool {
+    if guard.is_empty() {
+        return false;
+    }
+    let current_layer = guard.keys().min().expect("HashMap is Empty").clone();
+    let counter: u32 = guard.get(&current_layer).unwrap().1;
+    
     return counter % (NUM_MIXES as u32) == 0 && (current_layer as u64) != NUM_LAYERS;
+}
+
+fn get_edge_case(output_buffer: &Vec<Vec<Packet>>) -> usize {
+    let mut max_index = 0;
+    let mut max_size = 0;
+    for (i, packets) in output_buffer.iter().enumerate() {
+        if packets.len() > max_size {
+            max_size = packets.len();
+            max_index = i;
+        }
+    }
+    return max_index;
 }
 
 
