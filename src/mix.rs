@@ -11,7 +11,7 @@ use mix_service::mix_client::MixClient;
 use futures::future::join_all;
 use crate::config::*;
 use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
-use crate::network::{Network, decrypt_layer, Packet, verify_batch};
+use crate::network::{Network, decrypt_layer, Packet, verify_batch, verify_packet};
 use rand::thread_rng;
 use rand::seq::SliceRandom;
 use rayon::prelude::*;
@@ -133,13 +133,22 @@ impl MyServer {
         let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
         let mut output_buffer = (*guard).remove(&layer).unwrap();
         drop(guard);
+
         // For edge case mixnet verification
-        let edge_case = get_edge_case(&output_buffer.0);
+        let (edge_case_index, total_outgoing) = get_edge_case_info(&output_buffer.0);
+        
         for i in (0..NUM_MIXES).rev() {
             println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
             let mut packets = output_buffer.0.pop().unwrap();
             // Verify packets if needed
-            handle_verify_on_output(&packets, &self.network_info, layer, self.id, Some(i), edge_case);
+            handle_verify_on_output(
+                &packets, 
+                &self.network_info, 
+                layer, self.id, 
+                Some(i), 
+                edge_case_index, 
+                total_outgoing
+            );
             packets.shuffle(&mut thread_rng());
             let mut packets_data = Vec::new();
             while !packets.is_empty() {
@@ -179,7 +188,7 @@ impl MyServer {
                 (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
             ).flatten().collect::<Vec<Packet>>();
 
-        handle_verify_on_output(&packets, &self.network_info, send_layer.clone(), self.id, None, 0);
+        handle_verify_on_output(&packets, &self.network_info, send_layer.clone(), self.id, None, 0, 0);
 
         let mut messages = Vec::new();
             while !packets.is_empty() {
@@ -264,19 +273,24 @@ fn handle_verify_on_output(
     layer: u32,
     src: u16,
     dst: Option<u16>, // None if output is to client
-    edge_case: usize,
+    edge_case_index: usize,
+    total_outgoing: usize,
 ) {
     match MIX_VERIFICATION {
         MixnetVerification::BatchVerify => 
             verify_batch(&packets, network_info, (layer - 1) as u64),
         MixnetVerification::OnlyVerifyEdgeCases =>
             match dst {
+                // Middle layer outputing to mix
                 Some(dst) => {
-                    if dst == edge_case as u16 {
+                    if dst == edge_case_index as u16 && is_out_of_bounds(packets.len(), total_outgoing.clone()) {
                         println!("mix {} is verifying edge case to mix {}", src, dst);
-                        verify_batch(&packets, network_info, (layer - 1) as u64);
+                        packets.par_iter().map(|i| 
+                            verify_packet(i, network_info, (layer - 1) as u64)
+                        ).collect::<Vec<u64>>();
                     }
                 }
+                // Last layer outputing to config ("clients")
                 None => (),
             },
         _ => 
@@ -295,16 +309,18 @@ fn is_middle_layer(guard: &HashMap<u32, (Vec<Vec<Packet>>, u32)>) -> bool {
     return counter % (NUM_MIXES as u32) == 0 && (current_layer as u64) != NUM_LAYERS;
 }
 
-fn get_edge_case(output_buffer: &Vec<Vec<Packet>>) -> usize {
+fn get_edge_case_info(output_buffer: &Vec<Vec<Packet>>) -> (usize, usize) {
     let mut max_index = 0;
     let mut max_size = 0;
+    let mut total_outgoing = 0;
     for (i, packets) in output_buffer.iter().enumerate() {
+        total_outgoing += packets.len();
         if packets.len() > max_size {
             max_size = packets.len();
             max_index = i;
         }
     }
-    return max_index;
+    return (max_index, total_outgoing);
 }
 
 

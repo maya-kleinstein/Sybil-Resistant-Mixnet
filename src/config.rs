@@ -1,9 +1,9 @@
 use crate::mix::mix_service::GetRequest;
-use tonic::Request;
-
-use futures::future::join_all;
-
 use crate::mix::connect_to_server;
+use tonic::Request;
+use futures::future::join_all;
+use statrs::distribution::{Binomial, DiscreteCDF};
+
 
 /// Choose the verification format for the mixnet
 pub enum MixnetVerification{
@@ -18,7 +18,7 @@ pub const BASE_PORT: u16 = 50700;
 /// The number of mixes
 pub const NUM_MIXES: u16 = 2;
 /// The number of expected clients
-pub const NUM_CLIENTS: u64 = 1000;
+pub const NUM_CLIENTS: u64 = 10;
 /// The number of layers in the mixnet
 pub const NUM_LAYERS: u64 = 5;
 /// The first "middle" layer
@@ -27,6 +27,8 @@ pub const FIRST_MIDDLE_LAYER : u32 = 2;
 pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::OnlyVerifyEdgeCases;
 /// The number of rounds to run
 pub const NUM_ROUNDS: u64 = 1;
+/// The percentage of cases to be considered "out of bounds" for edge OnlyVerifyEdgeCases
+pub const EDGE_LIMIT: f64 = 0.1;
 
 
 pub async fn run_config(){
@@ -37,9 +39,24 @@ pub async fn run_config(){
         let task = tokio::spawn(async move {
             let request = Request::new(GetRequest {});
             let response = mix.get(request).await.unwrap().into_inner();
-            println!("Config recv'd get response from mix {}: {:?}", i, response);
+            println!("Config recv'd get response from mix {} of size: {}", i, response.messages.len());
         });
         tasks.push(task);
     }
     join_all(tasks).await;
+}
+
+/// Returns if the amount of packets "i" is to be considered questionable 
+pub fn is_out_of_bounds(i: usize, total: usize) -> bool {
+    let p = (1 as f64)/(NUM_MIXES as f64);
+    let binomial = Binomial::new(p, total as u64).unwrap();
+    // cdf = Prob(Bin(n,p) <= i)
+    let cdf = binomial.cdf(i as u64);
+    let result = (1 as f64 - cdf) < EDGE_LIMIT;
+    if result {
+        println!("OVER BOUND! number of packets: {}, total outgoing: {}, probability: {}",
+            i, total, (1 as f64 - cdf)
+        );
+    }
+    result
 }
