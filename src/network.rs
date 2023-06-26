@@ -179,9 +179,9 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 }
 
 /// unwraps single layer of packet, given the current server and layer
-pub fn decrypt_layer(enc_packet: Vec<u8>, x: u64, network: &Network, layer: u64) -> (Packet, u64) {
+pub fn decrypt_layer(enc_packet: &[u8], x: u64, network: &Network, layer: u64) -> (Packet, u64) {
     // Decrypt Packet 
-    let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&enc_packet).unwrap();
+    let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(enc_packet).unwrap();
     let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
     let packet: Packet = bincode::deserialize(&decrypted).unwrap();
 

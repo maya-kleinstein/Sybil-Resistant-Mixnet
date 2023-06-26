@@ -50,7 +50,7 @@ pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>>{
 pub fn process_init_packets(init_packets: Vec<Vec<u8>>, id: u16, network: &Network, layer: u64) -> Vec<Vec<Vec<u8>>> {
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); NUM_MIXES.into()];
     for packet in init_packets {
-        let (dec_packet, next) = decrypt_layer(packet, id.into(), network, layer);
+        let (dec_packet, next) = decrypt_layer(&packet, id.into(), network, layer);
         packets[next as usize].push(dec_packet.data);
     }
     return packets;

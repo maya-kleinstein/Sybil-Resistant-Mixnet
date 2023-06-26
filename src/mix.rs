@@ -14,6 +14,7 @@ use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{Network, decrypt_layer, Packet, verify_batch};
 use rand::thread_rng;
 use rand::seq::SliceRandom;
+use rayon::prelude::*;
 
 /// Service created from proto file
 pub mod mix_service {
@@ -245,11 +246,13 @@ fn decrypt_incoming_packets(
     layer: u32,
     network_info: &Network,
 ) -> Vec<(Packet, u64)> {
-    let mut dec_packets = Vec::new();
-    for packet in packets {
-        let (dec_packet, next) = decrypt_layer(packet, id.into(), network_info, layer as u64);
-        dec_packets.push((dec_packet, next));
-    }
+    let dec_packets = packets.par_iter().map(|i| 
+        decrypt_layer(
+            i,
+            id.into(),
+            network_info,
+            layer as u64
+        )).collect();
     return dec_packets;
 }
 
