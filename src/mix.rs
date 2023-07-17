@@ -14,7 +14,7 @@ use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{Network, decrypt_layer, Packet, verify_batch, verify_packet};
 use rand::thread_rng;
 use rand::seq::SliceRandom;
-use rayon::prelude::*;
+use rayon::{prelude::*, vec};
 
 /// Service created from proto file
 pub mod mix_service {
@@ -142,7 +142,7 @@ impl MyServer {
             let mut packets = output_buffer.0.pop().unwrap();
             // Verify packets if needed
             handle_verify_on_output(
-                &packets, 
+                &mut packets, 
                 &self.network_info, 
                 layer, self.id, 
                 Some(i), 
@@ -188,7 +188,7 @@ impl MyServer {
                 (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
             ).flatten().collect::<Vec<Packet>>();
 
-        handle_verify_on_output(&packets, &self.network_info, send_layer.clone(), self.id, None, 0, 0);
+        handle_verify_on_output(&mut packets, &self.network_info, send_layer.clone(), self.id, None, 0, 0);
 
         let mut messages = Vec::new();
             while !packets.is_empty() {
@@ -255,7 +255,7 @@ fn decrypt_incoming_packets(
     layer: u32,
     network_info: &Network,
 ) -> Vec<(Packet, u64)> {
-    let dec_packets = packets.par_iter().map(|i| 
+    let dec_packets = packets.par_iter().filter_map(|i| 
         decrypt_layer(
             i,
             id.into(),
@@ -268,7 +268,7 @@ fn decrypt_incoming_packets(
 
 /// Verify outgoing packets when MIX_VERIFICATION is set to BatchVerify OR OnlyVerifyEdgeCases
 fn handle_verify_on_output(
-    packets: &Vec<Packet>,
+    packets: &mut Vec<Packet>,
     network_info: &Network,
     layer: u32,
     src: u16,
@@ -281,16 +281,15 @@ fn handle_verify_on_output(
             verify_batch(&packets, network_info, (layer - 1) as u64),
         MixnetVerification::OnlyVerifyEdgeCases =>
             match dst {
-                // Middle layer outputing to mix
+                // In the case of a middle layer outputing to mix
                 Some(dst) => {
                     if dst == edge_case_index as u16 && is_out_of_bounds(packets.len(), total_outgoing.clone()) {
                         println!("mix {} is verifying edge case to mix {}", src, dst);
-                        packets.par_iter().map(|i| 
-                            verify_packet(i, network_info, (layer - 1) as u64)
-                        ).collect::<Vec<u64>>();
+                        // Verify all packets, "throw away" all non valid packets
+                        verify_outgoing_packets(packets, network_info, layer);                        
                     }
                 }
-                // Last layer outputing to config ("clients")
+                // In the case of last layer outputing to config ("clients")
                 None => (),
             },
         _ => 
@@ -323,6 +322,29 @@ fn get_edge_case_info(output_buffer: &Vec<Vec<Packet>>) -> (usize, usize) {
     return (max_index, total_outgoing);
 }
 
+
+/// Verifies outgoing packets, drops invalid ones.
+fn verify_outgoing_packets(
+    packets: &mut Vec<Packet>,
+    network_info: &Network,
+    layer: u32,
+){
+    let retain_flags: Vec<bool> = 
+    packets.par_iter().map(|packet| 
+        verify_packet(packet, network_info, (layer - 1) as u64).1
+    ).collect();
+
+    let mut valid_packets: Vec<Packet> = 
+        Vec::with_capacity(retain_flags.iter().filter(|&&item| item).count());
+
+    for (packet, flag) in packets.drain(..).zip(retain_flags.into_iter()) {
+            if flag {
+                valid_packets.push(packet);
+            }
+        }
+
+    *packets = valid_packets;
+}
 
 async fn start_server(id: u16) {
     let mix = MyServer::new(id);

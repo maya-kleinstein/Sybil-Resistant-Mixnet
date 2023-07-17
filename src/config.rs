@@ -18,7 +18,7 @@ pub const BASE_PORT: u16 = 50700;
 /// The number of mixes
 pub const NUM_MIXES: u16 = 2;
 /// The number of expected clients
-pub const NUM_CLIENTS: u64 = 10;
+pub const NUM_CLIENTS: u64 = 100;
 /// The number of layers in the mixnet
 pub const NUM_LAYERS: u64 = 5;
 /// The first "middle" layer
@@ -28,7 +28,7 @@ pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::OnlyVerifyE
 /// The number of rounds to run
 pub const NUM_ROUNDS: u64 = 1;
 /// The percentage of cases to be considered "out of bounds" for edge OnlyVerifyEdgeCases
-pub const EDGE_LIMIT: f64 = 0.1;
+pub const EDGE_LIMIT: f64 = 0.3;
 
 
 pub async fn run_config(){

@@ -171,7 +171,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
         let mut packet: Packet = bincode::deserialize(&decrypted).unwrap();
 
         // Verify ticket and proof (done by x)
-        x = verify_packet(&mut packet, &network, i);
+        x = verify_packet(&mut packet, &network, i).0;
         // Retrieving data and next server 
         data = packet.data;
     }
@@ -179,27 +179,37 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 }
 
 /// unwraps single layer of packet, given the current server and layer
-pub fn decrypt_layer(enc_packet: &[u8], x: u64, network: &Network, layer: u64) -> (Packet, u64) {
+pub fn decrypt_layer(
+    enc_packet: &[u8], 
+    x: u64, network: &Network, 
+    layer: u64
+) -> Option<(Packet, u64)> {
     // Decrypt Packet 
     let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(enc_packet).unwrap();
     let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
     let packet: Packet = bincode::deserialize(&decrypted).unwrap();
 
-    let next_server : u64;
+    let next_server: u64;
+    let valid: bool;
     // Verify ticket and proof (done by x)
     match MIX_VERIFICATION {
         MixnetVerification::Verify => 
-            next_server = verify_packet(&packet, &network, layer),
+            {
+                (next_server, valid) = verify_packet(&packet, &network, layer);
+                if !valid {
+                    return None;
+                }
+            },
         _ => 
             next_server = get_next_server_from_packet(&packet, &network),
     };
     // Retrieving data and next server 
-    return (packet, next_server);
+    return Some((packet, next_server));
 }
 
 
 /// Verify the proof of knowledge of the signature and the ticket
-pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> u64 {
+pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> (u64, bool) {
     let revealed_msgs = setup_default_msgs();
 
     // Calculating next server using the ticket
@@ -223,11 +233,11 @@ pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> u64 {
     // The verifier generates the challenge on its own.
     let challenge_bytes = proof.get_bytes_for_challenge(revealed_indices.clone(), &network.id_provider.bbs_keys.0, b_recovered, t_recovered);
     let challenge_verifier = ProofChallenge::hash(&challenge_bytes);
-    assert!(proof
+    let valid = proof
         .verify(&network.id_provider.bbs_keys.0, &revealed_msgs, &challenge_verifier, b_recovered, t_recovered)
         .unwrap()
-        .is_valid());
-    return x;
+        .is_valid();
+    return (x, valid);
 }
 
 pub fn get_next_server_from_packet(packet: &Packet, network: &Network) -> u64 {
