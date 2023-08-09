@@ -19,12 +19,14 @@ pub const BASE_PORT: u16 = 50700;
 pub const NUM_MIXES: u16 = 2;
 /// The number of expected clients
 pub const NUM_CLIENTS: u64 = 100;
+/// The percentage of malicious clients
+pub const PERCENTAGE_BAD_CLIENTS: f64 = 1.0;
 /// The number of layers in the mixnet
-pub const NUM_LAYERS: u64 = 5;
+pub const NUM_LAYERS: u64 = 6;
 /// The first "middle" layer
 pub const FIRST_MIDDLE_LAYER : u32 = 2;
 /// The mixnet verification type
-pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::OnlyVerifyEdgeCases;
+pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::NoVerification;
 /// The number of rounds to run
 pub const NUM_ROUNDS: u64 = 1;
 /// The percentage of cases to be considered "out of bounds" for edge OnlyVerifyEdgeCases
@@ -52,7 +54,7 @@ pub fn is_out_of_bounds(i: usize, total: usize) -> bool {
     let binomial = Binomial::new(p, total as u64).unwrap();
     // cdf = Prob(Bin(n,p) <= i)
     let cdf = binomial.cdf(i as u64);
-    let result = (1 as f64 - cdf) < EDGE_LIMIT;
+    let result = (1 as f64 - cdf) < EDGE_LIMIT && i > total/(NUM_MIXES as usize);
     if result {
         println!("OVER BOUND! number of packets: {}, total outgoing: {}, probability: {}",
             i, total, (1 as f64 - cdf)

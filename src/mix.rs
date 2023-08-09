@@ -14,7 +14,7 @@ use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{Network, decrypt_layer, Packet, verify_batch, verify_packet};
 use rand::thread_rng;
 use rand::seq::SliceRandom;
-use rayon::{prelude::*, vec};
+use rayon::prelude::*;
 
 /// Service created from proto file
 pub mod mix_service {
@@ -123,12 +123,11 @@ impl MyServer {
         if !is_middle_layer(&*guard) {
                 return
         }
-
+        // Start timer when first packet recv'd
         if (*guard).keys().min().unwrap().clone() == FIRST_MIDDLE_LAYER {
             let mut time_guard = self.time.lock().await;
             *time_guard = Instant::now();
         }
-
         // Send to all mixes
         let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
         let mut output_buffer = (*guard).remove(&layer).unwrap();
@@ -144,7 +143,8 @@ impl MyServer {
             handle_verify_on_output(
                 &mut packets, 
                 &self.network_info, 
-                layer, self.id, 
+                layer,
+                self.id, 
                 Some(i), 
                 edge_case_index, 
                 total_outgoing
@@ -187,7 +187,6 @@ impl MyServer {
         let mut packets = (0..NUM_MIXES).map(|i| 
                 (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
             ).flatten().collect::<Vec<Packet>>();
-
         handle_verify_on_output(&mut packets, &self.network_info, send_layer.clone(), self.id, None, 0, 0);
 
         let mut messages = Vec::new();
@@ -248,8 +247,8 @@ pub async fn connect_to_server(dst: u16) -> MixClient<Channel>{
     return conn_result.unwrap();
 }
 
-
-fn decrypt_incoming_packets(
+/// Decrypt incoming packets
+pub fn decrypt_incoming_packets(
     packets: Vec<Vec<u8>>,
     id: u16,
     layer: u32,
@@ -308,6 +307,8 @@ fn is_middle_layer(guard: &HashMap<u32, (Vec<Vec<Packet>>, u32)>) -> bool {
     return counter % (NUM_MIXES as u32) == 0 && (current_layer as u64) != NUM_LAYERS;
 }
 
+/// returns the number of outgoing packets
+/// and the server that will get the maximum amount of packets
 fn get_edge_case_info(output_buffer: &Vec<Vec<Packet>>) -> (usize, usize) {
     let mut max_index = 0;
     let mut max_size = 0;

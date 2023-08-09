@@ -688,9 +688,18 @@ impl PoKOfTicketProof{
         t: G1,
     ) -> Result<PoKOfTicketProofStatus, BBSError> {
         // Verifying all the non pairing equations
-        if self.verify_without_pairing(vk, revealed_msgs, challenge, b, t).is_err(){
-            return Ok(PoKOfTicketProofStatus::BadSignature)
-        }
+        let verify_without_pairing = self.verify_without_pairing(vk, revealed_msgs, challenge, b, t);
+
+        match verify_without_pairing {
+            Ok(pok_status) => {
+                if !pok_status.is_valid() {
+                    return Ok(pok_status);
+                }
+            },
+            Err(err) => {
+                return Err(err)
+            },
+        };
 
         // Verifying the equation e(a_prime, w) = e(a_bar, g_2) 
         let mut a_bar = self.a_bar;

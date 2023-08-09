@@ -132,7 +132,6 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     return (data, x);
 }
 
-
 /// Create packet with data proof and ticket
 pub fn generate_layer(data: Vec<u8>, client: &Client, network: &Network, layer: u64) -> (Packet, u64){
     // t = b^e, where b=H0(layer, RoundID, SysRand) and e is part of signature
@@ -158,7 +157,6 @@ pub fn generate_layer(data: Vec<u8>, client: &Client, network: &Network, layer: 
     return (packet, x);
 }
 
-
 /// Decrypt a packet traversing through the network
 pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u8>{
     let mut data = enc_packet;
@@ -179,6 +177,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
 }
 
 /// unwraps single layer of packet, given the current server and layer
+/// Verifies in case of mixnet type verify
 pub fn decrypt_layer(
     enc_packet: &[u8], 
     x: u64, network: &Network, 
@@ -207,8 +206,8 @@ pub fn decrypt_layer(
     return Some((packet, next_server));
 }
 
-
 /// Verify the proof of knowledge of the signature and the ticket
+/// Return the next server and is_valid
 pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> (u64, bool) {
     let revealed_msgs = setup_default_msgs();
 
@@ -285,8 +284,8 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64){
         .is_valid());
 }
 
-
 /// Generating packets with false proofs
+/// TODO: NOT DONE YET
 pub fn generate_bad_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64){
     let mut data: Vec<u8> = data;
     let mut x: u64 = 0;
@@ -297,8 +296,17 @@ pub fn generate_bad_packet(data: Vec<u8>, client: &Client, network: &Network) ->
         // Creates packet layer (proof + ticket)
         (packet, x) = generate_layer(data, client, network, i);
 
-        // Mess with packet
-        packet.proof[0] ^= 1;
+        // Mess with packet by setting ticket to default
+        if i > 0 {
+            packet.ticket = vec![];
+            G1::default().serialize(&mut packet.ticket, false).unwrap();
+
+            // Calculating next server using the corrupted ticket
+            // let mut cursor = Cursor::new(&packet.ticket);
+            // let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
+            x = calculate_next_server(G1::default(), network.size);
+
+        }
 
         // Serialize packet
         let encoded_packet = bincode::serialize(&packet).unwrap();

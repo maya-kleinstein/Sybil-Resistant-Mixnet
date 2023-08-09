@@ -1,6 +1,11 @@
 use serde::{Serialize, Deserialize};
 
-use crate::{network::{Network, Client, generate_packet, decrypt_layer, Server, IDProvider}, config::{NUM_MIXES, NUM_CLIENTS}, ToVariableLengthBytes};
+use crate::{
+    network::{Network, Client, Server, IDProvider, generate_bad_packet, generate_packet},
+    config::{NUM_MIXES, NUM_CLIENTS, PERCENTAGE_BAD_CLIENTS},
+    mix::decrypt_incoming_packets,
+    ToVariableLengthBytes
+};
 use std::{fs::File, convert::TryInto};
 use std::io::{Read, Write};
 
@@ -12,20 +17,24 @@ pub const BASE_FOLDER: &str = "";
 
 /*
 To later decrypt + run through mixes we need this crypto info: layer, mix id + key
-To verify validity in every mix we also need: network generic info
+To verify validity in every mix we also need: generic network info
 */ 
 
 /// Write all heavy computation data to predetermined files
 pub fn setup_files(){
     // Generate all data needed to test the mixnet
     let network = Network::new(NUM_MIXES.into());
-    let mut clients: Vec<Client> = Vec::new();
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); NUM_MIXES.into()];
     for i in 0..NUM_CLIENTS {
         let data = vec![i as u8; 3];
         let client = Client::new(&network);
-        let (packet, first_server) = generate_packet(data, &client, &network);
-        clients.push(client);
+        let (packet, first_server): (Vec<u8>, u64);
+        if i < ((NUM_CLIENTS as f64) * PERCENTAGE_BAD_CLIENTS) as u64 {
+            (packet, first_server) = generate_bad_packet(data, &client, &network);
+        }
+        else {
+            (packet, first_server) = generate_packet(data, &client, &network);
+        }
         packets[first_server as usize].push(packet);
     }
     
@@ -49,10 +58,13 @@ pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>>{
 
 pub fn process_init_packets(init_packets: Vec<Vec<u8>>, id: u16, network: &Network, layer: u64) -> Vec<Vec<Vec<u8>>> {
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); NUM_MIXES.into()];
-    for packet in init_packets {
-        let (dec_packet, next) = decrypt_layer(&packet, id.into(), network, layer).unwrap();
+    
+    let dec_packets = decrypt_incoming_packets(init_packets, id, layer as u32, network);
+
+    // Insert decrypted packets to output_buffer
+    for (dec_packet, next) in dec_packets {
         packets[next as usize].push(dec_packet.data);
-    }
+    } 
     return packets;
 }
 
@@ -101,8 +113,6 @@ pub fn serialize_network(data: &Network, filename: &str) -> Result<(), Box<dyn s
     let serial_network = SerialNetwork {
         serial_id_provider_0: data.id_provider.bbs_keys.0.to_bytes_compressed_form(),
         serial_id_provider_1: data.id_provider.bbs_keys.1.to_bytes_compressed_form().to_vec(),
-        // serial_id_provider_0: data.id_provider.bbs_keys.0.clone(),
-        // serial_id_provider_1: data.id_provider.bbs_keys.1.clone(),
         sys_rand: data.sys_rand,
         round_id: data.round_id,
         size: data.size,
