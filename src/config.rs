@@ -26,7 +26,7 @@ pub const NUM_LAYERS: u64 = 6;
 /// The first "middle" layer
 pub const FIRST_MIDDLE_LAYER : u32 = 2;
 /// The mixnet verification type
-pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::NoVerification;
+pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::OnlyVerifyEdgeCases;
 /// The number of rounds to run
 pub const NUM_ROUNDS: u64 = 1;
 /// The percentage of cases to be considered "out of bounds" for edge OnlyVerifyEdgeCases

@@ -298,14 +298,11 @@ pub fn generate_bad_packet(data: Vec<u8>, client: &Client, network: &Network) ->
 
         // Mess with packet by setting ticket to default
         if i > 0 {
+            let false_ticket = G1::default();
             packet.ticket = vec![];
-            G1::default().serialize(&mut packet.ticket, false).unwrap();
-
-            // Calculating next server using the corrupted ticket
-            // let mut cursor = Cursor::new(&packet.ticket);
-            // let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
-            x = calculate_next_server(G1::default(), network.size);
-
+            
+            false_ticket.serialize(&mut packet.ticket, false).unwrap();
+            x = calculate_next_server(false_ticket, network.size);
         }
 
         // Serialize packet
