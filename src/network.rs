@@ -1,6 +1,6 @@
 use crate::pok_ticket::{PoKOfTicket, PoKOfTicketProof};
 use crate::prelude::{*, PublicKey};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::convert::TryInto;
 use std::io::Cursor;
 use blake2::Blake2b;
@@ -10,6 +10,7 @@ use pairing_plus::{CurveProjective, CurveAffine};
 use pairing_plus::bls12_381::{G1, Fr};
 use pairing_plus::hash_to_curve::HashToCurve;
 use pairing_plus::hash_to_field::ExpandMsgXmd;
+use rand::rngs::OsRng;
 use rand_4net::Rng;
 use serde::{Serialize, Deserialize};
 use blake2::VarBlake2b;
@@ -286,7 +287,12 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64){
 
 /// Generating packets with false proofs
 /// TODO: NOT DONE YET
-pub fn generate_bad_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64){
+pub fn generate_bad_packet(
+    data: Vec<u8>,
+    client: &Client, 
+    network: &Network,
+    bad_tickets: &Vec<G1>,
+) -> (Vec<u8>, u64){
     let mut data: Vec<u8> = data;
     let mut x: u64 = 0;
     let mut packet: Packet;
@@ -298,7 +304,8 @@ pub fn generate_bad_packet(data: Vec<u8>, client: &Client, network: &Network) ->
 
         // Mess with packet by setting ticket to default
         if i > 0 {
-            let false_ticket = G1::default();
+            let false_ticket = bad_tickets[i as usize - 1];
+
             packet.ticket = vec![];
             
             false_ticket.serialize(&mut packet.ticket, false).unwrap();
@@ -330,6 +337,23 @@ pub fn create_network(network: &mut Network, size: u64){
     for i in 0..size{
         network.servers[i as usize] = Server::new();
     }
+}
+
+/// Get a random ticket that maps to i for all i in range(NUM_SERVERS)
+pub fn ticket_server_map_generator() -> HashMap<u64, G1> {
+    // create a hashmap for (ticket, server) mapping
+    let mut ticket_server_map: HashMap<u64, G1> = HashMap::new();
+    // generate values until hashmap is full
+    let r = &mut OsRng;
+    while ticket_server_map.len() < NUM_MIXES.into(){
+        let rand_ticket = G1::random(r);
+        let rand_server = calculate_next_server(rand_ticket, NUM_MIXES.into());
+        // if rand_server is not in hashmap, add it
+        if !ticket_server_map.contains_key(&rand_server){
+            ticket_server_map.insert(rand_server, rand_ticket);
+        }
+    }
+    return ticket_server_map;
 }
 
 

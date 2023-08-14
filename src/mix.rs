@@ -137,8 +137,8 @@ impl MyServer {
         let (edge_case_index, total_outgoing) = get_edge_case_info(&output_buffer.0);
         
         for i in (0..NUM_MIXES).rev() {
-            println!("packets for layer {} sent from mix {} to {}", layer + 1, self.id, i);
             let mut packets = output_buffer.0.pop().unwrap();
+            println!("{} packets for layer {} sent from mix {} to {}",packets.len(), layer + 1, self.id, i);
             // Verify packets if needed
             handle_verify_on_output(
                 &mut packets, 

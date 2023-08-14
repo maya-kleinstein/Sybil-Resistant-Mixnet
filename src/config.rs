@@ -3,8 +3,22 @@ use crate::mix::connect_to_server;
 use tonic::Request;
 use futures::future::join_all;
 use statrs::distribution::{Binomial, DiscreteCDF};
+use serde::{Serialize, Deserialize};
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub struct ConfigInfo {
+    pub(crate) num_mixes: u16,
+    pub(crate) num_clients: u64,
+    pub(crate) percentage_bad_clients: f64,
+    pub(crate) num_layers: u64,
+    pub(crate) first_middle_layer: u32,
+    pub(crate) mix_verification: MixnetVerification,
+    pub(crate) num_rounds: u32,
+    pub(crate) edge_limit: f64,
+}
 
 
+#[derive(Clone, Copy, Serialize, Deserialize)]
 /// Choose the verification format for the mixnet
 pub enum MixnetVerification{
     NoVerification,
@@ -18,19 +32,19 @@ pub const BASE_PORT: u16 = 50700;
 /// The number of mixes
 pub const NUM_MIXES: u16 = 2;
 /// The number of expected clients
-pub const NUM_CLIENTS: u64 = 100;
+pub const NUM_CLIENTS: u64 = 10;
 /// The percentage of malicious clients
 pub const PERCENTAGE_BAD_CLIENTS: f64 = 1.0;
 /// The number of layers in the mixnet
-pub const NUM_LAYERS: u64 = 6;
+pub const NUM_LAYERS: u64 = 4;
 /// The first "middle" layer
 pub const FIRST_MIDDLE_LAYER : u32 = 2;
 /// The mixnet verification type
-pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::OnlyVerifyEdgeCases;
+pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::NoVerification;
 /// The number of rounds to run
 pub const NUM_ROUNDS: u64 = 1;
 /// The percentage of cases to be considered "out of bounds" for edge OnlyVerifyEdgeCases
-pub const EDGE_LIMIT: f64 = 0.3;
+pub const EDGE_LIMIT: f64 = 0.1;
 
 
 pub async fn run_config(){

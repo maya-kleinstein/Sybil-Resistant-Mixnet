@@ -1,8 +1,8 @@
 use serde::{Serialize, Deserialize};
 
 use crate::{
-    network::{Network, Client, Server, IDProvider, generate_bad_packet, generate_packet},
-    config::{NUM_MIXES, NUM_CLIENTS, PERCENTAGE_BAD_CLIENTS},
+    network::{Network, Client, Server, IDProvider, generate_bad_packet, generate_packet, ticket_server_map_generator},
+    config::{NUM_MIXES, NUM_CLIENTS, PERCENTAGE_BAD_CLIENTS, ConfigInfo, MixnetVerification, NUM_LAYERS},
     mix::decrypt_incoming_packets,
     ToVariableLengthBytes
 };
@@ -25,12 +25,20 @@ pub fn setup_files(){
     // Generate all data needed to test the mixnet
     let network = Network::new(NUM_MIXES.into());
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); NUM_MIXES.into()];
+
+    // get ticket server mapping
+    let mapping = ticket_server_map_generator();
+    let mut bad_tickets_vec = vec![];
+    for i in 0..NUM_LAYERS {
+        bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
+    }
+
     for i in 0..NUM_CLIENTS {
         let data = vec![i as u8; 3];
         let client = Client::new(&network);
         let (packet, first_server): (Vec<u8>, u64);
         if i < ((NUM_CLIENTS as f64) * PERCENTAGE_BAD_CLIENTS) as u64 {
-            (packet, first_server) = generate_bad_packet(data, &client, &network);
+            (packet, first_server) = generate_bad_packet(data, &client, &network, &bad_tickets_vec);
         }
         else {
             (packet, first_server) = generate_packet(data, &client, &network);
@@ -47,6 +55,21 @@ pub fn setup_files(){
     let filename = "network";
     //serialize_info_to_file::<Network>(&network, filename).unwrap();
     serialize_network(&network, filename).unwrap();
+
+    // Write config data to file
+    let config_info = ConfigInfo {
+        num_mixes: 2,
+        num_clients: 100,
+        percentage_bad_clients: 1.0,
+        num_layers: 5,
+        first_middle_layer: 2,
+        mix_verification: MixnetVerification::NoVerification,
+        num_rounds: 1,
+        edge_limit: 0.3,
+    };
+
+    let filename = "config_info";
+    serialize_info_to_file::<ConfigInfo>(&config_info, filename).unwrap();
 }
 
 pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>>{
@@ -72,6 +95,12 @@ pub fn get_network_info() -> Network {
     let filename = "network";
     let network: Network = deserialize_network(filename).unwrap();
     return network;
+}
+
+pub fn get_config_info() -> ConfigInfo {
+    let filename = "config_info";
+    let config_info: ConfigInfo = deserialize_info_from_file(&filename).unwrap();
+    return config_info;
 }
 
 pub fn serialize_info_to_file<T: Serialize>(data: &T, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
