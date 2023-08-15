@@ -32,18 +32,20 @@ pub struct MyServer {
     // Maps between mix id to connection
     channels: Arc<Mutex<HashMap<u32, MixClient<Channel>>>>,
     network_info: Network,
+    config_info: ConfigInfo,
     notify:Arc<Semaphore>,
     time: Mutex<Instant>,
 }
 
 impl MyServer{
     /// Create instance of MyServer
-    pub fn new(id: u16) -> Self {
+    pub fn new(config_info: ConfigInfo, id: u16) -> Self {
         return MyServer { 
             id,
             output_buffer: Mutex::new(HashMap::new()),
             channels: Arc::new(Mutex::new(HashMap::new())),
             network_info: get_network_info(),
+            config_info,
             notify: Arc::new(Semaphore::new(0)),
             time: Mutex::new(Instant::now()),
         }
@@ -73,7 +75,8 @@ impl Mix for MyServer {
     ) -> Result<Response<GetResponse>, Status>  {
         println!("mix {} got a get request", self.id);
         // Wait til the mix is done getting add requests from all layers
-        let _ = self.notify.acquire_many((NUM_MIXES as u32)*((NUM_LAYERS - 1) as u32)).await.unwrap();
+        let amount_to_acquire = (self.config_info.num_mixes as u32)*((self.config_info.num_layers - 1) as u32);
+        let _ = self.notify.acquire_many(amount_to_acquire).await.unwrap();
         let messages = self.output_all().await;
 
         // Measure time
@@ -100,7 +103,7 @@ impl MyServer {
         let mut buffer_guard = self.output_buffer.lock().await;
         // Update counter
         (*buffer_guard).entry(add_req.layer + 1)
-                .or_insert((vec![vec![].into(); NUM_MIXES.into()], 0))
+                .or_insert((vec![vec![].into(); self.config_info.num_mixes.into()], 0))
                 .1 += 1;
 
         // Insert decrypted packets to output_buffer
@@ -116,15 +119,15 @@ impl MyServer {
     async fn handle_middle_layer(
         &self,
     ) -> () {      
-        let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
+        let mut mix_tasks = Vec::with_capacity(self.config_info.num_mixes.into());
         
         let mut guard = self.output_buffer.lock().await;
         // Check if it is a middle layer
-        if !is_middle_layer(&*guard) {
+        if !is_middle_layer(&self.config_info, &*guard) {
                 return
         }
         // Start timer when first packet recv'd
-        if (*guard).keys().min().unwrap().clone() == FIRST_MIDDLE_LAYER {
+        if (*guard).keys().min().unwrap().clone() == self.config_info.first_middle_layer {
             let mut time_guard = self.time.lock().await;
             *time_guard = Instant::now();
         }
@@ -136,13 +139,14 @@ impl MyServer {
         // For edge case mixnet verification
         let (edge_case_index, total_outgoing) = get_edge_case_info(&output_buffer.0);
         
-        for i in (0..NUM_MIXES).rev() {
+        for i in (0..self.config_info.num_mixes).rev() {
             let mut packets = output_buffer.0.pop().unwrap();
             println!("{} packets for layer {} sent from mix {} to {}",packets.len(), layer + 1, self.id, i);
             // Verify packets if needed
             handle_verify_on_output(
                 &mut packets, 
-                &self.network_info, 
+                &self.network_info,
+                &self.config_info, 
                 layer,
                 self.id, 
                 Some(i), 
@@ -173,7 +177,9 @@ impl MyServer {
         };
         let mut channels_guard = self.channels.lock().await;
         let mut channel = (*channels_guard).entry(i.into())
-            .or_insert(MixClient::connect(format!("http://[::1]:{}", BASE_PORT + i)).await.unwrap()).clone();
+            .or_insert(
+                MixClient::connect(format!("http://[::1]:{}", self.config_info.base_port + i)).await.unwrap()
+            ).clone();
         drop(channels_guard);
         channel.add(Request::new(add_req)).await.expect("Failed to send add");
     }
@@ -184,10 +190,16 @@ impl MyServer {
     ) -> Vec<Vec<u8>> {
         let buffer_guard = self.output_buffer.lock().await;
         let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty");
-        let mut packets = (0..NUM_MIXES).map(|i| 
+        let mut packets = (0..self.config_info.num_mixes).map(|i| 
                 (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec()
             ).flatten().collect::<Vec<Packet>>();
-        handle_verify_on_output(&mut packets, &self.network_info, send_layer.clone(), self.id, None, 0, 0);
+        handle_verify_on_output(
+            &mut packets, 
+            &self.network_info, 
+            &self.config_info,
+            send_layer.clone(), 
+            self.id, None, 0, 0
+        );
 
         let mut messages = Vec::new();
             while !packets.is_empty() {
@@ -199,9 +211,9 @@ impl MyServer {
     }
 }
 
-async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
+async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32, config_info: &ConfigInfo) {
     // Try connecting until success
-    let mut conn = connect_to_server(dst).await;
+    let mut conn = connect_to_server(config_info, dst).await;
 
     println!("mix {} connected to {} mix", src, dst);
 
@@ -213,13 +225,13 @@ async fn connect_and_send(dst : u16, src: u16, packets: Vec<Vec<u8>>, layer: u32
     conn.add(Request::new(add_req)).await.expect("Failed to send add");
 }
 
-fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
-    let mut mix_tasks = Vec::with_capacity(NUM_MIXES.into());
-    let mut init_buffer = process_init_packets(get_init_packets(id), id, &get_network_info(), 0);
-    for i in (0..NUM_MIXES).rev() {
+fn send_init_packets(config_info: ConfigInfo, id: u16) -> Vec<JoinHandle<()>>{
+    let mut mix_tasks = Vec::with_capacity(config_info.num_mixes.into());
+    let mut init_buffer = process_init_packets(get_init_packets(id), &config_info, &get_network_info(), id, 0);
+    for i in (0..config_info.num_mixes).rev() {
         let packets = init_buffer.pop().unwrap();
         let task = tokio::spawn(async move {
-            connect_and_send(i, id, packets, 1).await;
+            connect_and_send(i, id, packets, 1, &config_info).await;
         });
         mix_tasks.push(task);
     }
@@ -228,9 +240,9 @@ fn send_init_packets(id: u16) -> Vec<JoinHandle<()>>{
 
 
 /// Try connecting to server dst until success
-pub async fn connect_to_server(dst: u16) -> MixClient<Channel>{
+pub async fn connect_to_server(config_info: &ConfigInfo, dst: u16) -> MixClient<Channel>{
     let mut conn_result =
-    MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
+    MixClient::connect(format!("http://[::1]:{}", config_info.base_port + dst)).await;
     loop {
         match conn_result {
             Ok(ref _result) => {
@@ -240,7 +252,7 @@ pub async fn connect_to_server(dst: u16) -> MixClient<Channel>{
                 println!("Failed to connect to mix {}: {:?}", dst, error);
                 sleep(Duration::from_micros(1)).await;
                 conn_result =
-                    MixClient::connect(format!("http://[::1]:{}", BASE_PORT + dst)).await;
+                    MixClient::connect(format!("http://[::1]:{}", config_info.base_port + dst)).await;
             }
         }
     }
@@ -269,20 +281,22 @@ pub fn decrypt_incoming_packets(
 fn handle_verify_on_output(
     packets: &mut Vec<Packet>,
     network_info: &Network,
+    config_info: &ConfigInfo,
     layer: u32,
     src: u16,
     dst: Option<u16>, // None if output is to client
     edge_case_index: usize,
     total_outgoing: usize,
 ) {
-    match MIX_VERIFICATION {
+    match config_info.mix_verification {
         MixnetVerification::BatchVerify => 
             verify_batch(&packets, network_info, (layer - 1) as u64),
         MixnetVerification::OnlyVerifyEdgeCases =>
             match dst {
                 // In the case of a middle layer outputing to mix
                 Some(dst) => {
-                    if dst == edge_case_index as u16 && is_out_of_bounds(packets.len(), total_outgoing.clone()) {
+                    if dst == edge_case_index as u16 && 
+                        is_out_of_bounds(config_info, packets.len(), total_outgoing.clone()) {
                         println!("mix {} is verifying edge case to mix {}", src, dst);
                         // Verify all packets, "throw away" all non valid packets
                         verify_outgoing_packets(packets, network_info, layer);                        
@@ -297,14 +311,15 @@ fn handle_verify_on_output(
 }
 
 
-fn is_middle_layer(guard: &HashMap<u32, (Vec<Vec<Packet>>, u32)>) -> bool {
+fn is_middle_layer(config_info: &ConfigInfo, guard: &HashMap<u32, (Vec<Vec<Packet>>, u32)>) -> bool {
     if guard.is_empty() {
         return false;
     }
     let current_layer = guard.keys().min().expect("HashMap is Empty").clone();
     let counter: u32 = guard.get(&current_layer).unwrap().1;
     
-    return counter % (NUM_MIXES as u32) == 0 && (current_layer as u64) != NUM_LAYERS;
+    return counter % (config_info.num_mixes as u32) == 0 
+            && (current_layer as u64) != config_info.num_layers;
 }
 
 /// returns the number of outgoing packets
@@ -347,13 +362,13 @@ fn verify_outgoing_packets(
     *packets = valid_packets;
 }
 
-async fn start_server(id: u16) {
-    let mix = MyServer::new(id);
+async fn start_server(config_info: ConfigInfo, id: u16) {
+    let mix = MyServer::new(config_info, id);
     println!("Start mix {}", id);
     let task = tokio::spawn(async move {
         Server::builder()
             .add_service(MixServer::new(mix))
-            .serve_with_shutdown(format!("[::1]:{}", BASE_PORT + id).parse().unwrap(), async {
+            .serve_with_shutdown(format!("[::1]:{}", config_info.base_port + id).parse().unwrap(), async {
                 // Wait for a SIGINT signal to shutdown
                 tokio::signal::ctrl_c().await.unwrap();
             })
@@ -364,9 +379,9 @@ async fn start_server(id: u16) {
 
 
 /// runs Mix
-pub async fn run_mix(id: u16){
-    let server_task = start_server(id);
-    let mix_tasks = send_init_packets(id);
+pub async fn run_mix(config_info: ConfigInfo, id: u16){
+    let mix_tasks = send_init_packets(config_info, id);
+    let server_task = start_server(config_info, id);
     server_task.await;
     join_all(mix_tasks).await;
 }

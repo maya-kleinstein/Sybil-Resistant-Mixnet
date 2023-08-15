@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::{
     network::{Network, Client, Server, IDProvider, generate_bad_packet, generate_packet, ticket_server_map_generator},
-    config::{NUM_MIXES, NUM_CLIENTS, PERCENTAGE_BAD_CLIENTS, ConfigInfo, MixnetVerification, NUM_LAYERS},
+    config::{ConfigInfo, MixnetVerification},
     mix::decrypt_incoming_packets,
     ToVariableLengthBytes
 };
@@ -21,23 +21,32 @@ To verify validity in every mix we also need: generic network info
 */ 
 
 /// Write all heavy computation data to predetermined files
-pub fn setup_files(){
+pub fn setup_files(config_info: ConfigInfo){
+    // Write config data to file
+    let filename = "config_info";
+    serialize_info_to_file::<ConfigInfo>(&config_info, filename).unwrap();
+
     // Generate all data needed to test the mixnet
-    let network = Network::new(NUM_MIXES.into());
-    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); NUM_MIXES.into()];
+    let network = Network::new(
+        config_info.num_mixes.into(), 
+        config_info.num_layers,
+        config_info.mix_verification
+    );
+    
+    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
 
     // get ticket server mapping
-    let mapping = ticket_server_map_generator();
+    let mapping = ticket_server_map_generator(config_info.num_mixes.into());
     let mut bad_tickets_vec = vec![];
-    for i in 0..NUM_LAYERS {
+    for i in 0..config_info.num_layers {
         bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
     }
 
-    for i in 0..NUM_CLIENTS {
+    for i in 0..config_info.num_clients {
         let data = vec![i as u8; 3];
         let client = Client::new(&network);
         let (packet, first_server): (Vec<u8>, u64);
-        if i < ((NUM_CLIENTS as f64) * PERCENTAGE_BAD_CLIENTS) as u64 {
+        if i < ((config_info.num_clients as f64) * config_info.percentage_bad_clients) as u64 {
             (packet, first_server) = generate_bad_packet(data, &client, &network, &bad_tickets_vec);
         }
         else {
@@ -47,7 +56,7 @@ pub fn setup_files(){
     }
     
     // Write packets to intended files
-    for i in 0..NUM_MIXES {
+    for i in 0..config_info.num_mixes {
         let filename = format!("packets_{}", i);
         serialize_info_to_file::<Vec<Vec<u8>>>(&packets[i as usize], &filename).unwrap();
     }
@@ -55,21 +64,6 @@ pub fn setup_files(){
     let filename = "network";
     //serialize_info_to_file::<Network>(&network, filename).unwrap();
     serialize_network(&network, filename).unwrap();
-
-    // Write config data to file
-    let config_info = ConfigInfo {
-        num_mixes: 2,
-        num_clients: 100,
-        percentage_bad_clients: 1.0,
-        num_layers: 5,
-        first_middle_layer: 2,
-        mix_verification: MixnetVerification::NoVerification,
-        num_rounds: 1,
-        edge_limit: 0.3,
-    };
-
-    let filename = "config_info";
-    serialize_info_to_file::<ConfigInfo>(&config_info, filename).unwrap();
 }
 
 pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>>{
@@ -79,8 +73,14 @@ pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>>{
 }
 
 
-pub fn process_init_packets(init_packets: Vec<Vec<u8>>, id: u16, network: &Network, layer: u64) -> Vec<Vec<Vec<u8>>> {
-    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); NUM_MIXES.into()];
+pub fn process_init_packets(
+    init_packets: Vec<Vec<u8>>, 
+    config_info: &ConfigInfo,
+    network: &Network, 
+    id: u16, 
+    layer: u64
+) -> Vec<Vec<Vec<u8>>> {
+    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
     
     let dec_packets = decrypt_incoming_packets(init_packets, id, layer as u32, network);
 
@@ -135,6 +135,8 @@ pub struct SerialNetwork{
     pub round_id: u32,
     /// Amount of servers in the network
     pub size: u64,
+    pub num_layers: u64,
+    pub mix_verification: MixnetVerification,
     pub servers: Vec<Server>,
 }
 
@@ -145,6 +147,8 @@ pub fn serialize_network(data: &Network, filename: &str) -> Result<(), Box<dyn s
         sys_rand: data.sys_rand,
         round_id: data.round_id,
         size: data.size,
+        num_layers: data.num_layers,
+        mix_verification: data.mix_verification,
         servers: data.servers.clone(),
     };
     return serialize_info_to_file::<SerialNetwork>(&serial_network, filename);
@@ -163,6 +167,8 @@ pub fn deserialize_network(filename: &str) -> Result<Network, serde_json::Error>
         sys_rand: serial_network.sys_rand,
         round_id: serial_network.round_id, 
         size: serial_network.size, 
+        num_layers: serial_network.num_layers,
+        mix_verification: serial_network.mix_verification,
         servers: serial_network.servers, 
     };
     return Ok(network);

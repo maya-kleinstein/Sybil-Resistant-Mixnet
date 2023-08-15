@@ -21,8 +21,20 @@ fn system_test() {
 
 #[test]
 fn marshalling_test() {
-    setup_files();
-    for i in 0..NUM_MIXES {
+    let config_info = ConfigInfo {
+        base_port: 8000,
+        num_mixes: 2,
+        num_clients: 100,
+        percentage_bad_clients: 1.0,
+        num_layers: 5,
+        first_middle_layer: 2,
+        mix_verification: MixnetVerification::NoVerification,
+        num_rounds: 1,
+        edge_limit: 0.3,
+    };
+
+    setup_files(config_info);
+    for i in 0..(config_info.num_mixes) {
         let packets = get_init_packets(i);
         println!("{} recv'd {} packets", i, packets.len());
     }
@@ -64,7 +76,7 @@ fn how_tf_threads_work(){
 
 #[test]
 fn marshal_network_test(){
-    let x = Network::new(NUM_MIXES.into());
+    let x = Network::new(2, 3, MixnetVerification::NoVerification);
     let filename = "testt";
     serialize_network(&x, filename).unwrap();
     let network: Network = deserialize_network(filename).unwrap();

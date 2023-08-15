@@ -5,20 +5,21 @@ use futures::future::join_all;
 use statrs::distribution::{Binomial, DiscreteCDF};
 use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ConfigInfo {
-    pub(crate) num_mixes: u16,
-    pub(crate) num_clients: u64,
-    pub(crate) percentage_bad_clients: f64,
-    pub(crate) num_layers: u64,
-    pub(crate) first_middle_layer: u32,
-    pub(crate) mix_verification: MixnetVerification,
-    pub(crate) num_rounds: u32,
-    pub(crate) edge_limit: f64,
+    pub base_port: u16,
+    pub num_mixes: u16,
+    pub num_clients: u64,
+    pub percentage_bad_clients: f64,
+    pub num_layers: u64,
+    pub first_middle_layer: u32,
+    pub mix_verification: MixnetVerification,
+    pub num_rounds: u32,
+    pub edge_limit: f64,
 }
 
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 /// Choose the verification format for the mixnet
 pub enum MixnetVerification{
     NoVerification,
@@ -27,30 +28,11 @@ pub enum MixnetVerification{
     OnlyVerifyEdgeCases,
 }
 
-/// The port for the first mix
-pub const BASE_PORT: u16 = 50700;
-/// The number of mixes
-pub const NUM_MIXES: u16 = 2;
-/// The number of expected clients
-pub const NUM_CLIENTS: u64 = 10;
-/// The percentage of malicious clients
-pub const PERCENTAGE_BAD_CLIENTS: f64 = 1.0;
-/// The number of layers in the mixnet
-pub const NUM_LAYERS: u64 = 4;
-/// The first "middle" layer
-pub const FIRST_MIDDLE_LAYER : u32 = 2;
-/// The mixnet verification type
-pub const MIX_VERIFICATION: MixnetVerification = MixnetVerification::NoVerification;
-/// The number of rounds to run
-pub const NUM_ROUNDS: u64 = 1;
-/// The percentage of cases to be considered "out of bounds" for edge OnlyVerifyEdgeCases
-pub const EDGE_LIMIT: f64 = 0.1;
 
-
-pub async fn run_config(){
-    let mut tasks = Vec::with_capacity(NUM_MIXES.into());
-    for i in 0..NUM_MIXES {
-        let mut mix = connect_to_server(i).await;
+pub async fn run_config(config_info: ConfigInfo){
+    let mut tasks = Vec::with_capacity(config_info.num_mixes.into());
+    for i in 0..config_info.num_mixes {
+        let mut mix = connect_to_server(&config_info, i).await;
         println!("CONFIG connected to mix {}", i);
         let task = tokio::spawn(async move {
             let request = Request::new(GetRequest {});
@@ -63,12 +45,12 @@ pub async fn run_config(){
 }
 
 /// Returns if the amount of packets "i" is to be considered questionable 
-pub fn is_out_of_bounds(i: usize, total: usize) -> bool {
-    let p = (1 as f64)/(NUM_MIXES as f64);
+pub fn is_out_of_bounds(config_info: &ConfigInfo, i: usize, total: usize) -> bool {
+    let p = (1 as f64)/(config_info.num_mixes as f64);
     let binomial = Binomial::new(p, total as u64).unwrap();
     // cdf = Prob(Bin(n,p) <= i)
     let cdf = binomial.cdf(i as u64);
-    let result = (1 as f64 - cdf) < EDGE_LIMIT && i > total/(NUM_MIXES as usize);
+    let result = (1 as f64 - cdf) < config_info.edge_limit && i > total/(config_info.num_mixes as usize);
     if result {
         println!("OVER BOUND! number of packets: {}, total outgoing: {}, probability: {}",
             i, total, (1 as f64 - cdf)
