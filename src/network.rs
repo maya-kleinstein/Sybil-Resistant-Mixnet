@@ -88,13 +88,17 @@ pub struct Network{
     pub round_id: u32,
     /// Amount of servers in the network
     pub size: u64,
+    /// Amount of layers in the network
+    pub layers: u64,
+    /// Verification type
+    pub mix_verification: MixnetVerification,
     pub servers: Vec<Server>,
 }
 
 
 impl Network {
     /// Generate a network of size size
-    pub fn new(size: u64) -> Network {
+    pub fn new(size: u64, layers: u64, mix_verification: MixnetVerification) -> Network {
         let id_provider = IDProvider {
             bbs_keys: Issuer::new_keys(1).unwrap(),
         };
@@ -104,6 +108,8 @@ impl Network {
             sys_rand: 0,
             round_id: 0,
             size,
+            layers,
+            mix_verification,
             servers,
         }
     }
@@ -119,7 +125,7 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Ve
     let mut packet: Packet;
 
     // Onion Encrypt the data using the keys matching the calculated tickets
-    for i in (0..*NUM_LAYERS).rev(){
+    for i in (0..network.layers).rev(){
         // Creates packet layer (proof + ticket)
         (packet, x) = generate_layer(data, client, network, i);
 
@@ -145,7 +151,7 @@ pub fn generate_layer(data: Vec<u8>, client: &Client, network: &Network, layer: 
     t.serialize(&mut t_buf, false).unwrap();
 
     let mut proof: Vec<u8> = Vec::new();
-    match *MIX_VERIFICATION {
+    match network.mix_verification {
         MixnetVerification::NoVerification => (),
         _ => proof = get_ticket_proof(client, network, t, b).to_bytes_uncompressed_form(),
     };
@@ -163,7 +169,7 @@ pub fn decrypt_packet(enc_packet: Vec<u8>, x_0 :u64, network: &Network) -> Vec<u
     let mut data = enc_packet;
     let mut x = x_0;
 
-    for i in 0..*NUM_LAYERS{
+    for i in 0..network.layers{
         // Decrypt Packet 
         let dryocbox : DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> = bincode::deserialize(&data).unwrap();
         let decrypted = dryocbox.unseal_to_vec(&network.servers[x as usize].key_pair).expect("unable to decrypt");
@@ -192,7 +198,7 @@ pub fn decrypt_layer(
     let next_server: u64;
     let valid: bool;
     // Verify ticket and proof (done by x)
-    match *MIX_VERIFICATION {
+    match network.mix_verification {
         MixnetVerification::Verify => 
             {
                 (next_server, valid) = verify_packet(&packet, &network, layer);
@@ -298,7 +304,7 @@ pub fn generate_bad_packet(
     let mut packet: Packet;
 
     // Onion Encrypt the data using the keys matching the calculated tickets
-    for i in (0..*NUM_LAYERS).rev(){
+    for i in (0..network.layers).rev(){
         // Creates packet layer (proof + ticket)
         (packet, x) = generate_layer(data, client, network, i);
 
@@ -339,7 +345,7 @@ pub fn create_network(network: &mut Network, size: u64){
     }
 }
 
-/// Get a random ticket that maps to i for all i in range(NUM_SERVERS)
+/// Get a random ticket that maps to i for all i in range(num_mixes)
 pub fn ticket_server_map_generator(num_mixes: u16) -> HashMap<u64, G1> {
     // create a hashmap for (ticket, server) mapping
     let mut ticket_server_map: HashMap<u64, G1> = HashMap::new();
@@ -436,10 +442,12 @@ mod tests{
     use super::*;
  
     const TEST_NETWORK_SIZE: u64 = 2;
+    const TEST_NETWORK_LAYERS: u64 = 3;
+    const TEST_NETWORK_MIX_VERIFICATION: MixnetVerification = MixnetVerification::NoVerification;
 
     #[test]
     pub fn test_simple_network(){
-        let network = Network::new(TEST_NETWORK_SIZE);
+        let network = Network::new(TEST_NETWORK_SIZE, TEST_NETWORK_LAYERS, TEST_NETWORK_MIX_VERIFICATION);
         let client = Client::new(&network);
         let data = vec![b'a', b'b', b'c'];
         let (enc_data, first_server) = generate_packet(data, &client, &network);
@@ -454,7 +462,7 @@ mod tests{
 
     #[test]
     pub fn test_batch_verification(){
-        let network = Network::new(2);
+        let network = Network::new(2, 3, MixnetVerification::NoVerification);
         let clients = vec![
             Client::new(&network),
             Client::new(&network),

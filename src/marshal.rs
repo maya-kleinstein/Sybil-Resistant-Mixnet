@@ -29,6 +29,8 @@ pub fn setup_files(config_info: ConfigInfo){
     // Generate all data needed to test the mixnet
     let network = Network::new(
         config_info.num_mixes.into(), 
+        config_info.num_layers,
+        config_info.mix_verification,
     );
     
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
@@ -132,6 +134,10 @@ pub struct SerialNetwork{
     pub round_id: u32,
     /// Amount of servers in the network
     pub size: u64,
+    /// Amount of layers in the network
+    pub layers: u64,
+    /// Verification type
+    pub mix_verification: MixnetVerification,
     pub servers: Vec<Server>,
 }
 
@@ -142,6 +148,8 @@ pub fn serialize_network(data: &Network, filename: &str) -> Result<(), Box<dyn s
         sys_rand: data.sys_rand,
         round_id: data.round_id,
         size: data.size,
+        layers: data.layers,
+        mix_verification: data.mix_verification,
         servers: data.servers.clone(),
     };
     return serialize_info_to_file::<SerialNetwork>(&serial_network, filename);
@@ -160,6 +168,8 @@ pub fn deserialize_network(filename: &str) -> Result<Network, serde_json::Error>
         sys_rand: serial_network.sys_rand,
         round_id: serial_network.round_id, 
         size: serial_network.size, 
+        layers: serial_network.layers,
+        mix_verification: serial_network.mix_verification,
         servers: serial_network.servers, 
     };
     return Ok(network);
