@@ -76,7 +76,7 @@ fn how_tf_threads_work(){
 
 #[test]
 fn marshal_network_test(){
-    let x = Network::new(2, 3, MixnetVerification::NoVerification);
+    let x = Network::new(2);
     let filename = "testt";
     serialize_network(&x, filename).unwrap();
     let network: Network = deserialize_network(filename).unwrap();

@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::{
     network::{Network, Client, Server, IDProvider, generate_bad_packet, generate_packet, ticket_server_map_generator},
-    config::{ConfigInfo, MixnetVerification},
+    config::*,
     mix::decrypt_incoming_packets,
     ToVariableLengthBytes
 };
@@ -29,8 +29,6 @@ pub fn setup_files(config_info: ConfigInfo){
     // Generate all data needed to test the mixnet
     let network = Network::new(
         config_info.num_mixes.into(), 
-        config_info.num_layers,
-        config_info.mix_verification
     );
     
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
@@ -75,12 +73,11 @@ pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>>{
 
 pub fn process_init_packets(
     init_packets: Vec<Vec<u8>>, 
-    config_info: &ConfigInfo,
     network: &Network, 
     id: u16, 
     layer: u64
 ) -> Vec<Vec<Vec<u8>>> {
-    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
+    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); Into::<usize>::into(*NUM_MIXES)];
     
     let dec_packets = decrypt_incoming_packets(init_packets, id, layer as u32, network);
 
@@ -135,8 +132,6 @@ pub struct SerialNetwork{
     pub round_id: u32,
     /// Amount of servers in the network
     pub size: u64,
-    pub num_layers: u64,
-    pub mix_verification: MixnetVerification,
     pub servers: Vec<Server>,
 }
 
@@ -147,8 +142,6 @@ pub fn serialize_network(data: &Network, filename: &str) -> Result<(), Box<dyn s
         sys_rand: data.sys_rand,
         round_id: data.round_id,
         size: data.size,
-        num_layers: data.num_layers,
-        mix_verification: data.mix_verification,
         servers: data.servers.clone(),
     };
     return serialize_info_to_file::<SerialNetwork>(&serial_network, filename);
@@ -167,8 +160,6 @@ pub fn deserialize_network(filename: &str) -> Result<Network, serde_json::Error>
         sys_rand: serial_network.sys_rand,
         round_id: serial_network.round_id, 
         size: serial_network.size, 
-        num_layers: serial_network.num_layers,
-        mix_verification: serial_network.mix_verification,
         servers: serial_network.servers, 
     };
     return Ok(network);

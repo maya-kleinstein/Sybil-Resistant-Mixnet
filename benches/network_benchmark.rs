@@ -9,7 +9,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 /// Benchmark for how long to generate packet
 pub fn generate_packet_benchmark(c: &mut Criterion) {
     let data = black_box(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    let network = black_box(Network::new(2, 3, NoVerification));
+    let network = black_box(Network::new(2));
     let client = black_box(Client::new(&network));
     c.bench_function("generate_packet", |b| b.iter(|| generate_packet(data.clone(), &client, &network)));
 }
@@ -18,7 +18,7 @@ pub fn generate_packet_benchmark(c: &mut Criterion) {
 /// Benchmark for how long to decrypt a packet (with/without verification depending on MixVerification type)
 pub fn decrypt_packet_benchmark(c: &mut Criterion){
     let data = black_box(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    let network = black_box(Network::new(2, 3, NoVerification));
+    let network = black_box(Network::new(2));
     let client = black_box(Client::new(&network));
     let (enc_data, first_server) = generate_packet(data, &client, &network);
     c.bench_function("decrypt_packet", |b| b.iter(|| decrypt_packet(enc_data.clone(), first_server, &network)));
@@ -29,7 +29,7 @@ pub fn decrypt_packet_benchmark(c: &mut Criterion){
 /// Benchmark the time it takes to verify a single layered packet
 pub fn verify_layer_benchmark(c: &mut Criterion){
     let data = black_box(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    let network = black_box(Network::new(2, 3, NoVerification));
+    let network = black_box(Network::new(2));
     let client = black_box(Client::new(&network));
     let (mut packet, _x) = generate_layer(data, &client, &network, 0);
     // Set up msg.'s info before decrypting
@@ -50,7 +50,7 @@ pub fn verify_layer_benchmark(c: &mut Criterion){
 
 /// Verify batch benchmark
 pub fn verify_batch_benchmark(c: &mut Criterion){
-    let network = black_box(Network::new(2, 3, NoVerification));
+    let network = black_box(Network::new(2));
     let batch_size = 40;
 
     let client = Client::new(&network);
