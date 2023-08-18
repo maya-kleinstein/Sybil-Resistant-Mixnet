@@ -1,7 +1,7 @@
 use futures::future::join_all;
 
-use crate::mix::*;
 use crate::config::*;
+use crate::mix::*;
 
 /// Run mixnet locally
 pub async fn run_system() {
@@ -10,9 +10,12 @@ pub async fn run_system() {
         tasks.push(run_mix(mix_id));
     }
 
-    futures::join!(async {
-        join_all(tasks).await;
-    }, async {
-        run_config().await;
-    });
+    futures::join!(
+        async {
+            join_all(tasks).await;
+        },
+        async {
+            run_config().await;
+        }
+    );
 }

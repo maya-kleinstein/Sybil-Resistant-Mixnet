@@ -1,6 +1,5 @@
 use bbs::mix::*;
 
-
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let id_arg = std::env::args().nth(1).expect("no id given");
@@ -9,4 +8,4 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// fn init_ips<T>(data: &T, filename: &str) 
+// fn init_ips<T>(data: &T, filename: &str)

@@ -1,9 +1,18 @@
-use std::{io::Cursor, collections::{BTreeMap, BTreeSet}, cmp::Ordering, fmt::{Display, Formatter, Result as FmtResult}};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet},
+    fmt::{Display, Formatter, Result as FmtResult},
+    io::Cursor,
+};
 
 use ff_zeroize::{Field, PrimeField};
-use pairing_plus::{bls12_381::{G1, Fr, Bls12, G2, Fq12, FrRepr}, CurveProjective, serdes::SerDes, CurveAffine, Engine};
+use pairing_plus::{
+    bls12_381::{Bls12, Fq12, Fr, FrRepr, G1, G2},
+    serdes::SerDes,
+    CurveAffine, CurveProjective, Engine,
+};
 
-use crate::{prelude::*, rand_non_zero_fr, multi_scalar_mul_const_time_g1, hash_to_g1};
+use crate::{hash_to_g1, multi_scalar_mul_const_time_g1, prelude::*, rand_non_zero_fr};
 
 lazy_static! {
     static ref G2_VALUE: G1 = get_g2();
@@ -22,7 +31,7 @@ pub enum PoKOfTicketProofStatus {
     /// The proof failed because a revealed message was invalid
     BadRevealedMessage,
     /// The proof failed because the ticket proof of knowledge failed
-    BadTicket
+    BadTicket,
 }
 
 impl PoKOfTicketProofStatus {
@@ -76,7 +85,6 @@ pub struct PoKOfTicketProof {
     pub(crate) proof_vc_5: ProofG1,
 }
 
-
 /// XXX: An optimization would be to combine the 2 relations into one by using the same techniques as Bulletproofs
 #[derive(Debug, Clone)]
 pub struct PoKOfTicket {
@@ -87,7 +95,7 @@ pub struct PoKOfTicket {
     /// d in section 4.5
     d: G1,
     /// C in my paper
-    c : G1,
+    c: G1,
     /// For proving relation a_bar / d == a_prime^{-e} * h_0^r2
     pok_vc_1: ProverCommittedG1,
     /// The messages
@@ -109,7 +117,6 @@ pub struct PoKOfTicket {
     /// The blinding factors
     secrets_5: Vec<Fr>,
 }
-
 
 impl PoKOfTicket {
     /// Creates the initial proof data before a Fiat-Shamir calculation
@@ -231,7 +238,6 @@ impl PoKOfTicket {
         }
         let pok_vc_2 = committing_2.finish();
 
-
         let rho1 = rand_non_zero_fr();
         let rho2 = rand_non_zero_fr();
 
@@ -247,7 +253,6 @@ impl PoKOfTicket {
         g2_rho2.mul_assign(rho2);
         c.add_assign(&g2_rho2);
 
-        
         // For proving relation C = g1^rho1*g2^rho2
         let mut committing_3 = ProverCommittingG1::new();
         let mut secrets_3 = Vec::with_capacity(2);
@@ -258,7 +263,6 @@ impl PoKOfTicket {
         committing_3.commit(&GeneratorG1(*G2_VALUE));
         secrets_3.push(rho2);
         let pok_vc_3 = committing_3.finish();
-
 
         // For proving relation 1 = C^{-e}g1^{beta1}g2^{beta2}
         let mut committing_4 = ProverCommittingG1::new();
@@ -276,7 +280,6 @@ impl PoKOfTicket {
         secrets_4.push(beta2);
         let pok_vc_4 = committing_4.finish();
 
-
         // For proving relation 1 = b^{beta1}t^{-rho1}
         let mut committing_5 = ProverCommittingG1::new();
         let mut secrets_5 = Vec::with_capacity(2);
@@ -289,7 +292,6 @@ impl PoKOfTicket {
         neg_rho1.negate();
         secrets_5.push(neg_rho1);
         let pok_vc_5 = committing_5.finish();
-
 
         Ok(Self {
             a_prime,
@@ -308,7 +310,6 @@ impl PoKOfTicket {
             secrets_5,
         })
     }
-
 
     /// Return byte representation of public elements so they can be used for challenge computation.
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -331,19 +332,14 @@ impl PoKOfTicket {
         // self.C is included as part of self.pok_vc_4
         bytes.append(&mut self.pok_vc_4.to_bytes());
 
-
         // For 5th PoKVC
         bytes.append(&mut self.pok_vc_5.to_bytes());
 
         bytes
     }
 
-
     /// Creates the final proof data after a Fiat-Shamir calculation
-    pub fn gen_proof(
-        self,
-        challenge_hash: &ProofChallenge,
-    ) -> Result<PoKOfTicketProof, BBSError> {
+    pub fn gen_proof(self, challenge_hash: &ProofChallenge) -> Result<PoKOfTicketProof, BBSError> {
         let secrets_1: Vec<_> = self
             .secrets_1
             .iter()
@@ -369,7 +365,7 @@ impl PoKOfTicket {
             .iter()
             .map(|s| SignatureMessage(*s))
             .collect();
-            
+
         let proof_vc_1 = self
             .pok_vc_1
             .gen_proof(challenge_hash, secrets_1.as_slice())?;
@@ -385,7 +381,7 @@ impl PoKOfTicket {
         let proof_vc_4 = self
             .pok_vc_4
             .gen_proof(challenge_hash, secrets_4.as_slice())?;
-            
+
         let proof_vc_5 = self
             .pok_vc_5
             .gen_proof(challenge_hash, secrets_5.as_slice())?;
@@ -404,8 +400,7 @@ impl PoKOfTicket {
     }
 }
 
-
-impl PoKOfTicketProof{
+impl PoKOfTicketProof {
     /// Convert the proof to raw bytes
     pub(crate) fn to_bytes(&self, compressed: bool) -> Vec<u8> {
         let mut output = Vec::new();
@@ -433,7 +428,6 @@ impl PoKOfTicketProof{
         let proof4_len: u32 = proof4_bytes.len() as u32;
         output.extend_from_slice(&proof4_len.to_be_bytes()[..]);
         output.append(&mut proof4_bytes);
-
 
         let mut proof5_bytes = self.proof_vc_5.to_bytes(compressed);
         output.append(&mut proof5_bytes);
@@ -477,7 +471,6 @@ impl PoKOfTicketProof{
         end = offset + proof1_bytes;
         let proof_vc_1 = ProofG1::from_bytes(&data[offset..end], g1_size, compressed)?;
 
-
         offset = end;
         end = offset + 4;
         let proof2_bytes = u32::from_be_bytes(*array_ref![data, offset, 4]) as usize;
@@ -502,7 +495,6 @@ impl PoKOfTicketProof{
         end = offset + proof4_bytes;
         let proof_vc_4 = ProofG1::from_bytes(&data[offset..end], g1_size, compressed)?;
 
-
         let proof_vc_5 = ProofG1::from_bytes(&data[end..], g1_size, compressed)?;
         Ok(Self {
             a_prime,
@@ -517,7 +509,6 @@ impl PoKOfTicketProof{
         })
     }
 
-
     /// Return bytes that need to be hashed for generating challenge. Takes `self.a_bar`,
     /// `self.a_prime`, `self.d`, `self.c` and commitment and instance data of the five proof of knowledge protocols.
     pub fn get_bytes_for_challenge(
@@ -527,7 +518,6 @@ impl PoKOfTicketProof{
         b: G1,
         t: G1,
     ) -> Vec<u8> {
-
         let mut bytes = vec![];
 
         self.a_bar.serialize(&mut bytes, false).unwrap();
@@ -556,7 +546,7 @@ impl PoKOfTicketProof{
             .commitment
             .serialize(&mut bytes, false)
             .unwrap();
-        
+
         self.c.serialize(&mut bytes, false).unwrap();
         G1::one().serialize(&mut bytes, false).unwrap();
         G2_VALUE.serialize(&mut bytes, false).unwrap();
@@ -564,20 +554,19 @@ impl PoKOfTicketProof{
             .commitment
             .serialize(&mut bytes, false)
             .unwrap();
-        
+
         b.serialize(&mut bytes, false).unwrap();
         t.serialize(&mut bytes, false).unwrap();
         self.proof_vc_5
             .commitment
             .serialize(&mut bytes, false)
             .unwrap();
-        
+
         bytes
     }
 
-
     /// Verify all equations other then the pairing equation
-    pub fn verify_without_pairing(        
+    pub fn verify_without_pairing(
         &self,
         vk: &PublicKey,
         revealed_msgs: &BTreeMap<usize, SignatureMessage>,
@@ -653,7 +642,11 @@ impl PoKOfTicketProof{
         }
 
         // Verifying proof_vc_4
-        let bases = [GeneratorG1(self.c),GeneratorG1(G1::one()), GeneratorG1(*G2_VALUE)];
+        let bases = [
+            GeneratorG1(self.c),
+            GeneratorG1(G1::one()),
+            GeneratorG1(*G2_VALUE),
+        ];
         if !self
             .proof_vc_4
             .verify(&bases, &Commitment(G1::zero()), challenge)?
@@ -671,12 +664,17 @@ impl PoKOfTicketProof{
         }
 
         // Testing if blindings for signature.e are equal
-        assert_eq!(self.proof_vc_1.responses.first().cmp(&self.proof_vc_4.responses.first()), Ordering::Equal);
-        
+        assert_eq!(
+            self.proof_vc_1
+                .responses
+                .first()
+                .cmp(&self.proof_vc_4.responses.first()),
+            Ordering::Equal
+        );
+
         // If everything worked!
         return Ok(PoKOfTicketProofStatus::Success);
     }
-
 
     /// Validate the proof
     pub fn verify(
@@ -688,20 +686,19 @@ impl PoKOfTicketProof{
         t: G1,
     ) -> Result<PoKOfTicketProofStatus, BBSError> {
         // Verifying all the non pairing equations
-        let verify_without_pairing = self.verify_without_pairing(vk, revealed_msgs, challenge, b, t);
+        let verify_without_pairing =
+            self.verify_without_pairing(vk, revealed_msgs, challenge, b, t);
 
         match verify_without_pairing {
             Ok(pok_status) => {
                 if !pok_status.is_valid() {
                     return Ok(pok_status);
                 }
-            },
-            Err(err) => {
-                return Err(err)
-            },
+            }
+            Err(err) => return Err(err),
         };
 
-        // Verifying the equation e(a_prime, w) = e(a_bar, g_2) 
+        // Verifying the equation e(a_prime, w) = e(a_bar, g_2)
         let mut a_bar = self.a_bar;
         a_bar.negate();
         match Bls12::final_exponentiation(&Bls12::miller_loop(&[
@@ -727,18 +724,20 @@ impl PoKOfTicketProof{
 
     /// Batch Verify Proofs
     pub fn batch_verify(
-        batch: Vec<(PoKOfTicketProof, ProofChallenge, G1, G1)>, 
+        batch: Vec<(PoKOfTicketProof, ProofChallenge, G1, G1)>,
         vk: &PublicKey,
         revealed_msgs: &BTreeMap<usize, SignatureMessage>,
-    ) -> Result<PoKOfTicketProofStatus, BBSError>  {
+    ) -> Result<PoKOfTicketProofStatus, BBSError> {
         for (proof, challenge, b, t) in batch.iter() {
-            let verify = proof.verify_without_pairing(vk, revealed_msgs, challenge, *b, *t).unwrap();
-            if !verify.is_valid(){
+            let verify = proof
+                .verify_without_pairing(vk, revealed_msgs, challenge, *b, *t)
+                .unwrap();
+            if !verify.is_valid() {
                 return Ok(verify);
             }
         }
 
-        // Batch Verifying the equations e(a_prime, w) = e(a_bar, g_2) 
+        // Batch Verifying the equations e(a_prime, w) = e(a_bar, g_2)
         let mut a_prime_product = G1::zero();
         let mut a_bar_product = G1::zero();
 
@@ -754,7 +753,7 @@ impl PoKOfTicketProof{
             cur_a_bar.mul_assign(rand_exponent);
             a_bar_product.sub_assign(&cur_a_bar);
         }
-        
+
         match Bls12::final_exponentiation(&Bls12::miller_loop(&[
             (
                 &a_prime_product.into_affine().prepare(),
@@ -776,8 +775,6 @@ impl PoKOfTicketProof{
         return Ok(PoKOfTicketProofStatus::Success);
     }
 }
-
-
 
 impl ToVariableLengthBytes for PoKOfTicketProof {
     type Output = PoKOfTicketProof;
@@ -802,9 +799,8 @@ impl ToVariableLengthBytes for PoKOfTicketProof {
     }
 }
 
-
 /// Returns a generator of G1 that is different from g1
-pub fn get_g2() -> G1{
+pub fn get_g2() -> G1 {
     let bytes: [u8; 3] = [1, 2, 3];
     return hash_to_g1(&bytes);
 }
