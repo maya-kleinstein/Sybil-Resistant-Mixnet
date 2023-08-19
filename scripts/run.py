@@ -8,8 +8,8 @@ import time
 parser = argparse.ArgumentParser(description='Start remote test.')
 parser.add_argument('mixes', type=int,
                     help='number of servers')
-parser.add_argument('remote', type=bool,
-                    help='running on remote ips')
+parser.add_argument('remote', type=str,
+                    help='running on remote ips or local ips')
 
 args = parser.parse_args()
 
@@ -19,16 +19,16 @@ bin_path = "C:\\university\\Thesis\\bbs\\target\\release"
 print("launching mixes")
 mprocesses = []
 for i in range(args.mixes):
-    cmd = "{}\\mix.exe {}".format(bin_path, i)
+    cmd = "{}\\mix.exe {} {}".format(bin_path, args.remote, i)
     p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
     mprocesses.append(p)
-time.sleep(0.1)
+# time.sleep(0.1)
 
 # Launch the Configurator
 print("launching configurator")
-cmd = "{}\\config.exe".format(bin_path)
+cmd = "{}\\config.exe {}".format(bin_path, args.remote)
 config_p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
-time.sleep(0.5)
+# time.sleep(0.5)
 
 
 # Cleanup

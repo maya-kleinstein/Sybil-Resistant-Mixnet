@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use futures::future::join_all;
 
 use crate::config::*;
@@ -7,7 +9,9 @@ use crate::mix::*;
 pub async fn run_system() {
     let mut tasks = vec![];
     for mix_id in 0..*NUM_MIXES {
-        tasks.push(run_mix(mix_id));
+        // these mix_ips would only work locally (obviously)
+        let mix_ips = vec!["127.0.0.1".parse::<IpAddr>().unwrap(); *NUM_MIXES as usize];
+        tasks.push(run_mix(mix_ips, mix_id));
     }
 
     futures::join!(
@@ -15,7 +19,8 @@ pub async fn run_system() {
             join_all(tasks).await;
         },
         async {
-            run_config().await;
+            let mix_ips = vec!["127.0.0.1".parse::<IpAddr>().unwrap(); *NUM_MIXES as usize];
+            run_config(mix_ips).await;
         }
     );
 }

@@ -45,10 +45,10 @@ pub enum MixnetVerification {
     OnlyVerifyEdgeCases,
 }
 
-pub async fn run_config() {
+pub async fn run_config(mix_ips: Vec<IpAddr>) {
     let mut tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
     for i in 0..*NUM_MIXES {
-        let mut mix = connect_to_server(i).await;
+        let mut mix = connect_to_server(&mix_ips[i as usize], i).await;
         println!("CONFIG connected to mix {}", i);
         let task = tokio::spawn(async move {
             let request = Request::new(GetRequest {});
@@ -65,7 +65,7 @@ pub async fn run_config() {
 }
 
 /// Get's all mixes IP's sorted, and my mix's index
-pub fn get_all_ips() -> io::Result<(Vec<IpAddr>, usize)> {
+pub fn init_data() -> io::Result<(Vec<IpAddr>, u16)> {
     let my_ip = get_my_ip()?;
     let filename = format!("{}", my_ip);
     serialize_info_to_file::<IpAddr>(&my_ip, &filename).unwrap();
@@ -83,7 +83,7 @@ pub fn get_all_ips() -> io::Result<(Vec<IpAddr>, usize)> {
     println!("All IPs: {:?}", ips);
     println!("My ID: {}", index);
 
-    Ok((ips, index))
+    Ok((ips, index as u16))
 }
 
 fn get_my_ip() -> io::Result<IpAddr> {

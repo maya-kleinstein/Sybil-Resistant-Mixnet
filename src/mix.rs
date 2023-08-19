@@ -10,6 +10,7 @@ use rand::thread_rng;
 use rayon::prelude::*;
 use statrs::distribution::{Binomial, DiscreteCDF};
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinHandle;
@@ -28,6 +29,7 @@ pub mod mix_service {
 /// Mix server struct
 pub struct MyServer {
     id: u16,
+    mix_ips: Vec<IpAddr>,
     // Maps between layer to (layer output buffer, layer add request counter)
     output_buffer: Mutex<HashMap<u32, (Vec<Vec<Packet>>, u32)>>,
     // Maps between mix id to connection
@@ -39,9 +41,10 @@ pub struct MyServer {
 
 impl MyServer {
     /// Create instance of MyServer
-    pub fn new(id: u16) -> Self {
+    pub fn new(mix_ips: Vec<IpAddr>, id: u16) -> Self {
         return MyServer {
             id,
+            mix_ips,
             output_buffer: Mutex::new(HashMap::new()),
             channels: Arc::new(Mutex::new(HashMap::new())),
             network_info: get_network_info(),
@@ -161,18 +164,22 @@ impl MyServer {
         join_all(mix_tasks).await;
     }
 
-    async fn send_to_mix(&self, i: u16, layer: u32, packets: Vec<Vec<u8>>) -> () {
+    async fn send_to_mix(&self, dst: u16, layer: u32, packets: Vec<Vec<u8>>) -> () {
         let add_req = AddRequest {
             packets: packets,
             layer: layer,
         };
         let mut channels_guard = self.channels.lock().await;
         let mut channel = (*channels_guard)
-            .entry(i.into())
+            .entry(dst.into())
             .or_insert(
-                MixClient::connect(format!("http://[::1]:{}", *BASE_PORT + i))
-                    .await
-                    .unwrap(),
+                MixClient::connect(format!(
+                    "http://{}:{}",
+                    self.mix_ips[dst as usize],
+                    *BASE_PORT + dst
+                ))
+                .await
+                .unwrap(),
             )
             .clone();
         drop(channels_guard);
@@ -210,9 +217,9 @@ impl MyServer {
     }
 }
 
-async fn connect_and_send(dst: u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
+async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
     // Try connecting until success
-    let mut conn = connect_to_server(dst).await;
+    let mut conn = connect_to_server(&dst_ip, dst).await;
 
     println!("mix {} connected to {} mix", src, dst);
 
@@ -226,13 +233,14 @@ async fn connect_and_send(dst: u16, src: u16, packets: Vec<Vec<u8>>, layer: u32)
         .expect("Failed to send add");
 }
 
-fn send_init_packets(id: u16) -> Vec<JoinHandle<()>> {
+fn send_init_packets(mix_ips: &Vec<IpAddr>, id: u16) -> Vec<JoinHandle<()>> {
     let mut mix_tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
     let mut init_buffer = process_init_packets(get_init_packets(id), &get_network_info(), id, 0);
-    for i in (0..*NUM_MIXES).rev() {
+    for dst in (0..*NUM_MIXES).rev() {
         let packets = init_buffer.pop().unwrap();
+        let dst_ip = mix_ips[dst as usize];
         let task = tokio::spawn(async move {
-            connect_and_send(i, id, packets, 1).await;
+            connect_and_send(dst_ip, dst, id, packets, 1).await;
         });
         mix_tasks.push(task);
     }
@@ -240,8 +248,9 @@ fn send_init_packets(id: u16) -> Vec<JoinHandle<()>> {
 }
 
 /// Try connecting to server dst until success
-pub async fn connect_to_server(dst: u16) -> MixClient<Channel> {
-    let mut conn_result = MixClient::connect(format!("http://[::1]:{}", *BASE_PORT + dst)).await;
+pub async fn connect_to_server(dst_ip: &IpAddr, dst: u16) -> MixClient<Channel> {
+    let mut conn_result =
+        MixClient::connect(format!("http://{}:{}", dst_ip, *BASE_PORT + dst)).await;
     loop {
         match conn_result {
             Ok(ref _result) => {
@@ -251,7 +260,7 @@ pub async fn connect_to_server(dst: u16) -> MixClient<Channel> {
                 println!("Failed to connect to mix {}: {:?}", dst, error);
                 sleep(Duration::from_micros(1)).await;
                 conn_result =
-                    MixClient::connect(format!("http://[::1]:{}", *BASE_PORT + dst)).await;
+                    MixClient::connect(format!("http://{}:{}", dst_ip, *BASE_PORT + dst)).await;
             }
         }
     }
@@ -365,14 +374,15 @@ fn verify_outgoing_packets(packets: &mut Vec<Packet>, network_info: &Network, la
     *packets = valid_packets;
 }
 
-async fn start_server(id: u16) {
-    let mix = MyServer::new(id);
+async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
+    let my_ip = mix_ips[id as usize];
+    let mix = MyServer::new(mix_ips, id);
     println!("Start mix {}", id);
     let task = tokio::spawn(async move {
         Server::builder()
             .add_service(MixServer::new(mix))
             .serve_with_shutdown(
-                format!("[::1]:{}", *BASE_PORT + id).parse().unwrap(),
+                format!("{}:{}", my_ip, *BASE_PORT + id).parse().unwrap(),
                 async {
                     // Wait for a SIGINT signal to shutdown
                     tokio::signal::ctrl_c().await.unwrap();
@@ -384,9 +394,9 @@ async fn start_server(id: u16) {
 }
 
 /// runs Mix
-pub async fn run_mix(id: u16) {
-    let mix_tasks = send_init_packets(id);
-    let server_task = start_server(id);
+pub async fn run_mix(mix_ips: Vec<IpAddr>, id: u16) {
+    let mix_tasks = send_init_packets(&mix_ips, id);
+    let server_task = start_server(mix_ips, id);
     server_task.await;
     join_all(mix_tasks).await;
 }
