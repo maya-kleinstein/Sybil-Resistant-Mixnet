@@ -1,8 +1,13 @@
+use std::net::{IpAddr, TcpStream};
+use std::thread::sleep;
+use std::time::Duration;
+use std::{fs, io};
+
+use crate::marshal::serialize_info_to_file;
 use crate::mix::connect_to_server;
 use crate::{marshal::get_config_info, mix::mix_service::GetRequest};
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
-use statrs::distribution::{Binomial, DiscreteCDF};
 use tonic::Request;
 
 lazy_static! {
@@ -59,20 +64,49 @@ pub async fn run_config() {
     join_all(tasks).await;
 }
 
-/// Returns if the amount of packets "i" is to be considered questionable
-pub fn is_out_of_bounds(i: usize, total: usize) -> bool {
-    let p = (1 as f64) / (*NUM_MIXES as f64);
-    let binomial = Binomial::new(p, total as u64).unwrap();
-    // cdf = Prob(Bin(n,p) <= i)
-    let cdf = binomial.cdf(i as u64);
-    let result = (1 as f64 - cdf) < *EDGE_LIMIT && i > total / (*NUM_MIXES as usize);
-    if result {
-        println!(
-            "OVER BOUND! number of packets: {}, total outgoing: {}, probability: {}",
-            i,
-            total,
-            (1 as f64 - cdf)
-        );
+/// Get's all mixes IP's sorted, and my mix's index
+pub fn get_all_ips() -> io::Result<(Vec<IpAddr>, usize)> {
+    let my_ip = get_my_ip()?;
+    let filename = format!("{}", my_ip);
+    serialize_info_to_file::<IpAddr>(&my_ip, &filename).unwrap();
+
+    let mut ips = get_num_ip_files()?;
+    while ips.len() as u16 != *NUM_MIXES {
+        println!("Could only find: {:?}", ips);
+        sleep(Duration::from_millis(10));
+        ips = get_num_ip_files()?;
     }
-    result
+
+    ips.sort();
+    let index = ips.iter().position(|&r| r == my_ip).unwrap();
+
+    println!("All IPs: {:?}", ips);
+    println!("My ID: {}", index);
+
+    Ok((ips, index))
+}
+
+fn get_my_ip() -> io::Result<IpAddr> {
+    // Connect to a public server to discover our external IP address
+    let socket = TcpStream::connect("google.com:80")?;
+    Ok(socket.local_addr()?.ip())
+}
+
+fn get_num_ip_files() -> std::io::Result<Vec<IpAddr>> {
+    let mut ips: Vec<IpAddr> = Vec::new();
+    for entry in fs::read_dir(".")? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(filename) = path.file_name() {
+                if let Some(filename_str) = filename.to_str() {
+                    let ip = filename_str.parse::<IpAddr>();
+                    if ip.is_ok() {
+                        ips.push(ip.unwrap());
+                    }
+                }
+            }
+        }
+    }
+    Ok(ips)
 }

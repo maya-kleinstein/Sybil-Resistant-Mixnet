@@ -13,7 +13,7 @@ parser.add_argument('remote', type=bool,
 
 args = parser.parse_args()
 
-bin_path = "C:\\university\\Thesis\\bbs\\target\\debug"
+bin_path = "C:\\university\\Thesis\\bbs\\target\\release"
 
 # Launch the Mixes
 print("launching mixes")

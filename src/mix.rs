@@ -8,6 +8,7 @@ use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rayon::prelude::*;
+use statrs::distribution::{Binomial, DiscreteCDF};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, Semaphore};
@@ -325,6 +326,24 @@ fn get_edge_case_info(output_buffer: &Vec<Vec<Packet>>) -> (usize, usize) {
         }
     }
     return (max_index, total_outgoing);
+}
+
+/// Returns if the amount of packets "i" is to be considered questionable
+fn is_out_of_bounds(i: usize, total: usize) -> bool {
+    let p = (1 as f64) / (*NUM_MIXES as f64);
+    let binomial = Binomial::new(p, total as u64).unwrap();
+    // cdf = Prob(Bin(n,p) <= i)
+    let cdf = binomial.cdf(i as u64);
+    let result = (1 as f64 - cdf) < *EDGE_LIMIT && i > total / (*NUM_MIXES as usize);
+    if result {
+        println!(
+            "OVER BOUND! number of packets: {}, total outgoing: {}, probability: {}",
+            i,
+            total,
+            (1 as f64 - cdf)
+        );
+    }
+    result
 }
 
 /// Verifies outgoing packets, drops invalid ones.
