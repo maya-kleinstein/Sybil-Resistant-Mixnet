@@ -10,10 +10,19 @@ parser.add_argument('mixes', type=int,
                     help='number of servers')
 parser.add_argument('remote', type=str,
                     help='running on remote ips or local ips')
+parser.add_argument('setup', type=bool,
+                    help="Choose whether to setup the config and network files or not")
 
 args = parser.parse_args()
 
 bin_path = "C:\\university\\Thesis\\bbs\\target\\release"
+
+# Setup files
+if args.setup:
+    print("Setting up all files")
+    cmd = "{}\\setup.exe".format(bin_path)
+    setup_p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
+
 
 # Launch the Mixes
 print("launching mixes")
@@ -23,6 +32,7 @@ for i in range(args.mixes):
     p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
     mprocesses.append(p)
 # time.sleep(0.1)
+
 
 # Launch the Configurator
 print("launching configurator")

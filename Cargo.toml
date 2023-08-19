@@ -73,3 +73,7 @@ path = "mix/mix.rs"
 [[bin]]
 name = "config"
 path = "config/config.rs"
+
+[[bin]]
+name = "setup"
+path = "setup/setup.rs"
