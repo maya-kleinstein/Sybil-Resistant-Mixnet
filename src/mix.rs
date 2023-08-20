@@ -339,17 +339,17 @@ fn get_edge_case_info(output_buffer: &Vec<Vec<Packet>>) -> (usize, usize) {
 
 /// Returns if the amount of packets "i" is to be considered questionable
 fn is_out_of_bounds(i: usize, total: usize) -> bool {
-    let p = (1 as f64) / (*NUM_MIXES as f64);
+    let p = 1_f64 / (*NUM_MIXES as f64);
     let binomial = Binomial::new(p, total as u64).unwrap();
     // cdf = Prob(Bin(n,p) <= i)
     let cdf = binomial.cdf(i as u64);
-    let result = (1 as f64 - cdf) < *EDGE_LIMIT && i > total / (*NUM_MIXES as usize);
+    let result = (1_f64 - cdf) < *EDGE_LIMIT && i > total / (*NUM_MIXES as usize);
     if result {
         println!(
             "OVER BOUND! number of packets: {}, total outgoing: {}, probability: {}",
             i,
             total,
-            (1 as f64 - cdf)
+            (1_f64 - cdf)
         );
     }
     result
