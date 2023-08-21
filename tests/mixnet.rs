@@ -39,7 +39,7 @@ fn marshalling_test() {
 }
 
 #[test]
-fn how_tf_tasks_work() {
+fn how_do_tasks_work() {
     tokio1::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -57,7 +57,7 @@ fn how_tf_tasks_work() {
 }
 
 #[test]
-fn how_tf_threads_work() {
+fn how_do_threads_work() {
     let mut threads = Vec::new();
     for i in 0..20 {
         threads.push(thread::spawn(move || println!("{}", i)))

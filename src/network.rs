@@ -328,7 +328,6 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
 }
 
 /// Generating packets with false proofs
-/// TODO: NOT DONE YET
 pub fn generate_bad_packet(
     data: Vec<u8>,
     client: &Client,

@@ -121,7 +121,6 @@ pub fn deserialize_info_from_file<T: for<'a> Deserialize<'a>>(
     let mut file = File::open(path).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
-    //println!("{}", contents.as_str());
     let result: Result<T, serde_json::Error> = serde_json::from_str::<T>(&(contents.as_str()));
     return result;
 }
