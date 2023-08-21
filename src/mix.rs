@@ -2,6 +2,7 @@ use crate::config::*;
 use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{decrypt_layer, verify_batch, verify_packet, Network, Packet};
 use futures::future::join_all;
+use log::*;
 use mix_service::mix_client::MixClient;
 use mix_service::mix_server::{Mix, MixServer};
 use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
@@ -57,7 +58,7 @@ impl MyServer {
 #[tonic::async_trait]
 impl Mix for MyServer {
     async fn add(&self, request: Request<AddRequest>) -> Result<Response<AddResponse>, Status> {
-        println!("mix {} got an add request", self.id);
+        info!("mix {} got an add request", self.id);
         self.parse_input(request).await;
 
         self.handle_middle_layer().await;
@@ -69,7 +70,7 @@ impl Mix for MyServer {
     }
 
     async fn get(&self, _request: Request<GetRequest>) -> Result<Response<GetResponse>, Status> {
-        println!("mix {} got a get request", self.id);
+        info!("mix {} got a get request", self.id);
         // Wait til the mix is done getting add requests from all layers
         let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32);
         let _ = self.notify.acquire_many(amount_to_acquire).await.unwrap();
@@ -77,8 +78,8 @@ impl Mix for MyServer {
 
         // Measure time
         let time_guard = self.time.lock().await;
-        println!(
-            "Time this round took mix {} {:?} seconds",
+        info!(
+            "This round took mix {} {:?} seconds",
             self.id,
             time_guard.elapsed()
         );
@@ -136,7 +137,7 @@ impl MyServer {
 
         for i in (0..*NUM_MIXES).rev() {
             let mut packets = output_buffer.0.pop().unwrap();
-            println!(
+            info!(
                 "{} packets for layer {} sent from mix {} to {}",
                 packets.len(),
                 layer + 1,
@@ -221,7 +222,7 @@ async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u
     // Try connecting until success
     let mut conn = connect_to_server(&dst_ip, dst).await;
 
-    println!("mix {} connected to {} mix", src, dst);
+    info!("mix {} connected to {} mix", src, dst);
 
     let add_req = AddRequest {
         packets: packets,
@@ -256,8 +257,8 @@ pub async fn connect_to_server(dst_ip: &IpAddr, dst: u16) -> MixClient<Channel> 
             Ok(ref _result) => {
                 break;
             }
-            Err(error) => {
-                println!("Failed to connect to mix {}: {:?}", dst, error);
+            Err(err) => {
+                warn!("Failed to connect to mix {}: {:?}", dst, err);
                 sleep(Duration::from_micros(1)).await;
                 conn_result =
                     MixClient::connect(format!("http://{}:{}", dst_ip, *BASE_PORT + dst)).await;
@@ -299,7 +300,7 @@ fn handle_verify_on_output(
                 if dst == edge_case_index as u16
                     && is_out_of_bounds(packets.len(), total_outgoing.clone())
                 {
-                    println!("mix {} is verifying edge case to mix {}", src, dst);
+                    info!("mix {} is verifying edge case to mix {}", src, dst);
                     // Verify all packets, "throw away" all non valid packets
                     verify_outgoing_packets(packets, network_info, layer);
                 }
@@ -345,7 +346,7 @@ fn is_out_of_bounds(i: usize, total: usize) -> bool {
     let cdf = binomial.cdf(i as u64);
     let result = (1_f64 - cdf) < *EDGE_LIMIT && i > total / (*NUM_MIXES as usize);
     if result {
-        println!(
+        info!(
             "OVER BOUND! number of packets: {}, total outgoing: {}, probability: {}",
             i,
             total,
@@ -377,7 +378,7 @@ fn verify_outgoing_packets(packets: &mut Vec<Packet>, network_info: &Network, la
 async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
     let my_ip = mix_ips[id as usize];
     let mix = MyServer::new(mix_ips, id);
-    println!("Start mix {}", id);
+    info!("Start mix {}", id);
     let task = tokio::spawn(async move {
         Server::builder()
             .add_service(MixServer::new(mix))

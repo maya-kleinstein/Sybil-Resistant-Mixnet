@@ -1,17 +1,16 @@
 use std::net::IpAddr;
 
-use bbs::{
-    config::{init_data, NUM_MIXES},
-    mix::*,
-};
+use bbs::{config::*, mix::*};
 
 #[tokio::main]
 pub async fn main() -> Result<(), &'static str> {
     let id: u16;
     let mix_ips: Vec<IpAddr>;
+    init_logger(&get_my_ip().unwrap().to_string()).unwrap();
+
     let remote_arg = std::env::args().nth(1).expect("no remote classifier given");
     match remote_arg.as_str() {
-        "remote" => (mix_ips, id) = init_data().unwrap(),
+        "remote" => (mix_ips, id) = init_mix_ips().unwrap(),
         "local" => {
             let id_arg = std::env::args().nth(2).expect("no id given");
             id = id_arg.parse().unwrap();

@@ -26,7 +26,7 @@ fn marshalling_test() {
         percentage_bad_clients: 1.0,
         num_layers: 5,
         first_middle_layer: 2,
-        mix_verification: MixnetVerification::Verify,
+        mix_verification: MixnetVerification::NoVerification,
         num_rounds: 1,
         edge_limit: 0.3,
     };

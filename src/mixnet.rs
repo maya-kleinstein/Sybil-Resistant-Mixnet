@@ -7,6 +7,8 @@ use crate::mix::*;
 
 /// Run mixnet locally
 pub async fn run_system() {
+    init_logger("local").unwrap();
+
     let mut tasks = vec![];
     for mix_id in 0..*NUM_MIXES {
         // these mix_ips would only work locally (obviously)
