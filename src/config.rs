@@ -1,9 +1,10 @@
 use std::net::{IpAddr, TcpStream};
+use std::path::MAIN_SEPARATOR;
 use std::thread::sleep;
 use std::time::Duration;
 use std::{fs, io};
 
-use crate::marshal::serialize_info_to_file;
+use crate::marshal::{serialize_info_to_file, BASE_FOLDER, IPS_FOLDER, LOGS_FOLDER};
 use crate::mix::connect_to_server;
 use crate::{marshal::get_config_info, mix::mix_service::GetRequest};
 use futures::future::join_all;
@@ -47,6 +48,7 @@ pub enum MixnetVerification {
 }
 
 pub async fn run_config(mix_ips: Vec<IpAddr>) {
+    // Connect, send get request and recv get response from all mixes
     let mut tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
     for i in 0..*NUM_MIXES {
         let mut mix = connect_to_server(&mix_ips[i as usize], i).await;
@@ -66,6 +68,8 @@ pub async fn run_config(mix_ips: Vec<IpAddr>) {
         tasks.push(task);
     }
     join_all(tasks).await;
+
+    // Generate final log, clear all IP files
 }
 
 /// Get's all mixes IP's sorted, and my mix's index
@@ -95,7 +99,7 @@ pub fn get_all_ips_from_files() -> std::io::Result<Vec<IpAddr>> {
 
 pub fn write_my_ip_to_file() -> io::Result<IpAddr> {
     let my_ip = get_my_ip()?;
-    let filename = format!("{}", my_ip);
+    let filename = format!("{}{}", *IPS_FOLDER, my_ip);
     serialize_info_to_file::<IpAddr>(&my_ip, &filename).unwrap();
     Ok(my_ip)
 }
@@ -108,7 +112,7 @@ pub fn get_my_ip() -> io::Result<IpAddr> {
 
 fn get_cur_ip_files() -> std::io::Result<Vec<IpAddr>> {
     let mut ips: Vec<IpAddr> = Vec::new();
-    for entry in fs::read_dir(".")? {
+    for entry in fs::read_dir(format!("{}{}", *BASE_FOLDER, *IPS_FOLDER))? {
         let entry = entry?;
         let path = entry.path();
         if path.is_file() {
@@ -129,10 +133,25 @@ fn get_cur_ip_files() -> std::io::Result<Vec<IpAddr>> {
 pub fn init_logger(file_path: &str) -> Result<(), fern::InitError> {
     fern::Dispatch::new()
         .format(|out, message, record| out.finish(format_args!("[{}]{}", record.level(), message)))
-        .chain(fern::log_file(file_path)?)
+        .chain(fern::log_file(format!(
+            "{}{}{}",
+            *BASE_FOLDER, *LOGS_FOLDER, file_path
+        ))?)
         .chain(std::io::stdout())
         .level(LevelFilter::Off)
         .level_for("bbs", LevelFilter::Trace)
         .apply()?;
     Ok(())
+}
+
+/// Merge all log files into one
+pub fn merge_log_files() {}
+
+/// Delete all files in date\ips
+pub fn delete_ip_files() {
+    let paths = fs::read_dir(format!("{}{}", *BASE_FOLDER, *IPS_FOLDER)).unwrap();
+    for path in paths {
+        let path = path.unwrap().path();
+        fs::remove_file(path).unwrap();
+    }
 }

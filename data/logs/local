@@ -1,0 +1,850 @@
+[INFO]Start mix 0
+[INFO]Start mix 1
+[INFO]Start mix 2
+[INFO]Start mix 3
+[INFO]Start mix 4
+[INFO]Start mix 5
+[INFO]Start mix 6
+[INFO]Start mix 7
+[INFO]Start mix 8
+[INFO]Start mix 9
+[INFO]mix 1 connected to 8 mix
+[INFO]mix 1 connected to 7 mix
+[INFO]mix 2 connected to 5 mix
+[INFO]mix 2 connected to 6 mix
+[INFO]mix 0 connected to 2 mix
+[INFO]mix 2 connected to 2 mix
+[INFO]mix 1 connected to 9 mix
+[INFO]mix 0 connected to 4 mix
+[INFO]mix 0 connected to 7 mix
+[INFO]mix 0 connected to 3 mix
+[INFO]mix 0 connected to 9 mix
+[INFO]mix 0 connected to 1 mix
+[INFO]mix 1 connected to 1 mix
+[INFO]mix 0 connected to 5 mix
+[INFO]mix 2 connected to 8 mix
+[INFO]mix 2 connected to 0 mix
+[INFO]mix 1 connected to 5 mix
+[INFO]mix 2 connected to 1 mix
+[INFO]mix 1 connected to 0 mix
+[INFO]mix 1 connected to 3 mix
+[INFO]mix 1 connected to 2 mix
+[INFO]mix 0 connected to 6 mix
+[INFO]mix 0 connected to 8 mix
+[INFO]mix 2 connected to 7 mix
+[INFO]mix 1 connected to 4 mix
+[INFO]mix 1 connected to 6 mix
+[INFO]mix 2 connected to 3 mix
+[INFO]mix 1 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 2 connected to 9 mix
+[INFO]mix 7 got an add request
+[INFO]mix 0 connected to 0 mix
+[INFO]mix 2 connected to 4 mix
+[INFO]mix 6 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 5 connected to 1 mix
+[INFO]mix 0 got an add request
+[INFO]mix 3 connected to 3 mix
+[INFO]mix 6 connected to 3 mix
+[INFO]mix 5 connected to 3 mix
+[INFO]mix 4 connected to 9 mix
+[INFO]mix 3 connected to 7 mix
+[INFO]mix 2 got an add request
+[INFO]mix 3 connected to 5 mix
+[INFO]mix 4 got an add request
+[INFO]mix 3 connected to 9 mix
+[INFO]mix 4 connected to 2 mix
+[INFO]mix 4 connected to 5 mix
+[INFO]mix 6 connected to 7 mix
+[INFO]mix 4 connected to 8 mix
+[INFO]mix 4 got an add request
+[INFO]mix 6 connected to 8 mix
+[INFO]mix 9 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 6 connected to 1 mix
+[INFO]mix 5 connected to 6 mix
+[INFO]mix 3 got an add request
+[INFO]mix 4 connected to 0 mix
+[INFO]mix 4 connected to 4 mix
+[INFO]mix 5 got an add request
+[INFO]mix 3 connected to 6 mix
+[INFO]mix 5 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 5 connected to 0 mix
+[INFO]mix 5 connected to 4 mix
+[INFO]mix 5 connected to 2 mix
+[INFO]mix 3 connected to 8 mix
+[INFO]mix 4 connected to 3 mix
+[INFO]mix 6 connected to 5 mix
+[INFO]mix 9 connected to 7 mix
+[INFO]mix 9 connected to 0 mix
+[INFO]mix 7 got an add request
+[INFO]mix 4 connected to 7 mix
+[INFO]mix 4 connected to 6 mix
+[INFO]mix 8 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 8 connected to 7 mix
+[INFO]mix 3 connected to 1 mix
+[INFO]mix 5 connected to 5 mix
+[INFO]mix 3 got an add request
+[INFO]connected to mix 0
+[INFO]mix 7 connected to 6 mix
+[INFO]mix 6 connected to 4 mix
+[INFO]mix 3 connected to 2 mix
+[INFO]mix 6 connected to 9 mix
+[INFO]mix 8 connected to 3 mix
+[INFO]mix 8 connected to 1 mix
+[INFO]mix 5 connected to 7 mix
+[INFO]mix 3 got an add request
+[INFO]mix 9 connected to 1 mix
+[INFO]mix 5 connected to 9 mix
+[INFO]mix 8 connected to 0 mix
+[INFO]mix 9 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 6 connected to 0 mix
+[INFO]mix 4 connected to 1 mix
+[INFO]mix 9 connected to 6 mix
+[INFO]connected to mix 1
+[INFO]mix 9 connected to 3 mix
+[INFO]mix 3 connected to 0 mix
+[INFO]mix 7 connected to 8 mix
+[INFO]mix 8 connected to 9 mix
+[INFO]mix 9 got an add request
+[INFO]mix 9 connected to 5 mix
+[INFO]mix 6 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 5 connected to 8 mix
+[INFO]mix 9 connected to 9 mix
+[INFO]mix 6 connected to 6 mix
+[INFO]mix 7 connected to 4 mix
+[INFO]mix 9 connected to 2 mix
+[INFO]mix 6 connected to 2 mix
+[INFO]mix 7 connected to 9 mix
+[INFO]connected to mix 2
+[INFO]mix 7 connected to 0 mix
+[INFO]mix 2 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 3 connected to 4 mix
+[INFO]mix 9 connected to 4 mix
+[INFO]mix 7 got an add request
+[INFO]mix 8 connected to 5 mix
+[INFO]mix 1 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 8 connected to 8 mix
+[INFO]mix 1 got an add request
+[INFO]mix 8 connected to 2 mix
+[INFO]mix 8 got an add request
+[INFO]mix 7 connected to 3 mix
+[INFO]mix 7 connected to 1 mix
+[INFO]mix 1 got an add request
+[INFO]mix 8 connected to 4 mix
+[INFO]mix 8 got an add request
+[INFO]mix 1 got a get request
+[INFO]mix 7 connected to 7 mix
+[INFO]mix 6 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 9 connected to 8 mix
+[INFO]mix 7 connected to 5 mix
+[INFO]mix 8 connected to 6 mix
+[INFO]mix 5 got an add request
+[INFO]connected to mix 3
+[INFO]mix 2 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 7 connected to 2 mix
+[INFO]mix 2 got a get request
+[INFO]mix 7 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 3 sent from mix 5 to 9
+[INFO]mix 2 got an add request
+[INFO]mix 0 got a get request
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 3 sent from mix 9 to 9
+[INFO]mix 0 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 3 got a get request
+[INFO]0 packets for layer 3 sent from mix 5 to 8
+[INFO]connected to mix 4
+[INFO]mix 8 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 3 sent from mix 1 to 9
+[INFO]mix 3 got an add request
+[INFO]mix 7 got an add request
+[INFO]0 packets for layer 3 sent from mix 5 to 7
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 3 sent from mix 9 to 8
+[INFO]mix 4 got an add request
+[INFO]0 packets for layer 3 sent from mix 0 to 9
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 3 sent from mix 6 to 9
+[INFO]0 packets for layer 3 sent from mix 1 to 8
+[INFO]0 packets for layer 3 sent from mix 3 to 9
+[INFO]0 packets for layer 3 sent from mix 7 to 9
+[INFO]0 packets for layer 3 sent from mix 5 to 6
+[INFO]0 packets for layer 3 sent from mix 2 to 9
+[INFO]mix 4 got a get request
+[INFO]0 packets for layer 3 sent from mix 9 to 7
+[INFO]connected to mix 5
+[INFO]0 packets for layer 3 sent from mix 4 to 9
+[INFO]0 packets for layer 3 sent from mix 0 to 8
+[INFO]0 packets for layer 3 sent from mix 8 to 9
+[INFO]0 packets for layer 3 sent from mix 6 to 8
+[INFO]0 packets for layer 3 sent from mix 1 to 7
+[INFO]0 packets for layer 3 sent from mix 3 to 8
+[INFO]0 packets for layer 3 sent from mix 7 to 8
+[INFO]0 packets for layer 3 sent from mix 5 to 5
+[INFO]0 packets for layer 3 sent from mix 2 to 8
+[INFO]0 packets for layer 3 sent from mix 2 to 7
+[INFO]0 packets for layer 3 sent from mix 9 to 6
+[INFO]0 packets for layer 3 sent from mix 4 to 8
+[INFO]0 packets for layer 3 sent from mix 0 to 7
+[INFO]mix 5 got a get request
+[INFO]0 packets for layer 3 sent from mix 8 to 8
+[INFO]0 packets for layer 3 sent from mix 1 to 6
+[INFO]connected to mix 6
+[INFO]0 packets for layer 3 sent from mix 3 to 7
+[INFO]0 packets for layer 3 sent from mix 5 to 4
+[INFO]mix 6 got a get request
+[INFO]0 packets for layer 3 sent from mix 2 to 6
+[INFO]connected to mix 7
+[INFO]0 packets for layer 3 sent from mix 9 to 5
+[INFO]0 packets for layer 3 sent from mix 4 to 7
+[INFO]0 packets for layer 3 sent from mix 0 to 6
+[INFO]0 packets for layer 3 sent from mix 6 to 7
+[INFO]0 packets for layer 3 sent from mix 8 to 7
+[INFO]0 packets for layer 3 sent from mix 1 to 5
+[INFO]0 packets for layer 3 sent from mix 7 to 7
+[INFO]0 packets for layer 3 sent from mix 3 to 6
+[INFO]0 packets for layer 3 sent from mix 5 to 3
+[INFO]0 packets for layer 3 sent from mix 2 to 5
+[INFO]0 packets for layer 3 sent from mix 9 to 4
+[INFO]mix 7 got a get request
+[INFO]0 packets for layer 3 sent from mix 4 to 6
+[INFO]connected to mix 8
+[INFO]0 packets for layer 3 sent from mix 0 to 5
+[INFO]0 packets for layer 3 sent from mix 6 to 6
+[INFO]0 packets for layer 3 sent from mix 8 to 6
+[INFO]0 packets for layer 3 sent from mix 8 to 5
+[INFO]0 packets for layer 3 sent from mix 7 to 6
+[INFO]0 packets for layer 3 sent from mix 3 to 5
+[INFO]0 packets for layer 3 sent from mix 5 to 2
+[INFO]0 packets for layer 3 sent from mix 2 to 4
+[INFO]0 packets for layer 3 sent from mix 9 to 3
+[INFO]0 packets for layer 3 sent from mix 4 to 5
+[INFO]0 packets for layer 3 sent from mix 0 to 4
+[INFO]mix 8 got a get request
+[INFO]0 packets for layer 3 sent from mix 6 to 5
+[INFO]0 packets for layer 3 sent from mix 1 to 4
+[INFO]connected to mix 9
+[INFO]0 packets for layer 3 sent from mix 8 to 4
+[INFO]0 packets for layer 3 sent from mix 7 to 5
+[INFO]0 packets for layer 3 sent from mix 3 to 4
+[INFO]0 packets for layer 3 sent from mix 5 to 1
+[INFO]0 packets for layer 3 sent from mix 2 to 3
+[INFO]0 packets for layer 3 sent from mix 9 to 2
+[INFO]0 packets for layer 3 sent from mix 4 to 4
+[INFO]0 packets for layer 3 sent from mix 0 to 3
+[INFO]0 packets for layer 3 sent from mix 6 to 4
+[INFO]0 packets for layer 3 sent from mix 1 to 3
+[INFO]0 packets for layer 3 sent from mix 8 to 3
+[INFO]mix 9 got a get request
+[INFO]0 packets for layer 3 sent from mix 7 to 4
+[INFO]0 packets for layer 3 sent from mix 3 to 3
+[INFO]11 packets for layer 3 sent from mix 5 to 0
+[INFO]0 packets for layer 3 sent from mix 2 to 2
+[INFO]0 packets for layer 3 sent from mix 9 to 1
+[INFO]0 packets for layer 3 sent from mix 4 to 3
+[INFO]0 packets for layer 3 sent from mix 0 to 2
+[INFO]0 packets for layer 3 sent from mix 6 to 3
+[INFO]0 packets for layer 3 sent from mix 1 to 2
+[INFO]0 packets for layer 3 sent from mix 8 to 2
+[INFO]0 packets for layer 3 sent from mix 7 to 3
+[INFO]0 packets for layer 3 sent from mix 3 to 2
+[INFO]0 packets for layer 3 sent from mix 2 to 1
+[INFO]12 packets for layer 3 sent from mix 9 to 0
+[INFO]0 packets for layer 3 sent from mix 4 to 2
+[INFO]0 packets for layer 3 sent from mix 0 to 1
+[INFO]0 packets for layer 3 sent from mix 6 to 2
+[INFO]0 packets for layer 3 sent from mix 1 to 1
+[INFO]0 packets for layer 3 sent from mix 8 to 1
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 3 sent from mix 7 to 2
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 3 sent from mix 3 to 1
+[INFO]14 packets for layer 3 sent from mix 2 to 0
+[INFO]0 packets for layer 3 sent from mix 4 to 1
+[INFO]9 packets for layer 3 sent from mix 0 to 0
+[INFO]0 packets for layer 3 sent from mix 6 to 1
+[INFO]mix 7 got an add request
+[INFO]11 packets for layer 3 sent from mix 1 to 0
+[INFO]7 packets for layer 3 sent from mix 8 to 0
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 3 sent from mix 7 to 1
+[INFO]12 packets for layer 3 sent from mix 3 to 0
+[INFO]mix 9 got an add request
+[INFO]10 packets for layer 3 sent from mix 4 to 0
+[INFO]mix 5 got an add request
+[INFO]6 packets for layer 3 sent from mix 6 to 0
+[INFO]mix 4 got an add request
+[INFO]mix 8 got an add request
+[INFO]8 packets for layer 3 sent from mix 7 to 0
+[INFO]mix 9 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 4 sent from mix 9 to 9
+[INFO]mix 4 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 8 to 9
+[INFO]0 packets for layer 4 sent from mix 8 to 8
+[INFO]mix 5 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 4 got an add request
+[INFO]0 packets for layer 4 sent from mix 9 to 8
+[INFO]0 packets for layer 4 sent from mix 8 to 7
+[INFO]mix 6 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 4 sent from mix 7 to 9
+[INFO]mix 4 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 4 sent from mix 9 to 7
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 4 sent from mix 8 to 6
+[INFO]mix 3 got an add request
+[INFO]mix 4 got an add request
+[INFO]0 packets for layer 4 sent from mix 7 to 8
+[INFO]0 packets for layer 4 sent from mix 9 to 6
+[INFO]mix 4 got an add request
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 4 sent from mix 6 to 9
+[INFO]0 packets for layer 4 sent from mix 8 to 5
+[INFO]mix 4 got an add request
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 7 to 7
+[INFO]0 packets for layer 4 sent from mix 9 to 5
+[INFO]mix 5 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 5 got an add request
+[INFO]0 packets for layer 4 sent from mix 6 to 8
+[INFO]0 packets for layer 4 sent from mix 8 to 4
+[INFO]0 packets for layer 4 sent from mix 7 to 6
+[INFO]0 packets for layer 4 sent from mix 9 to 4
+[INFO]mix 3 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 4 sent from mix 5 to 9
+[INFO]0 packets for layer 4 sent from mix 6 to 7
+[INFO]0 packets for layer 4 sent from mix 8 to 3
+[INFO]0 packets for layer 4 sent from mix 7 to 5
+[INFO]0 packets for layer 4 sent from mix 9 to 3
+[INFO]mix 2 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 4 sent from mix 5 to 8
+[INFO]0 packets for layer 4 sent from mix 8 to 2
+[INFO]0 packets for layer 4 sent from mix 7 to 4
+[INFO]0 packets for layer 4 sent from mix 9 to 2
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 4 to 9
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 6 to 6
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 4 sent from mix 5 to 7
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 4 sent from mix 8 to 1
+[INFO]0 packets for layer 4 sent from mix 7 to 3
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 9 to 1
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 4 sent from mix 4 to 8
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 6 to 5
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 4 sent from mix 5 to 6
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 4 sent from mix 8 to 0
+[INFO]0 packets for layer 4 sent from mix 7 to 2
+[INFO]0 packets for layer 4 sent from mix 9 to 0
+[INFO]mix 0 got an add request
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 4 sent from mix 4 to 7
+[INFO]0 packets for layer 4 sent from mix 6 to 4
+[INFO]0 packets for layer 4 sent from mix 5 to 5
+[INFO]0 packets for layer 4 sent from mix 7 to 1
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 3 to 9
+[INFO]0 packets for layer 4 sent from mix 4 to 6
+[INFO]mix 2 got an add request
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 4 sent from mix 6 to 3
+[INFO]mix 9 got an add request
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 5 to 4
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 4 sent from mix 1 to 9
+[INFO]0 packets for layer 4 sent from mix 3 to 8
+[INFO]0 packets for layer 4 sent from mix 4 to 5
+[INFO]0 packets for layer 4 sent from mix 2 to 9
+[INFO]0 packets for layer 4 sent from mix 6 to 2
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 4 sent from mix 7 to 0
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 4 sent from mix 5 to 3
+[INFO]0 packets for layer 4 sent from mix 1 to 8
+[INFO]mix 7 got an add request
+[INFO]0 packets for layer 4 sent from mix 3 to 7
+[INFO]0 packets for layer 4 sent from mix 0 to 9
+[INFO]0 packets for layer 4 sent from mix 4 to 4
+[INFO]0 packets for layer 4 sent from mix 2 to 8
+[INFO]0 packets for layer 4 sent from mix 6 to 1
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 4 sent from mix 5 to 2
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 4 sent from mix 1 to 7
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 4 sent from mix 3 to 6
+[INFO]0 packets for layer 4 sent from mix 0 to 8
+[INFO]0 packets for layer 4 sent from mix 4 to 3
+[INFO]0 packets for layer 4 sent from mix 2 to 7
+[INFO]mix 5 got an add request
+[INFO]mix 7 got an add request
+[INFO]0 packets for layer 4 sent from mix 6 to 0
+[INFO]0 packets for layer 4 sent from mix 5 to 1
+[INFO]0 packets for layer 4 sent from mix 1 to 6
+[INFO]mix 5 got an add request
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 4 sent from mix 3 to 5
+[INFO]0 packets for layer 4 sent from mix 0 to 7
+[INFO]0 packets for layer 4 sent from mix 4 to 2
+[INFO]0 packets for layer 4 sent from mix 2 to 6
+[INFO]mix 4 got an add request
+[INFO]0 packets for layer 4 sent from mix 5 to 0
+[INFO]0 packets for layer 4 sent from mix 1 to 5
+[INFO]mix 8 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 4 sent from mix 3 to 4
+[INFO]0 packets for layer 4 sent from mix 0 to 6
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 4 sent from mix 4 to 1
+[INFO]0 packets for layer 4 sent from mix 2 to 5
+[INFO]0 packets for layer 4 sent from mix 1 to 4
+[INFO]mix 7 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 3 to 3
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 4 sent from mix 0 to 5
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 4 sent from mix 4 to 0
+[INFO]0 packets for layer 4 sent from mix 2 to 4
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 4 sent from mix 1 to 3
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 4 sent from mix 3 to 2
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 4 sent from mix 0 to 4
+[INFO]mix 0 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 4 sent from mix 2 to 3
+[INFO]mix 7 got an add request
+[INFO]0 packets for layer 4 sent from mix 2 to 2
+[INFO]0 packets for layer 4 sent from mix 1 to 2
+[INFO]0 packets for layer 4 sent from mix 3 to 1
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 4 sent from mix 0 to 3
+[INFO]mix 4 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 4 sent from mix 2 to 1
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 4 sent from mix 2 to 0
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 4 sent from mix 3 to 0
+[INFO]0 packets for layer 4 sent from mix 0 to 2
+[INFO]mix 5 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 4 got an add request
+[INFO]0 packets for layer 4 sent from mix 1 to 1
+[INFO]mix 8 got an add request
+[INFO]mix 1 got an add request
+[INFO]100 packets for layer 4 sent from mix 0 to 1
+[INFO]mix 3 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 4 sent from mix 1 to 0
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 4 sent from mix 0 to 0
+[INFO]mix 2 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 5 sent from mix 9 to 9
+[INFO]mix 7 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 5 sent from mix 8 to 9
+[INFO]0 packets for layer 5 sent from mix 8 to 8
+[INFO]mix 3 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 5 sent from mix 9 to 8
+[INFO]0 packets for layer 5 sent from mix 7 to 9
+[INFO]mix 5 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 5 sent from mix 8 to 7
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 5 sent from mix 6 to 9
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 5 sent from mix 9 to 7
+[INFO]0 packets for layer 5 sent from mix 7 to 8
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 5 sent from mix 5 to 9
+[INFO]mix 4 got an add request
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 5 sent from mix 8 to 6
+[INFO]mix 0 got an add request
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 5 sent from mix 6 to 8
+[INFO]0 packets for layer 5 sent from mix 9 to 6
+[INFO]0 packets for layer 5 sent from mix 7 to 7
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 5 sent from mix 5 to 8
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 5 sent from mix 4 to 9
+[INFO]0 packets for layer 5 sent from mix 3 to 9
+[INFO]0 packets for layer 5 sent from mix 8 to 5
+[INFO]mix 1 got an add request
+[INFO]0 packets for layer 5 sent from mix 6 to 7
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 5 sent from mix 9 to 5
+[INFO]0 packets for layer 5 sent from mix 7 to 6
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 5 sent from mix 2 to 9
+[INFO]0 packets for layer 5 sent from mix 5 to 7
+[INFO]0 packets for layer 5 sent from mix 4 to 8
+[INFO]0 packets for layer 5 sent from mix 3 to 8
+[INFO]0 packets for layer 5 sent from mix 8 to 4
+[INFO]0 packets for layer 5 sent from mix 8 to 3
+[INFO]0 packets for layer 5 sent from mix 6 to 6
+[INFO]0 packets for layer 5 sent from mix 9 to 4
+[INFO]0 packets for layer 5 sent from mix 7 to 5
+[INFO]0 packets for layer 5 sent from mix 0 to 9
+[INFO]0 packets for layer 5 sent from mix 2 to 8
+[INFO]0 packets for layer 5 sent from mix 5 to 6
+[INFO]0 packets for layer 5 sent from mix 4 to 7
+[INFO]0 packets for layer 5 sent from mix 3 to 7
+[INFO]0 packets for layer 5 sent from mix 8 to 2
+[INFO]0 packets for layer 5 sent from mix 6 to 5
+[INFO]0 packets for layer 5 sent from mix 6 to 4
+[INFO]0 packets for layer 5 sent from mix 6 to 3
+[INFO]0 packets for layer 5 sent from mix 6 to 2
+[INFO]0 packets for layer 5 sent from mix 6 to 1
+[INFO]0 packets for layer 5 sent from mix 6 to 0
+[INFO]0 packets for layer 5 sent from mix 4 to 6
+[INFO]0 packets for layer 5 sent from mix 3 to 6
+[INFO]0 packets for layer 5 sent from mix 8 to 1
+[INFO]0 packets for layer 5 sent from mix 4 to 5
+[INFO]0 packets for layer 5 sent from mix 3 to 5
+[INFO]0 packets for layer 5 sent from mix 8 to 0
+[INFO]0 packets for layer 5 sent from mix 4 to 4
+[INFO]0 packets for layer 5 sent from mix 3 to 4
+[INFO]0 packets for layer 5 sent from mix 3 to 3
+[INFO]0 packets for layer 5 sent from mix 3 to 2
+[INFO]0 packets for layer 5 sent from mix 4 to 3
+[INFO]0 packets for layer 5 sent from mix 4 to 2
+[INFO]0 packets for layer 5 sent from mix 3 to 1
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 5 sent from mix 9 to 3
+[INFO]0 packets for layer 5 sent from mix 1 to 9
+[INFO]0 packets for layer 5 sent from mix 4 to 1
+[INFO]0 packets for layer 5 sent from mix 2 to 7
+[INFO]0 packets for layer 5 sent from mix 2 to 6
+[INFO]mix 8 got an add request
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 5 sent from mix 3 to 0
+[INFO]0 packets for layer 5 sent from mix 0 to 8
+[INFO]mix 7 got an add request
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 5 sent from mix 9 to 2
+[INFO]0 packets for layer 5 sent from mix 1 to 8
+[INFO]0 packets for layer 5 sent from mix 4 to 0
+[INFO]0 packets for layer 5 sent from mix 5 to 5
+[INFO]0 packets for layer 5 sent from mix 2 to 5
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 5 sent from mix 7 to 4
+[INFO]mix 5 got an add request
+[INFO]0 packets for layer 5 sent from mix 0 to 7
+[INFO]mix 7 got an add request
+[INFO]0 packets for layer 5 sent from mix 9 to 1
+[INFO]0 packets for layer 5 sent from mix 1 to 7
+[INFO]mix 4 got an add request
+[INFO]0 packets for layer 5 sent from mix 5 to 4
+[INFO]0 packets for layer 5 sent from mix 2 to 4
+[INFO]mix 6 got an add request
+[INFO]0 packets for layer 5 sent from mix 7 to 3
+[INFO]0 packets for layer 5 sent from mix 0 to 6
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 5 sent from mix 9 to 0
+[INFO]mix 3 got an add request
+[INFO]mix 5 got an add request
+[INFO]0 packets for layer 5 sent from mix 5 to 3
+[INFO]mix 3 got an add request
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 5 sent from mix 2 to 3
+[INFO]mix 7 got an add request
+[INFO]mix 4 got an add request
+[INFO]0 packets for layer 5 sent from mix 0 to 5
+[INFO]0 packets for layer 5 sent from mix 1 to 6
+[INFO]mix 2 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 5 sent from mix 7 to 2
+[INFO]mix 2 got an add request
+[INFO]0 packets for layer 5 sent from mix 7 to 1
+[INFO]0 packets for layer 5 sent from mix 1 to 5
+[INFO]mix 7 got an add request
+[INFO]mix 0 got an add request
+[INFO]0 packets for layer 5 sent from mix 5 to 2
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 5 sent from mix 5 to 1
+[INFO]0 packets for layer 5 sent from mix 5 to 0
+[INFO]0 packets for layer 5 sent from mix 0 to 4
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 5 sent from mix 7 to 0
+[INFO]0 packets for layer 5 sent from mix 1 to 4
+[INFO]mix 4 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 5 got an add request
+[INFO]0 packets for layer 5 sent from mix 2 to 2
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 5 sent from mix 2 to 1
+[INFO]mix 7 got an add request
+[INFO]0 packets for layer 5 sent from mix 1 to 3
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 5 sent from mix 1 to 2
+[INFO]mix 6 got an add request
+[INFO]mix 4 got an add request
+[INFO]0 packets for layer 5 sent from mix 0 to 3
+[INFO]mix 2 got an add request
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 5 sent from mix 0 to 2
+[INFO]0 packets for layer 5 sent from mix 0 to 1
+[INFO]mix 1 got an add request
+[INFO]mix 9 got an add request
+[INFO]0 packets for layer 5 sent from mix 1 to 1
+[INFO]mix 5 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 3 got an add request
+[INFO]0 packets for layer 5 sent from mix 2 to 0
+[INFO]mix 7 got an add request
+[INFO]mix 8 got an add request
+[INFO]0 packets for layer 5 sent from mix 0 to 0
+[INFO]mix 4 got an add request
+[INFO]mix 2 got an add request
+[INFO]100 packets for layer 5 sent from mix 1 to 0
+[INFO]mix 6 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 9 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 8 got an add request
+[INFO]mix 1 got an add request
+[INFO]mix 3 got an add request
+[INFO]mix 2 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 7 got an add request
+[INFO]mix 7 got an add request
+[INFO]This round took mix 8 152.9873ms seconds
+[INFO]mix 6 got an add request
+[INFO]mix 6 got an add request
+[INFO]mix 1 got an add request
+[INFO]This round took mix 9 160.5796ms seconds
+[INFO]mix 6 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 5 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 4 got an add request
+[INFO]mix 3 got an add request
+[INFO]recv'd get response from mix 8 of size: 0
+[INFO]mix 3 got an add request
+[INFO]mix 2 got an add request
+[INFO]This round took mix 5 175.3415ms seconds
+[INFO]mix 3 got an add request
+[INFO]recv'd get response from mix 9 of size: 0
+[INFO]mix 2 got an add request
+[INFO]This round took mix 4 169.5938ms seconds
+[INFO]mix 2 got an add request
+[INFO]This round took mix 7 170.906ms seconds
+[INFO]mix 1 got an add request
+[INFO]mix 1 got an add request
+[INFO]recv'd get response from mix 5 of size: 0
+[INFO]mix 1 got an add request
+[INFO]This round took mix 3 172.6312ms seconds
+[INFO]mix 0 got an add request
+[INFO]mix 0 got an add request
+[INFO]mix 0 got an add request
+[INFO]recv'd get response from mix 4 of size: 0
+[INFO]recv'd get response from mix 7 of size: 0
+[INFO]recv'd get response from mix 3 of size: 0
+[INFO]This round took mix 1 180.1778ms seconds
+[INFO]This round took mix 2 180.4677ms seconds
+[INFO]recv'd get response from mix 1 of size: 0
+[INFO]This round took mix 0 182.3427ms seconds
+[INFO]This round took mix 6 182.0062ms seconds
+[INFO]recv'd get response from mix 2 of size: 0
+[INFO]recv'd get response from mix 0 of size: 100
+[INFO]recv'd get response from mix 6 of size: 0

@@ -14,9 +14,18 @@ use std::{convert::TryInto, fs::File};
 
 use crate::keys::PublicKey;
 use crate::keys::SecretKey;
+use std::path::MAIN_SEPARATOR;
 
-/// The base folder for all files
-pub const BASE_FOLDER: &str = "";
+lazy_static! {
+    /// The base folder for all files
+    pub static ref BASE_FOLDER: String = format!("data{}", MAIN_SEPARATOR);
+    /// The folder for all IP files
+    pub static ref IPS_FOLDER: String = format!("ips{}", MAIN_SEPARATOR);
+    /// The folder for all info files
+    pub static ref INFO_FOLDER: String = format!("info{}", MAIN_SEPARATOR);
+    /// The folder for all logs
+    pub static ref LOGS_FOLDER: String = format!("logs{}", MAIN_SEPARATOR);
+}
 
 /*
 To later decrypt + run through mixes we need this crypto info: layer, mix id + key
@@ -26,8 +35,8 @@ To verify validity in every mix we also need: generic network info
 /// Write all heavy computation data to predetermined files
 pub fn setup_files(config_info: ConfigInfo) {
     // Write config data to file
-    let filename = "config_info";
-    serialize_info_to_file::<ConfigInfo>(&config_info, filename).unwrap();
+    let filename = format!("{}config_info", *INFO_FOLDER);
+    serialize_info_to_file::<ConfigInfo>(&config_info, &filename).unwrap();
 
     // Generate all data needed to test the mixnet
     let network = Network::new(
@@ -59,17 +68,17 @@ pub fn setup_files(config_info: ConfigInfo) {
 
     // Write packets to intended files
     for i in 0..config_info.num_mixes {
-        let filename = format!("packets_{}", i);
+        let filename = format!("{}packets_{}", *INFO_FOLDER, i);
         serialize_info_to_file::<Vec<Vec<u8>>>(&packets[i as usize], &filename).unwrap();
     }
 
-    let filename = "network";
+    let filename = "network_info";
     //serialize_info_to_file::<Network>(&network, filename).unwrap();
     serialize_network(&network, filename).unwrap();
 }
 
 pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>> {
-    let filename = format!("packets_{}", mix_id);
+    let filename = format!("{}packets_{}", *INFO_FOLDER, mix_id);
     let packets: Vec<Vec<u8>> = deserialize_info_from_file(&filename).unwrap();
     return packets;
 }
@@ -92,13 +101,13 @@ pub fn process_init_packets(
 }
 
 pub fn get_network_info() -> Network {
-    let filename = "network";
+    let filename = "network_info";
     let network: Network = deserialize_network(filename).unwrap();
     return network;
 }
 
 pub fn get_config_info() -> ConfigInfo {
-    let filename = "config_info";
+    let filename = format!("{}config_info", *INFO_FOLDER);
     let config_info: ConfigInfo = deserialize_info_from_file(&filename).unwrap();
     return config_info;
 }
@@ -107,7 +116,7 @@ pub fn serialize_info_to_file<T: Serialize>(
     data: &T,
     filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let path = format!("{}{}", BASE_FOLDER, filename);
+    let path = format!("{}{}", *BASE_FOLDER, filename);
     let json = serde_json::to_string::<T>(data)?;
     let mut file = File::create(path)?;
     file.write_all(json.as_bytes())?;
@@ -117,7 +126,7 @@ pub fn serialize_info_to_file<T: Serialize>(
 pub fn deserialize_info_from_file<T: for<'a> Deserialize<'a>>(
     filename: &str,
 ) -> Result<T, serde_json::Error> {
-    let path = format!("{}{}", BASE_FOLDER, filename);
+    let path = format!("{}{}", *BASE_FOLDER, filename);
     let mut file = File::open(path).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
@@ -161,11 +170,13 @@ pub fn serialize_network(data: &Network, filename: &str) -> Result<(), Box<dyn s
         mix_verification: data.mix_verification,
         servers: data.servers.clone(),
     };
-    return serialize_info_to_file::<SerialNetwork>(&serial_network, filename);
+    let filename = format!("{}{}", *INFO_FOLDER, filename);
+    return serialize_info_to_file::<SerialNetwork>(&serial_network, &filename);
 }
 
 pub fn deserialize_network(filename: &str) -> Result<Network, serde_json::Error> {
-    let serial_network = deserialize_info_from_file::<SerialNetwork>(filename).unwrap();
+    let filename = format!("{}{}", *INFO_FOLDER, filename);
+    let serial_network = deserialize_info_from_file::<SerialNetwork>(&filename).unwrap();
     let secret_key: Result<[u8; 32], _> = serial_network.serial_id_provider_1.as_slice().try_into();
     let network: Network = Network {
         id_provider: IDProvider {
