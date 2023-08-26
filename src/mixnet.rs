@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use futures::future::join_all;
 
 use crate::config::*;
-use crate::data_manager::logs::init_logger;
+use crate::marshal::logs::init_logger;
 use crate::mix::*;
 
 /// Run mixnet locally

@@ -1,5 +1,5 @@
 use crate::config::*;
-use crate::data_manager::info::{get_init_packets, get_network_info, process_init_packets};
+use crate::marshal::info::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{decrypt_layer, verify_batch, verify_packet, Network, Packet};
 use futures::future::join_all;
 use log::*;

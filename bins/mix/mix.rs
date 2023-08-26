@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use bbs::{config::*, data_manager::ips::*, data_manager::logs::*, mix::*};
+use bbs::{config::*, marshal::ips::*, marshal::logs::*, mix::*};
 
 #[tokio::main]
 pub async fn main() -> Result<(), &'static str> {

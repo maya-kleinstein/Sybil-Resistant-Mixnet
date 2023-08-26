@@ -1,7 +1,7 @@
 use std::net::IpAddr;
 
 use crate::mix::connect_to_server;
-use crate::{data_manager::info::get_config_info, mix::mix_service::GetRequest};
+use crate::{marshal::info::get_config_info, mix::mix_service::GetRequest};
 use futures::future::join_all;
 use log::*;
 use serde::{Deserialize, Serialize};
