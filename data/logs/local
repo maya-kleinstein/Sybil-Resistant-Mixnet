@@ -1196,3 +1196,90 @@
 [2023-08-24 15:16:36.247][INFO]recv'd get response from mix 1 of size: 0
 [2023-08-24 15:16:36.247][INFO]recv'd get response from mix 0 of size: 100
 [2023-08-24 15:16:36.248][INFO]recv'd get response from mix 2 of size: 0
+[2023-08-26 15:33:01.003][INFO]mix 0 started
+[2023-08-26 15:33:01.007][INFO]mix 1 started
+[2023-08-26 15:33:01.012][INFO]mix 2 started
+[2023-08-26 15:33:01.509][INFO]mix 0 connected to 1 mix
+[2023-08-26 15:33:01.510][INFO]mix 1 connected to 1 mix
+[2023-08-26 15:33:01.510][INFO]mix 0 connected to 0 mix
+[2023-08-26 15:33:01.510][INFO]mix 1 connected to 0 mix
+[2023-08-26 15:33:01.511][INFO]mix 0 connected to 2 mix
+[2023-08-26 15:33:01.511][INFO]mix 1 connected to 2 mix
+[2023-08-26 15:33:01.514][INFO]mix 2 got 0 packets for layer 1
+[2023-08-26 15:33:01.514][INFO]mix 0 got 28 packets for layer 1
+[2023-08-26 15:33:01.514][INFO]mix 2 got 0 packets for layer 1
+[2023-08-26 15:33:01.514][INFO]mix 1 got 29 packets for layer 1
+[2023-08-26 15:33:01.514][INFO]mix 1 got 0 packets for layer 1
+[2023-08-26 15:33:01.514][INFO]mix 0 got 0 packets for layer 1
+[2023-08-26 15:33:01.524][INFO]mix 2 connected to 2 mix
+[2023-08-26 15:33:01.525][INFO]connected to mix 0
+[2023-08-26 15:33:01.526][INFO]mix 2 got 43 packets for layer 1
+[2023-08-26 15:33:01.526][INFO]mix 0 got a get request
+[2023-08-26 15:33:01.527][INFO]mix 2 connected to 1 mix
+[2023-08-26 15:33:01.527][INFO]mix 2 connected to 0 mix
+[2023-08-26 15:33:01.527][INFO]connected to mix 1
+[2023-08-26 15:33:01.528][INFO]mix 1 got 0 packets for layer 1
+[2023-08-26 15:33:01.528][INFO]mix 0 got 0 packets for layer 1
+[2023-08-26 15:33:01.529][INFO]mix 1 sent to mix 2 0 packets for layer 3
+[2023-08-26 15:33:01.529][INFO]mix 0 sent to mix 2 0 packets for layer 3
+[2023-08-26 15:33:01.529][INFO]connected to mix 2
+[2023-08-26 15:33:01.530][INFO]mix 1 sent to mix 1 0 packets for layer 3
+[2023-08-26 15:33:01.530][INFO]mix 1 got a get request
+[2023-08-26 15:33:01.530][INFO]mix 0 sent to mix 1 0 packets for layer 3
+[2023-08-26 15:33:01.530][INFO]mix 2 sent to mix 2 0 packets for layer 3
+[2023-08-26 15:33:01.531][INFO]mix 1 sent to mix 0 29 packets for layer 3
+[2023-08-26 15:33:01.532][INFO]mix 0 sent to mix 0 28 packets for layer 3
+[2023-08-26 15:33:01.533][INFO]mix 2 sent to mix 1 0 packets for layer 3
+[2023-08-26 15:33:01.534][INFO]mix 2 got a get request
+[2023-08-26 15:33:01.534][INFO]mix 2 got 0 packets for layer 2
+[2023-08-26 15:33:01.534][INFO]mix 2 sent to mix 0 43 packets for layer 3
+[2023-08-26 15:33:01.534][INFO]mix 1 got 0 packets for layer 2
+[2023-08-26 15:33:01.535][INFO]mix 0 got 29 packets for layer 2
+[2023-08-26 15:33:01.535][INFO]mix 2 got 0 packets for layer 2
+[2023-08-26 15:33:01.536][INFO]mix 1 got 0 packets for layer 2
+[2023-08-26 15:33:01.536][INFO]mix 0 got 28 packets for layer 2
+[2023-08-26 15:33:01.536][INFO]mix 2 got 0 packets for layer 2
+[2023-08-26 15:33:01.537][INFO]mix 1 got 0 packets for layer 2
+[2023-08-26 15:33:01.537][INFO]mix 0 got 43 packets for layer 2
+[2023-08-26 15:33:01.539][INFO]mix 2 sent to mix 2 0 packets for layer 4
+[2023-08-26 15:33:01.539][INFO]mix 1 sent to mix 2 0 packets for layer 4
+[2023-08-26 15:33:01.540][INFO]mix 2 sent to mix 1 0 packets for layer 4
+[2023-08-26 15:33:01.540][INFO]mix 1 sent to mix 1 0 packets for layer 4
+[2023-08-26 15:33:01.541][INFO]mix 2 sent to mix 0 0 packets for layer 4
+[2023-08-26 15:33:01.541][INFO]mix 1 sent to mix 0 0 packets for layer 4
+[2023-08-26 15:33:01.542][INFO]mix 2 got 0 packets for layer 3
+[2023-08-26 15:33:01.542][INFO]mix 2 got 0 packets for layer 3
+[2023-08-26 15:33:01.542][INFO]mix 0 sent to mix 2 0 packets for layer 4
+[2023-08-26 15:33:01.542][INFO]mix 1 got 0 packets for layer 3
+[2023-08-26 15:33:01.543][INFO]mix 0 got 0 packets for layer 3
+[2023-08-26 15:33:01.543][INFO]mix 0 got 0 packets for layer 3
+[2023-08-26 15:33:01.543][INFO]mix 1 got 0 packets for layer 3
+[2023-08-26 15:33:01.543][INFO]mix 0 sent to mix 1 100 packets for layer 4
+[2023-08-26 15:33:01.544][INFO]mix 0 sent to mix 0 0 packets for layer 4
+[2023-08-26 15:33:01.546][INFO]mix 2 got 0 packets for layer 3
+[2023-08-26 15:33:01.546][INFO]mix 2 sent to mix 2 0 packets for layer 5
+[2023-08-26 15:33:01.547][INFO]mix 0 got 0 packets for layer 3
+[2023-08-26 15:33:01.547][INFO]mix 2 sent to mix 1 0 packets for layer 5
+[2023-08-26 15:33:01.547][INFO]mix 1 got 100 packets for layer 3
+[2023-08-26 15:33:01.547][INFO]mix 0 sent to mix 2 0 packets for layer 5
+[2023-08-26 15:33:01.547][INFO]mix 2 sent to mix 0 0 packets for layer 5
+[2023-08-26 15:33:01.548][INFO]mix 0 sent to mix 1 0 packets for layer 5
+[2023-08-26 15:33:01.548][INFO]mix 0 sent to mix 0 0 packets for layer 5
+[2023-08-26 15:33:01.549][INFO]mix 2 got 0 packets for layer 4
+[2023-08-26 15:33:01.549][INFO]mix 1 got 0 packets for layer 4
+[2023-08-26 15:33:01.549][INFO]mix 2 got 0 packets for layer 4
+[2023-08-26 15:33:01.549][INFO]mix 0 got 0 packets for layer 4
+[2023-08-26 15:33:01.549][INFO]mix 1 got 0 packets for layer 4
+[2023-08-26 15:33:01.549][INFO]mix 0 got 0 packets for layer 4
+[2023-08-26 15:33:01.551][INFO]mix 1 sent to mix 2 0 packets for layer 5
+[2023-08-26 15:33:01.551][INFO]mix 1 sent to mix 1 0 packets for layer 5
+[2023-08-26 15:33:01.552][INFO]mix 1 sent to mix 0 100 packets for layer 5
+[2023-08-26 15:33:01.554][INFO]mix 2 got 0 packets for layer 4
+[2023-08-26 15:33:01.554][INFO]mix 1 got 0 packets for layer 4
+[2023-08-26 15:33:01.554][INFO]This round took mix 2 23.93ms seconds
+[2023-08-26 15:33:01.554][INFO]mix 0 got 100 packets for layer 4
+[2023-08-26 15:33:01.555][INFO]recv'd get response from mix 2 of size: 0
+[2023-08-26 15:33:01.558][INFO]This round took mix 1 29.5782ms seconds
+[2023-08-26 15:33:01.559][INFO]This round took mix 0 29.7162ms seconds
+[2023-08-26 15:33:01.559][INFO]recv'd get response from mix 1 of size: 0
+[2023-08-26 15:33:01.559][INFO]recv'd get response from mix 0 of size: 100

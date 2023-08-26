@@ -1,12 +1,6 @@
 [package]
-authors = ["The Hyperledger Ursa Contributors"]
-description = "The BBS+ signature scheme"
-documentation = "https://docs.rs/bbs"
-edition = "2018"
-license = "Apache-2.0"
 name = "bbs"
-readme = "README.md"
-repository = "https://github.com/hyperledger/ursa"
+edition = "2018"
 version = "0.4.2"
 
 [badges]
@@ -71,12 +65,12 @@ tonic-build = "0.8.4"
 
 [[bin]]
 name = "mix"
-path = "mix/mix.rs"
+path = "bins/mix/mix.rs"
 
 [[bin]]
 name = "config"
-path = "config/config.rs"
+path = "bins/config/config.rs"
 
 [[bin]]
 name = "setup"
-path = "setup/setup.rs"
+path = "bins/setup/setup.rs"

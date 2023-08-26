@@ -1,5 +1,5 @@
 use bbs::config::*;
-use bbs::data_manager::*;
+use bbs::data_manager::info::*;
 use bbs::mixnet::*;
 use bbs::network::Network;
 use futures::future::join_all;

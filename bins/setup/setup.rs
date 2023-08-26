@@ -1,5 +1,5 @@
 use bbs::config::*;
-use bbs::data_manager::*;
+use bbs::data_manager::info::*;
 
 pub fn main() {
     let config_info = ConfigInfo {
