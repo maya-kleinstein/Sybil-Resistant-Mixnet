@@ -3,9 +3,6 @@ use chrono::NaiveDateTime;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
 
-/*
-LOGS management
-*/
 /// Initializes a logger that outputs everything to both stdout and the file at file_path
 pub fn init_logger(file_path: &str) -> Result<(), fern::InitError> {
     fern::Dispatch::new()

@@ -11,10 +11,6 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
-/*
-INFO management
-*/
-
 /// Write all heavy computation info to predetermined files
 pub fn setup_info(config_info: ConfigInfo) {
     // Write config data to file

@@ -5,10 +5,6 @@ use std::net::{IpAddr, TcpStream};
 use std::thread::sleep;
 use std::time::Duration;
 
-/*
-IP management
-*/
-
 /// Get's all mixes IP's sorted, and my mix's index
 pub fn init_mix_ips() -> io::Result<(Vec<IpAddr>, u16)> {
     let my_ip = write_my_ip_to_file()?;
@@ -64,4 +60,52 @@ fn get_cur_ip_files() -> std::io::Result<Vec<IpAddr>> {
         }
     }
     Ok(ips)
+}
+
+pub fn delete_ip_files() {
+    let paths = fs::read_dir(format!("{}{}", *BASE_FOLDER, *IPS_FOLDER)).unwrap();
+    for path in paths {
+        let path = path.unwrap().path();
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::net::Ipv4Addr;
+
+    #[test]
+    fn ips_test() {
+        // Write random IP's as files to IP folder
+        let mut rand_ips: Vec<IpAddr> = Vec::new();
+        for _ in 0..((*NUM_MIXES - 1) as usize) {
+            let r = rand::random();
+            let ip = Ipv4Addr::new(r, r, r, r);
+            rand_ips.push(IpAddr::V4(ip));
+        }
+        for ip in rand_ips.iter() {
+            let filename = format!("{}{}", *IPS_FOLDER, ip);
+            serialize_data_to_file::<IpAddr>(&ip, &filename).unwrap();
+        }
+
+        // Write my IP to the IP folder
+        let my_ip = get_my_ip().unwrap();
+        let filename = format!("{}{}", *IPS_FOLDER, my_ip);
+        serialize_data_to_file::<IpAddr>(&my_ip, &filename).unwrap();
+
+        // Get all IP's from the IP folder
+        let mut ips = get_all_ips_from_files().unwrap();
+        assert_eq!(ips.len(), *NUM_MIXES as usize);
+
+        ips.sort();
+        let index = ips.iter().position(|&r| r == my_ip).unwrap();
+        assert_eq!(ips[index], my_ip);
+
+        println!("All IPs: {:?}", ips);
+        println!("My IP's index: {}", index);
+
+        // Empty IP folder
+        delete_ip_files();
+    }
 }
