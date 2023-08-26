@@ -20,12 +20,12 @@ pub fn init_mix_ips() -> io::Result<(Vec<IpAddr>, u16)> {
 }
 
 pub fn get_all_ips_from_files() -> std::io::Result<Vec<IpAddr>> {
-    let mut ips = get_cur_ip_files()?;
+    let mut ips = get_cur_ip_files(&*IPS_FOLDER)?;
     while ips.len() as u16 != *NUM_MIXES {
         let missing_ips = format!("Could only find: {:?}", ips);
         warn!("{:?}", missing_ips);
         sleep(Duration::from_millis(10));
-        ips = get_cur_ip_files()?;
+        ips = get_cur_ip_files(&*IPS_FOLDER)?;
     }
     Ok(ips)
 }
@@ -43,9 +43,9 @@ pub fn get_my_ip() -> io::Result<IpAddr> {
     Ok(socket.local_addr()?.ip())
 }
 
-fn get_cur_ip_files() -> std::io::Result<Vec<IpAddr>> {
+pub fn get_cur_ip_files(dir: &str) -> std::io::Result<Vec<IpAddr>> {
     let mut ips: Vec<IpAddr> = Vec::new();
-    for entry in fs::read_dir(format!("{}{}", *BASE_FOLDER, *IPS_FOLDER))? {
+    for entry in fs::read_dir(format!("{}{}", *BASE_FOLDER, dir))? {
         let entry = entry?;
         let path = entry.path();
         if path.is_file() {

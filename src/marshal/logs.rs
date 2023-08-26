@@ -1,7 +1,8 @@
 use crate::marshal::*;
-use chrono::NaiveDateTime;
-use std::fs::{self, File};
-use std::io::{BufRead, BufReader};
+use std::fs::{self};
+use std::path::PathBuf;
+
+use super::ips::get_cur_ip_files;
 
 /// Initializes a logger that outputs everything to both stdout and the file at file_path
 pub fn init_logger(file_path: &str) -> Result<(), fern::InitError> {
@@ -39,29 +40,61 @@ Config will run them through a "manage_files()" function that will run these in 
 */
 
 /// Rename IP logs to Mix ID logs
-pub fn rename_ip_logs() {}
+pub fn rename_ip_logs() {
+    // Get all IP file paths
+    let ips = get_cur_ip_files(&*LOGS_FOLDER).unwrap();
+
+    // enumerate through file_ips
+    for (ip_index, ip) in ips.iter().enumerate() {
+        let ip_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip.to_string());
+        let mix_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip_index);
+        fs::rename(ip_str, mix_str).unwrap();
+    }
+}
 
 /// Merge all log files into one
-pub fn merge_log_files(filenames: Vec<&str>) {
-    // Read each file, parse the timestamp, and push the items into the heap.
-    for (file_index, file_path) in filenames.iter().enumerate() {
-        let file = File::open(file_path).unwrap();
-        let reader = BufReader::new(file);
+pub fn merge_log_files() {
+    // Get all current log file paths
+}
 
-        for line in reader.lines() {
-            let line = line.unwrap();
-            let timestamp_str = &line[1..24];
-            let format = "%Y-%m-%d %H:%M:%S%.3f";
-            let timestamp = NaiveDateTime::parse_from_str(timestamp_str, format).unwrap();
+/// Delete all files in data\logs that aren't relevant
+pub fn delete_old_log_files() {
+    let paths = fs::read_dir(format!("{}{}", *BASE_FOLDER, *LOGS_FOLDER)).unwrap();
+    for path in paths {
+        let path = path.unwrap().path();
+        // check if path is old file
+        if !is_final_log(&path) {
+            fs::remove_file(path).unwrap();
         }
     }
 }
 
-/// Delete all files in date\ips
-pub fn delete_ip_files() {
-    let paths = fs::read_dir(format!("{}{}", *BASE_FOLDER, *IPS_FOLDER)).unwrap();
-    for path in paths {
-        let path = path.unwrap().path();
-        fs::remove_file(path).unwrap();
+fn is_final_log(path: &PathBuf) -> bool {
+    let filename = path.file_name().unwrap().to_str().unwrap();
+    filename.contains("log_")
+}
+
+#[cfg(test)]
+mod test {
+    use std::net::{IpAddr, Ipv4Addr};
+
+    use super::*;
+
+    #[test]
+    fn test_rename_ip_logs() {
+        // Write random IP's as files to logs folder
+        let mut rand_ips: Vec<IpAddr> = Vec::new();
+        for _ in 0..((*NUM_MIXES - 1) as usize) {
+            let r = rand::random();
+            let ip = Ipv4Addr::new(r, r, r, r);
+            rand_ips.push(IpAddr::V4(ip));
+        }
+        for ip in rand_ips.iter() {
+            let filename = format!("{}{}", *LOGS_FOLDER, ip);
+            serialize_data_to_file::<IpAddr>(&ip, &filename).unwrap();
+        }
+        println!("{:?}", get_cur_ip_files(&*LOGS_FOLDER).unwrap());
+
+        rename_ip_logs();
     }
 }
