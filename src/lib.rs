@@ -87,6 +87,8 @@ pub mod messages;
 pub mod pok_vc;
 /// Configuration code for Mixnet
 pub mod config;
+/// Manages Data for Mixnet
+pub mod data_manager;
 /// The errors that BBS+ throws
 pub mod errors;
 /// Represents steps taken by the issuer to create a BBS+ signature
@@ -94,8 +96,6 @@ pub mod errors;
 pub mod issuer;
 /// BBS+ key classes
 pub mod keys;
-/// Marshaling code for Mixnet
-pub mod marshal;
 /// Code for Mixes in Mixnet
 pub mod mix;
 /// Mixnet system code

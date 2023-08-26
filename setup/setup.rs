@@ -1,5 +1,5 @@
 use bbs::config::*;
-use bbs::marshal::*;
+use bbs::data_manager::*;
 
 pub fn main() {
     let config_info = ConfigInfo {
@@ -14,5 +14,5 @@ pub fn main() {
         edge_limit: 0.3,
     };
 
-    setup_files(config_info);
+    setup_info(config_info);
 }

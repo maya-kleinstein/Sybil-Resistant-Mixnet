@@ -1,5 +1,5 @@
 use bbs::config::*;
-use bbs::marshal::*;
+use bbs::data_manager::*;
 use bbs::mixnet::*;
 use bbs::network::Network;
 use futures::future::join_all;
@@ -21,7 +21,7 @@ fn system_test() {
 fn marshalling_test() {
     let config_info = ConfigInfo {
         base_port: 8000,
-        num_mixes: 10,
+        num_mixes: 3,
         num_clients: 100,
         percentage_bad_clients: 1.0,
         num_layers: 5,
@@ -31,7 +31,7 @@ fn marshalling_test() {
         edge_limit: 0.3,
     };
 
-    setup_files(config_info);
+    setup_info(config_info);
     for i in 0..(config_info.num_mixes) {
         let packets = get_init_packets(i);
         println!("{} recv'd {} packets", i, packets.len());

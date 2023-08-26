@@ -1,5 +1,5 @@
 use crate::config::*;
-use crate::marshal::{get_init_packets, get_network_info, process_init_packets};
+use crate::data_manager::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{decrypt_layer, verify_batch, verify_packet, Network, Packet};
 use futures::future::join_all;
 use log::*;
@@ -58,7 +58,6 @@ impl MyServer {
 #[tonic::async_trait]
 impl Mix for MyServer {
     async fn add(&self, request: Request<AddRequest>) -> Result<Response<AddResponse>, Status> {
-        info!("mix {} got an add request", self.id);
         self.parse_input(request).await;
 
         self.handle_middle_layer().await;
@@ -94,6 +93,12 @@ impl MyServer {
     /// Process (decrypt) incoming stream to proper output buffer
     async fn parse_input(&self, request: Request<AddRequest>) -> () {
         let add_req = request.into_inner();
+        info!(
+            "mix {} got {} packets for layer {}",
+            self.id,
+            add_req.packets.len(),
+            add_req.layer
+        );
         // Decrypt packets - Verify as well in case of MixnetVerification::Verify
         let dec_packets =
             decrypt_incoming_packets(add_req.packets, self.id, add_req.layer, &self.network_info);
@@ -138,11 +143,11 @@ impl MyServer {
         for i in (0..*NUM_MIXES).rev() {
             let mut packets = output_buffer.0.pop().unwrap();
             info!(
-                "{} packets for layer {} sent from mix {} to {}",
-                packets.len(),
-                layer + 1,
+                "mix {} sent to mix {} {} packets for layer {}",
                 self.id,
-                i
+                i,
+                packets.len(),
+                layer + 1
             );
             // Verify packets if needed
             handle_verify_on_output(
@@ -378,7 +383,7 @@ fn verify_outgoing_packets(packets: &mut Vec<Packet>, network_info: &Network, la
 async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
     let my_ip = mix_ips[id as usize];
     let mix = MyServer::new(mix_ips, id);
-    info!("Start mix {}", id);
+    info!("mix {} started", id);
     let task = tokio::spawn(async move {
         Server::builder()
             .add_service(MixServer::new(mix))
