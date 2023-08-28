@@ -5,6 +5,9 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::MAIN_SEPARATOR;
 
+use self::ips::delete_ip_files;
+use self::logs::{delete_old_log_files, merge_log_files, rename_ip_logs};
+
 pub mod info;
 pub mod ips;
 pub mod logs;
@@ -48,4 +51,12 @@ pub fn deserialize_data_from_file<T: for<'a> Deserialize<'a>>(
     file.read_to_string(&mut contents).unwrap();
     let result: Result<T, serde_json::Error> = serde_json::from_str::<T>(&(contents.as_str()));
     return result;
+}
+
+/// Runs all function needed to manage \data dir. at the end of a round
+pub fn manage_files() {
+    rename_ip_logs();
+    merge_log_files().unwrap();
+    delete_ip_files();
+    delete_old_log_files();
 }

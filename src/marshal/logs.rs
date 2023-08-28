@@ -1,6 +1,9 @@
+use chrono::{DateTime, Local, TimeZone};
+
 use crate::marshal::*;
 use std::fs::{self};
-use std::path::PathBuf;
+use std::io::{self, BufRead};
+use std::path::{Path, PathBuf};
 
 use super::ips::get_cur_ip_files;
 
@@ -26,19 +29,6 @@ pub fn init_logger(file_path: &str) -> Result<(), fern::InitError> {
     Ok(())
 }
 
-/*
-NOTES:
-Below are functions that we'll eventually need in order to generate final logs and delete unnecessary files
-at the end of a run.
-Config will run them through a "manage_files()" function that will run these in the following order:
-- rename_ip_logs: rename all IP logs to Mix ID logs
-- merge_log_files: merge all log files into one (in order of timestamps)
-- delete_ip_files: delete all files in date\ips
-- delete_old_log_files: delete all log files that AREN'T merged ones (they'll have a format for there name)
-
-    WRITE TESTS FOR THIS!!!!!
-*/
-
 /// Rename IP logs to Mix ID logs
 pub fn rename_ip_logs() {
     // Get all IP file paths
@@ -47,14 +37,9 @@ pub fn rename_ip_logs() {
     // enumerate through file_ips
     for (ip_index, ip) in ips.iter().enumerate() {
         let ip_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip.to_string());
-        let mix_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip_index);
+        let mix_str = format!("{}{}mix {}", *BASE_FOLDER, *LOGS_FOLDER, ip_index);
         fs::rename(ip_str, mix_str).unwrap();
     }
-}
-
-/// Merge all log files into one
-pub fn merge_log_files() {
-    // Get all current log file paths
 }
 
 /// Delete all files in data\logs that aren't relevant
@@ -74,6 +59,54 @@ fn is_final_log(path: &PathBuf) -> bool {
     filename.contains("log_")
 }
 
+fn extract_timestamp(line: &str) -> DateTime<Local> {
+    Local
+        .datetime_from_str(&line[1..24], "%Y-%m-%d %H:%M:%S%.3f")
+        .unwrap()
+}
+
+/// Merge all log files into one
+pub fn merge_log_files() -> io::Result<()> {
+    let dir = format!("{}{}", *BASE_FOLDER, *LOGS_FOLDER);
+    let entries: Vec<_> = fs::read_dir(&dir)?
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<_, _>>()?;
+
+    let merged_data: Vec<_> = entries
+        .iter()
+        .filter(|path| !is_final_log(path))
+        .flat_map(|path| {
+            let file = File::open(path).unwrap();
+            let filename = path.file_name().unwrap().to_string_lossy().into_owned();
+            io::BufReader::new(file).lines().filter_map(move |line| {
+                line.ok()
+                    .map(|l| (extract_timestamp(&l), format!("<{}>{}", filename, l)))
+            })
+        })
+        .collect();
+
+    let mut sorted_data = merged_data;
+    sorted_data.sort_by_key(|k| k.0);
+
+    // Collect all lines into a single string
+    let content: String = sorted_data
+        .iter()
+        .map(|(_, line)| line.as_str())
+        .collect::<Vec<&str>>()
+        .join("\n");
+
+    // Create a new log file name with the current date
+    let timestamp = chrono::Local::now().format("%d.%m_%H.%M").to_string();
+    let path_str = format!("{}{}{}", &dir, "log_", &timestamp);
+
+    // Write the content to the new file
+    let path = Path::new(&path_str);
+    let mut file = File::create(&path)?;
+    file.write_all(content.as_bytes())?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use std::net::{IpAddr, Ipv4Addr};
@@ -81,7 +114,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_rename_ip_logs() {
+    fn test_logs() {
         // Write random IP's as files to logs folder
         let mut rand_ips: Vec<IpAddr> = Vec::new();
         for _ in 0..((*NUM_MIXES - 1) as usize) {
@@ -91,10 +124,15 @@ mod test {
         }
         for ip in rand_ips.iter() {
             let filename = format!("{}{}", *LOGS_FOLDER, ip);
-            serialize_data_to_file::<IpAddr>(&ip, &filename).unwrap();
+            let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+            let data_line = format!("[{}]{}", timestamp, &ip);
+            serialize_data_to_file::<String>(&data_line, &filename).unwrap();
         }
         println!("{:?}", get_cur_ip_files(&*LOGS_FOLDER).unwrap());
 
         rename_ip_logs();
+
+        // Merge all log files
+        merge_log_files().unwrap();
     }
 }

@@ -1,5 +1,6 @@
 use std::net::IpAddr;
 
+use crate::marshal::manage_files;
 use crate::mix::connect_to_server;
 use crate::{marshal::info::get_config_info, mix::mix_service::GetRequest};
 use futures::future::join_all;
@@ -65,4 +66,5 @@ pub async fn run_config(mix_ips: Vec<IpAddr>) {
     join_all(tasks).await;
 
     // Generate final log, clear all IP files
+    manage_files();
 }
