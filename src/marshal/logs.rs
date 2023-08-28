@@ -1,9 +1,9 @@
 use chrono::{DateTime, Local, TimeZone};
 
 use crate::marshal::*;
-use std::fs::{self};
+use std::fs::{self, OpenOptions};
 use std::io::{self, BufRead};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::ips::get_cur_ip_files;
 
@@ -100,8 +100,18 @@ pub fn merge_log_files() -> io::Result<()> {
     let path_str = format!("{}{}{}", &dir, "log_", &timestamp);
 
     // Write the content to the new file
-    let path = Path::new(&path_str);
-    let mut file = File::create(&path)?;
+    let mut file = OpenOptions::new()
+        .append(true)
+        .write(true)
+        .create(true)
+        .open(path_str)
+        .expect("cannot open file");
+
+    // Add config data to file
+    let json_config = serde_json::to_string_pretty::<ConfigInfo>(&*CONFIG_INFO)?;
+    file.write_all(format!("{}{}", json_config, "\n").as_bytes())?;
+
+    // Write logs to file
     file.write_all(content.as_bytes())?;
 
     Ok(())
