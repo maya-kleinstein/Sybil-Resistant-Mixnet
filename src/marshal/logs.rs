@@ -1,6 +1,5 @@
-use chrono::{DateTime, Local, TimeZone};
-
 use crate::marshal::*;
+use chrono::NaiveTime;
 use std::fs::{self, OpenOptions};
 use std::io::{self, BufRead};
 use std::path::PathBuf;
@@ -13,7 +12,7 @@ pub fn init_logger(file_path: &str) -> Result<(), fern::InitError> {
         .format(|out, message, record| {
             out.finish(format_args!(
                 "[{}][{}]{}",
-                chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+                chrono::Local::now().format("%H:%M:%S%.3f"),
                 record.level(),
                 message
             ))
@@ -59,10 +58,8 @@ fn is_final_log(path: &PathBuf) -> bool {
     filename.contains("log_")
 }
 
-fn extract_timestamp(line: &str) -> DateTime<Local> {
-    Local
-        .datetime_from_str(&line[1..24], "%Y-%m-%d %H:%M:%S%.3f")
-        .unwrap()
+fn extract_timestamp(line: &str) -> NaiveTime {
+    NaiveTime::parse_from_str(&line[1..13], "%H:%M:%S%.3f").unwrap()
 }
 
 /// Merge all log files into one
