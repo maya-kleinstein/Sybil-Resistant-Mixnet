@@ -1,0 +1,105 @@
+{
+  "base_port": 8000,
+  "num_mixes": 3,
+  "num_clients": 100,
+  "percentage_bad_clients": 1.0,
+  "num_layers": 5,
+  "first_middle_layer": 2,
+  "mix_verification": "OnlyVerifyEdgeCases",
+  "num_rounds": 1,
+  "edge_limit": 0.3
+}
+<local>[14:27:29.111][INFO]mix 0 started
+<local>[14:27:29.121][INFO]mix 1 started
+<local>[14:27:29.129][INFO]mix 2 started
+<local>[14:27:29.129][INFO]running round 0
+<local>[14:27:29.620][INFO]mix 0 connected to 0 mix
+<local>[14:27:29.620][INFO]mix 0 connected to 2 mix
+<local>[14:27:29.620][INFO]mix 0 connected to 1 mix
+<local>[14:27:29.621][INFO]mix 2 got 0 packets for layer 1
+<local>[14:27:29.622][INFO]mix 1 got 0 packets for layer 1
+<local>[14:27:29.622][INFO]mix 0 got 39 packets for layer 1
+<local>[14:27:29.634][INFO]mix 2 connected to 2 mix
+<local>[14:27:29.634][INFO]mix 1 connected to 1 mix
+<local>[14:27:29.634][INFO]mix 2 connected to 0 mix
+<local>[14:27:29.634][INFO]mix 1 connected to 2 mix
+<local>[14:27:29.634][INFO]mix 1 connected to 0 mix
+<local>[14:27:29.634][INFO]mix 2 connected to 1 mix
+<local>[14:27:29.635][INFO]connected to mix 0
+<local>[14:27:29.635][INFO]mix 0 got 0 packets for layer 1
+<local>[14:27:29.635][INFO]mix 2 got 0 packets for layer 1
+<local>[14:27:29.636][INFO]mix 2 got 31 packets for layer 1
+<local>[14:27:29.636][INFO]mix 0 got 0 packets for layer 1
+<local>[14:27:29.636][INFO]mix 1 got 30 packets for layer 1
+<local>[14:27:29.636][INFO]mix 0 got a get request
+<local>[14:27:29.636][INFO]connected to mix 1
+<local>[14:27:29.636][INFO]mix 1 got 0 packets for layer 1
+<local>[14:27:29.637][INFO]mix 0 sent to mix 2 0 packets for layer 3
+<local>[14:27:29.637][INFO]mix 1 got a get request
+<local>[14:27:29.638][INFO]connected to mix 2
+<local>[14:27:29.638][INFO]mix 0 sent to mix 1 0 packets for layer 3
+<local>[14:27:29.638][INFO]mix 0 sent to mix 0 39 packets for layer 3
+<local>[14:27:29.638][INFO]mix 2 got a get request
+<local>[14:27:29.638][INFO]OVER BOUND! number of packets: 39, total outgoing: 39, probability: 0
+<local>[14:27:29.639][INFO]mix 0 is verifying edge case to mix 0
+<local>[14:27:29.652][INFO]mix 1 sent to mix 2 0 packets for layer 3
+<local>[14:27:29.652][INFO]mix 2 sent to mix 2 0 packets for layer 3
+<local>[14:27:29.652][INFO]mix 1 sent to mix 1 0 packets for layer 3
+<local>[14:27:29.653][INFO]mix 2 sent to mix 1 0 packets for layer 3
+<local>[14:27:29.653][INFO]mix 1 sent to mix 0 30 packets for layer 3
+<local>[14:27:29.653][INFO]mix 2 sent to mix 0 31 packets for layer 3
+<local>[14:27:29.654][INFO]mix 2 got 0 packets for layer 2
+<local>[14:27:29.654][INFO]OVER BOUND! number of packets: 30, total outgoing: 30, probability: 0
+<local>[14:27:29.654][INFO]mix 1 got 0 packets for layer 2
+<local>[14:27:29.654][INFO]OVER BOUND! number of packets: 31, total outgoing: 31, probability: 0
+<local>[14:27:29.654][INFO]mix 0 got 0 packets for layer 2
+<local>[14:27:29.654][INFO]mix 1 is verifying edge case to mix 0
+<local>[14:27:29.655][INFO]mix 2 is verifying edge case to mix 0
+<local>[14:27:29.678][INFO]mix 2 got 0 packets for layer 2
+<local>[14:27:29.678][INFO]mix 2 got 0 packets for layer 2
+<local>[14:27:29.678][INFO]mix 1 got 0 packets for layer 2
+<local>[14:27:29.678][INFO]mix 0 got 0 packets for layer 2
+<local>[14:27:29.678][INFO]mix 1 got 0 packets for layer 2
+<local>[14:27:29.679][INFO]mix 2 sent to mix 2 0 packets for layer 4
+<local>[14:27:29.679][INFO]mix 0 got 0 packets for layer 2
+<local>[14:27:29.679][INFO]mix 2 sent to mix 1 0 packets for layer 4
+<local>[14:27:29.679][INFO]mix 2 sent to mix 0 0 packets for layer 4
+<local>[14:27:29.681][INFO]mix 0 sent to mix 2 0 packets for layer 4
+<local>[14:27:29.681][INFO]mix 2 got 0 packets for layer 3
+<local>[14:27:29.681][INFO]mix 1 sent to mix 2 0 packets for layer 4
+<local>[14:27:29.681][INFO]mix 0 sent to mix 1 0 packets for layer 4
+<local>[14:27:29.682][INFO]mix 1 got 0 packets for layer 3
+<local>[14:27:29.682][INFO]mix 0 got 0 packets for layer 3
+<local>[14:27:29.682][INFO]mix 1 sent to mix 1 0 packets for layer 4
+<local>[14:27:29.682][INFO]mix 0 sent to mix 0 0 packets for layer 4
+<local>[14:27:29.684][INFO]mix 1 sent to mix 0 0 packets for layer 4
+<local>[14:27:29.686][INFO]mix 2 got 0 packets for layer 3
+<local>[14:27:29.687][INFO]mix 2 got 0 packets for layer 3
+<local>[14:27:29.687][INFO]mix 1 got 0 packets for layer 3
+<local>[14:27:29.687][INFO]mix 1 got 0 packets for layer 3
+<local>[14:27:29.687][INFO]mix 0 got 0 packets for layer 3
+<local>[14:27:29.687][INFO]mix 0 got 0 packets for layer 3
+<local>[14:27:29.688][INFO]mix 1 sent to mix 2 0 packets for layer 5
+<local>[14:27:29.688][INFO]mix 0 sent to mix 2 0 packets for layer 5
+<local>[14:27:29.689][INFO]mix 2 sent to mix 2 0 packets for layer 5
+<local>[14:27:29.690][INFO]mix 1 sent to mix 1 0 packets for layer 5
+<local>[14:27:29.690][INFO]mix 0 sent to mix 1 0 packets for layer 5
+<local>[14:27:29.690][INFO]mix 2 sent to mix 1 0 packets for layer 5
+<local>[14:27:29.691][INFO]mix 1 sent to mix 0 0 packets for layer 5
+<local>[14:27:29.691][INFO]mix 0 sent to mix 0 0 packets for layer 5
+<local>[14:27:29.691][INFO]mix 2 sent to mix 0 0 packets for layer 5
+<local>[14:27:29.692][INFO]mix 2 got 0 packets for layer 4
+<local>[14:27:29.692][INFO]mix 2 got 0 packets for layer 4
+<local>[14:27:29.692][INFO]mix 1 got 0 packets for layer 4
+<local>[14:27:29.693][INFO]mix 2 got 0 packets for layer 4
+<local>[14:27:29.693][INFO]mix 0 got 0 packets for layer 4
+<local>[14:27:29.693][INFO]mix 1 got 0 packets for layer 4
+<local>[14:27:29.693][INFO]mix 0 got 0 packets for layer 4
+<local>[14:27:29.693][INFO]mix 1 got 0 packets for layer 4
+<local>[14:27:29.693][INFO]mix 0 got 0 packets for layer 4
+<local>[14:27:29.694][INFO]This round took mix 0 57.5309ms seconds
+<local>[14:27:29.694][INFO]This round took mix 2 42.4901ms seconds
+<local>[14:27:29.695][INFO]This round took mix 1 42.8208ms seconds
+<local>[14:27:29.695][INFO]recv'd get response from mix 0 of size: 0
+<local>[14:27:29.695][INFO]recv'd get response from mix 2 of size: 0
+<local>[14:27:29.695][INFO]recv'd get response from mix 1 of size: 0

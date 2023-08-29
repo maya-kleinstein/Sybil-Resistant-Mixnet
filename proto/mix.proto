@@ -19,6 +19,7 @@ message AddRequest {
   }
 
   message GetRequest {
+    uint32 round = 1;
   }
   
   message GetResponse {

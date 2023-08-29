@@ -75,14 +75,8 @@ impl Mix for MyServer {
         let _ = self.notify.acquire_many(amount_to_acquire).await.unwrap();
         let messages = self.output_all().await;
 
-        // Measure time
-        let time_guard = self.time.lock().await;
-        info!(
-            "This round took mix {} {:?} seconds",
-            self.id,
-            time_guard.elapsed()
-        );
-        drop(time_guard);
+        // Measure time for this round
+        self.measure_time().await;
 
         let reply = GetResponse { messages };
         Ok(Response::new(reply))
@@ -221,6 +215,16 @@ impl MyServer {
         messages.shuffle(&mut thread_rng());
         return messages;
     }
+
+    async fn measure_time(&self) {
+        let time_guard = self.time.lock().await;
+        info!(
+            "This round took mix {} {:?} seconds",
+            self.id,
+            time_guard.elapsed()
+        );
+        drop(time_guard);
+    }
 }
 
 async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
@@ -237,40 +241,6 @@ async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u
     conn.add(Request::new(add_req))
         .await
         .expect("Failed to send add");
-}
-
-fn send_init_packets(mix_ips: &Vec<IpAddr>, id: u16) -> Vec<JoinHandle<()>> {
-    let mut mix_tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
-    let mut init_buffer = process_init_packets(get_init_packets(id), &get_network_info(), id, 0);
-    for dst in (0..*NUM_MIXES).rev() {
-        let packets = init_buffer.pop().unwrap();
-        let dst_ip = mix_ips[dst as usize];
-        let task = tokio::spawn(async move {
-            connect_and_send(dst_ip, dst, id, packets, 1).await;
-        });
-        mix_tasks.push(task);
-    }
-    return mix_tasks;
-}
-
-/// Try connecting to server dst until success
-pub async fn connect_to_server(dst_ip: &IpAddr, dst: u16) -> MixClient<Channel> {
-    let mut conn_result =
-        MixClient::connect(format!("http://{}:{}", dst_ip, *BASE_PORT + dst)).await;
-    loop {
-        match conn_result {
-            Ok(ref _result) => {
-                break;
-            }
-            Err(err) => {
-                warn!("Failed to connect to mix {}: {:?}", dst, err);
-                sleep(Duration::from_micros(1)).await;
-                conn_result =
-                    MixClient::connect(format!("http://{}:{}", dst_ip, *BASE_PORT + dst)).await;
-            }
-        }
-    }
-    return conn_result.unwrap();
 }
 
 /// Decrypt incoming packets
@@ -317,12 +287,31 @@ fn handle_verify_on_output(
     }
 }
 
-fn is_middle_layer(guard: &HashMap<u32, (Vec<Vec<Packet>>, u32)>) -> bool {
-    if guard.is_empty() {
+/// Verifies outgoing packets, drops invalid ones.
+fn verify_outgoing_packets(packets: &mut Vec<Packet>, network_info: &Network, layer: u32) {
+    let retain_flags: Vec<bool> = packets
+        .par_iter()
+        .map(|packet| verify_packet(packet, network_info, (layer - 1) as u64).1)
+        .collect();
+
+    let mut valid_packets: Vec<Packet> =
+        Vec::with_capacity(retain_flags.iter().filter(|&&item| item).count());
+
+    for (packet, flag) in packets.drain(..).zip(retain_flags.into_iter()) {
+        if flag {
+            valid_packets.push(packet);
+        }
+    }
+
+    *packets = valid_packets;
+}
+
+fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<Packet>>, u32)>) -> bool {
+    if output_buf.is_empty() {
         return false;
     }
-    let current_layer = guard.keys().min().expect("HashMap is Empty").clone();
-    let counter: u32 = guard.get(&current_layer).unwrap().1;
+    let current_layer = output_buf.keys().min().expect("HashMap is Empty").clone();
+    let counter: u32 = output_buf.get(&current_layer).unwrap().1;
 
     return counter % (*NUM_MIXES as u32) == 0 && (current_layer as u64) != *NUM_LAYERS;
 }
@@ -361,23 +350,38 @@ fn is_out_of_bounds(i: usize, total: usize) -> bool {
     result
 }
 
-/// Verifies outgoing packets, drops invalid ones.
-fn verify_outgoing_packets(packets: &mut Vec<Packet>, network_info: &Network, layer: u32) {
-    let retain_flags: Vec<bool> = packets
-        .par_iter()
-        .map(|packet| verify_packet(packet, network_info, (layer - 1) as u64).1)
-        .collect();
+fn send_init_packets(mix_ips: &Vec<IpAddr>, id: u16) -> Vec<JoinHandle<()>> {
+    let mut mix_tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
+    let mut init_buffer = process_init_packets(get_init_packets(id), &get_network_info(), id, 0);
+    for dst in (0..*NUM_MIXES).rev() {
+        let packets = init_buffer.pop().unwrap();
+        let dst_ip = mix_ips[dst as usize];
+        let task = tokio::spawn(async move {
+            connect_and_send(dst_ip, dst, id, packets, 1).await;
+        });
+        mix_tasks.push(task);
+    }
+    return mix_tasks;
+}
 
-    let mut valid_packets: Vec<Packet> =
-        Vec::with_capacity(retain_flags.iter().filter(|&&item| item).count());
-
-    for (packet, flag) in packets.drain(..).zip(retain_flags.into_iter()) {
-        if flag {
-            valid_packets.push(packet);
+/// Try connecting to server dst until success
+pub async fn connect_to_server(dst_ip: &IpAddr, dst: u16) -> MixClient<Channel> {
+    let mut conn_result =
+        MixClient::connect(format!("http://{}:{}", dst_ip, *BASE_PORT + dst)).await;
+    loop {
+        match conn_result {
+            Ok(ref _result) => {
+                break;
+            }
+            Err(err) => {
+                warn!("Failed to connect to mix {}: {:?}", dst, err);
+                sleep(Duration::from_micros(1)).await;
+                conn_result =
+                    MixClient::connect(format!("http://{}:{}", dst_ip, *BASE_PORT + dst)).await;
+            }
         }
     }
-
-    *packets = valid_packets;
+    return conn_result.unwrap();
 }
 
 async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
@@ -397,6 +401,11 @@ async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
     });
 
     task.await.unwrap().await.expect("Failed to Start Server");
+}
+
+async fn run_mix_round(mix_ips: &Vec<IpAddr>, id: u16) {
+    let mix_tasks = send_init_packets(mix_ips, id);
+    join_all(mix_tasks).await;
 }
 
 /// runs Mix
