@@ -16,8 +16,8 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, Semaphore};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration, Instant};
-use tonic::transport::Channel;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::transport::{Channel, Server};
+use tonic::{Request, Response, Status};
 
 /// Service created from proto file
 pub mod mix_service {
