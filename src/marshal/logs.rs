@@ -6,6 +6,8 @@ use std::path::PathBuf;
 
 use super::ips::get_cur_ip_files;
 
+pub const RESULTS: &str = "Results:";
+
 /// Initializes a logger that outputs everything to both stdout and the file at file_path
 pub fn init_logger(file_path: &str) -> Result<(), fern::InitError> {
     fern::Dispatch::new()
@@ -62,6 +64,34 @@ fn extract_timestamp(line: &str) -> NaiveTime {
     NaiveTime::parse_from_str(&line[1..13], "%H:%M:%S%.3f").unwrap()
 }
 
+fn get_sorted_string(merged_data: Vec<(NaiveTime, String)>) -> String {
+    let mut sorted_data = merged_data;
+    sorted_data.sort_by_key(|k| k.0);
+
+    // Collect all lines into a single string
+    let content: String = sorted_data
+        .iter()
+        .map(|(_, line)| line.as_str())
+        .collect::<Vec<&str>>()
+        .join("\n");
+
+    return content;
+}
+
+fn get_results_string(content: &str) -> String {
+    // Get + Parse all lines that contain RESULTS
+    let results: Vec<_> = content
+        .lines()
+        .filter(|line| line.contains(RESULTS))
+        .map(|line| line.split(RESULTS).collect::<Vec<&str>>()[1])
+        .collect();
+
+    // Collect all lines into a single string
+    let results_string: String = results.join("\n");
+
+    return results_string;
+}
+
 /// Merge all log files into one
 pub fn merge_log_files() -> io::Result<()> {
     let dir = format!("{}{}", *BASE_FOLDER, *LOGS_FOLDER);
@@ -82,15 +112,9 @@ pub fn merge_log_files() -> io::Result<()> {
         })
         .collect();
 
-    let mut sorted_data = merged_data;
-    sorted_data.sort_by_key(|k| k.0);
+    let content: String = get_sorted_string(merged_data);
 
-    // Collect all lines into a single string
-    let content: String = sorted_data
-        .iter()
-        .map(|(_, line)| line.as_str())
-        .collect::<Vec<&str>>()
-        .join("\n");
+    let results = get_results_string(&content);
 
     // Create a new log file name with the current date
     let timestamp = chrono::Local::now().format("%d.%m_%H.%M").to_string();
@@ -107,6 +131,9 @@ pub fn merge_log_files() -> io::Result<()> {
     // Add config data to file
     let json_config = serde_json::to_string_pretty::<ConfigInfo>(&*CONFIG_INFO)?;
     file.write_all(format!("{}{}", json_config, "\n").as_bytes())?;
+
+    // Add results to file
+    file.write_all(format!("{}{}", results, "\n").as_bytes())?;
 
     // Write logs to file
     file.write_all(content.as_bytes())?;

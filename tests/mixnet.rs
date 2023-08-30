@@ -27,7 +27,7 @@ fn marshalling_test() {
         num_layers: 5,
         first_middle_layer: 2,
         mix_verification: MixnetVerification::OnlyVerifyEdgeCases,
-        num_rounds: 2,
+        num_rounds: 3,
         edge_limit: 0.3,
     };
 

@@ -1,0 +1,129 @@
+{
+  "base_port": 8000,
+  "num_mixes": 2,
+  "num_clients": 100,
+  "percentage_bad_clients": 1.0,
+  "num_layers": 5,
+  "first_middle_layer": 2,
+  "mix_verification": "OnlyVerifyEdgeCases",
+  "num_rounds": 3,
+  "edge_limit": 0.3
+}
+ Round 0 took mix 1 47.1352ms seconds
+ Round 0 took mix 0 47.2521ms seconds
+ Round 1 took mix 1 67.742ms seconds
+ Round 2 took mix 1 44.3744ms seconds
+ Round 1 took mix 0 25.4878ms seconds
+ Round 2 took mix 0 27.8209ms seconds
+<local>[12:55:23.468][INFO]mix 0 started
+<local>[12:55:23.482][INFO]mix 1 started
+<local>[12:55:23.988][INFO]mix 1 connected to 0 mix
+<local>[12:55:23.988][INFO]mix 0 connected to 0 mix
+<local>[12:55:23.988][INFO]mix 0 connected to 1 mix
+<local>[12:55:23.988][INFO]mix 1 connected to 1 mix
+<local>[12:55:23.991][INFO]connected to mix 0
+<local>[12:55:23.993][INFO]mix 0 got 0 packets FROM layer 1
+<local>[12:55:23.993][INFO]connected to mix 1
+<local>[12:55:23.993][INFO]mix 0 got a get request
+<local>[12:55:23.993][INFO]mix 1 got 0 packets FROM layer 1
+<local>[12:55:23.994][INFO]mix 0 is starting round 0
+<local>[12:55:23.994][INFO]mix 1 got a get request
+<local>[12:55:23.994][INFO]mix 1 got 46 packets FROM layer 1
+<local>[12:55:23.994][INFO]mix 0 got 54 packets FROM layer 1
+<local>[12:55:23.995][INFO]mix 1 is starting round 0
+<local>[12:55:23.999][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+<local>[12:55:23.999][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+<local>[12:55:24.001][INFO]mix 1 sent to mix 0 46 packets FROM layer 2
+<local>[12:55:24.001][INFO]mix 0 sent to mix 0 54 packets FROM layer 2
+<local>[12:55:24.001][INFO]OVER BOUND! number of packets: 46, total outgoing: 46, probability: 0
+<local>[12:55:24.001][INFO]OVER BOUND! number of packets: 54, total outgoing: 54, probability: 0
+<local>[12:55:24.002][INFO]mix 1 is verifying edge case to mix 0
+<local>[12:55:24.002][INFO]mix 0 is verifying edge case to mix 0
+<local>[12:55:24.035][INFO]mix 1 got 0 packets FROM layer 2
+<local>[12:55:24.035][INFO]mix 1 got 0 packets FROM layer 2
+<local>[12:55:24.035][INFO]mix 0 got 0 packets FROM layer 2
+<local>[12:55:24.035][INFO]mix 0 got 0 packets FROM layer 2
+<local>[12:55:24.035][INFO]mix 1 sent to mix 1 0 packets FROM layer 3
+<local>[12:55:24.036][INFO]mix 0 sent to mix 1 0 packets FROM layer 3
+<local>[12:55:24.036][INFO]mix 0 sent to mix 0 0 packets FROM layer 3
+<local>[12:55:24.037][INFO]mix 1 sent to mix 0 0 packets FROM layer 3
+<local>[12:55:24.038][INFO]mix 1 got 0 packets FROM layer 3
+<local>[12:55:24.038][INFO]mix 0 got 0 packets FROM layer 3
+<local>[12:55:24.038][INFO]mix 1 got 0 packets FROM layer 3
+<local>[12:55:24.039][INFO]mix 1 sent to mix 1 0 packets FROM layer 4
+<local>[12:55:24.039][INFO]mix 0 got 0 packets FROM layer 3
+<local>[12:55:24.039][INFO]mix 1 sent to mix 0 0 packets FROM layer 4
+<local>[12:55:24.039][INFO]mix 0 sent to mix 1 0 packets FROM layer 4
+<local>[12:55:24.040][INFO]mix 0 sent to mix 0 0 packets FROM layer 4
+<local>[12:55:24.043][INFO]mix 1 got 0 packets FROM layer 4
+<local>[12:55:24.043][INFO]mix 0 got 0 packets FROM layer 4
+<local>[12:55:24.043][INFO]mix 1 got 0 packets FROM layer 4
+<local>[12:55:24.043][INFO]mix 0 got 0 packets FROM layer 4
+<local>[12:55:24.046][INFO] Results:  Round 0 took mix 1 47.1352ms seconds
+<local>[12:55:24.046][INFO] Results:  Round 0 took mix 0 47.2521ms seconds
+<local>[12:55:24.060][INFO]mix 1 connected to 1 mix
+<local>[12:55:24.060][INFO]mix 1 connected to 0 mix
+<local>[12:55:24.060][INFO]mix 0 got 0 packets FROM layer 1
+<local>[12:55:24.061][INFO]mix 1 got 46 packets FROM layer 1
+<local>[12:55:24.066][INFO]mix 1 is starting round 1
+<local>[12:55:24.066][INFO]mix 0 connected to 1 mix
+<local>[12:55:24.066][INFO]mix 0 connected to 0 mix
+<local>[12:55:24.067][INFO] Results:  Round 1 took mix 1 67.742ms seconds
+<local>[12:55:24.067][INFO]mix 1 got 0 packets FROM layer 1
+<local>[12:55:24.068][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+<local>[12:55:24.069][INFO]mix 1 sent to mix 0 46 packets FROM layer 2
+<local>[12:55:24.069][INFO]OVER BOUND! number of packets: 46, total outgoing: 46, probability: 0
+<local>[12:55:24.070][INFO]mix 1 is verifying edge case to mix 0
+<local>[12:55:24.072][INFO]mix 0 got 54 packets FROM layer 1
+<local>[12:55:24.088][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+<local>[12:55:24.089][INFO]mix 0 sent to mix 0 54 packets FROM layer 2
+<local>[12:55:24.089][INFO]OVER BOUND! number of packets: 54, total outgoing: 54, probability: 0
+<local>[12:55:24.089][INFO]mix 1 connected to 0 mix
+<local>[12:55:24.089][INFO]mix 1 connected to 1 mix
+<local>[12:55:24.089][INFO]mix 0 is verifying edge case to mix 0
+<local>[12:55:24.090][INFO]mix 1 got 0 packets FROM layer 2
+<local>[12:55:24.090][INFO]mix 0 got 0 packets FROM layer 1
+<local>[12:55:24.090][INFO]mix 0 got 0 packets FROM layer 2
+<local>[12:55:24.093][INFO]mix 1 got 46 packets FROM layer 1
+<local>[12:55:24.110][INFO]mix 1 is starting round 2
+<local>[12:55:24.112][INFO] Results:  Round 2 took mix 1 44.3744ms seconds
+<local>[12:55:24.113][INFO]mix 1 got 0 packets FROM layer 2
+<local>[12:55:24.113][INFO]mix 0 got 0 packets FROM layer 2
+<local>[12:55:24.114][INFO]mix 0 is starting round 1
+<local>[12:55:24.114][INFO]recv'd get response from mix 1 of size: 46
+<local>[12:55:24.114][INFO] Results:  Round 1 took mix 0 25.4878ms seconds
+<local>[12:55:24.126][INFO]mix 0 connected to 1 mix
+<local>[12:55:24.126][INFO]mix 0 connected to 0 mix
+<local>[12:55:24.126][INFO]mix 1 got 0 packets FROM layer 1
+<local>[12:55:24.126][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+<local>[12:55:24.127][INFO]mix 1 sent to mix 0 46 packets FROM layer 2
+<local>[12:55:24.127][INFO]OVER BOUND! number of packets: 46, total outgoing: 46, probability: 0
+<local>[12:55:24.127][INFO]mix 1 is verifying edge case to mix 0
+<local>[12:55:24.127][INFO]mix 0 got 54 packets FROM layer 1
+<local>[12:55:24.142][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+<local>[12:55:24.143][INFO]mix 0 sent to mix 0 54 packets FROM layer 2
+<local>[12:55:24.143][INFO]OVER BOUND! number of packets: 54, total outgoing: 54, probability: 0
+<local>[12:55:24.143][INFO]mix 0 is verifying edge case to mix 0
+<local>[12:55:24.144][INFO]mix 1 got 0 packets FROM layer 2
+<local>[12:55:24.144][INFO]mix 0 got 0 packets FROM layer 2
+<local>[12:55:24.164][INFO]mix 1 got 0 packets FROM layer 2
+<local>[12:55:24.164][INFO]mix 0 got 0 packets FROM layer 2
+<local>[12:55:24.164][INFO]mix 1 sent to mix 1 0 packets FROM layer 3
+<local>[12:55:24.165][INFO]mix 0 sent to mix 1 0 packets FROM layer 3
+<local>[12:55:24.165][INFO]mix 1 sent to mix 0 0 packets FROM layer 3
+<local>[12:55:24.165][INFO]mix 0 sent to mix 0 0 packets FROM layer 3
+<local>[12:55:24.167][INFO]mix 1 got 0 packets FROM layer 3
+<local>[12:55:24.167][INFO]mix 0 got 0 packets FROM layer 3
+<local>[12:55:24.167][INFO]mix 1 got 0 packets FROM layer 3
+<local>[12:55:24.167][INFO]mix 0 got 0 packets FROM layer 3
+<local>[12:55:24.168][INFO]mix 1 sent to mix 1 0 packets FROM layer 4
+<local>[12:55:24.168][INFO]mix 0 sent to mix 1 0 packets FROM layer 4
+<local>[12:55:24.168][INFO]mix 1 sent to mix 0 0 packets FROM layer 4
+<local>[12:55:24.168][INFO]mix 0 sent to mix 0 0 packets FROM layer 4
+<local>[12:55:24.169][INFO]mix 1 got 0 packets FROM layer 4
+<local>[12:55:24.169][INFO]mix 0 got 0 packets FROM layer 4
+<local>[12:55:24.169][INFO]mix 1 got 0 packets FROM layer 4
+<local>[12:55:24.169][INFO]mix 0 got 0 packets FROM layer 4
+<local>[12:55:24.170][INFO]mix 0 is starting round 2
+<local>[12:55:24.170][INFO] Results:  Round 2 took mix 0 27.8209ms seconds
+<local>[12:55:24.170][INFO]recv'd get response from mix 0 of size: 0

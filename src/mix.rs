@@ -1,6 +1,7 @@
+use crate::config::*;
 use crate::marshal::info::{get_init_packets, get_network_info, process_init_packets};
+use crate::marshal::logs::RESULTS;
 use crate::network::{decrypt_layer, verify_batch, verify_packet, Network, Packet};
-use crate::{config::*, messages};
 use futures::future::join_all;
 use log::*;
 use mix_service::mix_client::MixClient;
@@ -73,9 +74,10 @@ impl Mix for MyServer {
         let mut messages = Vec::new();
         for i in 0..*NUM_ROUNDS {
             info!("mix {} is starting round {}", self.id, i);
-            // Wait til the mix is done getting add requests from all layers
+            // Wait til the mix is done getting all add requests for this round
             let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32);
             let _ = self.notify.acquire_many(amount_to_acquire).await.unwrap();
+
             messages = self.output_all().await;
 
             // Measure time for this round
@@ -83,10 +85,9 @@ impl Mix for MyServer {
 
             if i < *NUM_ROUNDS - 1 {
                 // Run next round
-                run_mix_round(&self.mix_ips, self.id).await;
+                start_mix_round(&self.mix_ips, self.id).await;
             }
         }
-        // Notify config
         // Note: messages should be the same for each round so it doesn't matter which one we use
         let reply = GetResponse { messages };
         Ok(Response::new(reply))
@@ -229,7 +230,8 @@ impl MyServer {
     async fn measure_time(&self, round: u32) {
         let time_guard = self.time.lock().await;
         info!(
-            " Round {} took mix {} {:?} seconds",
+            " {} Round {} took mix {} {:?} seconds",
+            RESULTS,
             round,
             self.id,
             time_guard.elapsed()
@@ -414,7 +416,7 @@ async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
     task.await.unwrap().await.expect("Failed to Start Server");
 }
 
-async fn run_mix_round(mix_ips: &Vec<IpAddr>, id: u16) {
+async fn start_mix_round(mix_ips: &Vec<IpAddr>, id: u16) {
     let mix_tasks = send_init_packets(mix_ips, id);
     join_all(mix_tasks).await;
 }
