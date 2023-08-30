@@ -1,6 +1,6 @@
-use crate::config::*;
 use crate::marshal::info::{get_init_packets, get_network_info, process_init_packets};
 use crate::network::{decrypt_layer, verify_batch, verify_packet, Network, Packet};
+use crate::{config::*, messages};
 use futures::future::join_all;
 use log::*;
 use mix_service::mix_client::MixClient;
@@ -70,14 +70,24 @@ impl Mix for MyServer {
 
     async fn get(&self, _request: Request<GetRequest>) -> Result<Response<GetResponse>, Status> {
         info!("mix {} got a get request", self.id);
-        // Wait til the mix is done getting add requests from all layers
-        let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32);
-        let _ = self.notify.acquire_many(amount_to_acquire).await.unwrap();
-        let messages = self.output_all().await;
+        let mut messages = Vec::new();
+        for i in 0..*NUM_ROUNDS {
+            info!("mix {} is starting round {}", self.id, i);
+            // Wait til the mix is done getting add requests from all layers
+            let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32);
+            let _ = self.notify.acquire_many(amount_to_acquire).await.unwrap();
+            messages = self.output_all().await;
 
-        // Measure time for this round
-        self.measure_time().await;
+            // Measure time for this round
+            self.measure_time(i).await;
 
+            if i < *NUM_ROUNDS - 1 {
+                // Run next round
+                run_mix_round(&self.mix_ips, self.id).await;
+            }
+        }
+        // Notify config
+        // Note: messages should be the same for each round so it doesn't matter which one we use
         let reply = GetResponse { messages };
         Ok(Response::new(reply))
     }
@@ -88,7 +98,7 @@ impl MyServer {
     async fn parse_input(&self, request: Request<AddRequest>) -> () {
         let add_req = request.into_inner();
         info!(
-            "mix {} got {} packets for layer {}",
+            "mix {} got {} packets FROM layer {}",
             self.id,
             add_req.packets.len(),
             add_req.layer
@@ -137,11 +147,11 @@ impl MyServer {
         for i in (0..*NUM_MIXES).rev() {
             let mut packets = output_buffer.0.pop().unwrap();
             info!(
-                "mix {} sent to mix {} {} packets for layer {}",
+                "mix {} sent to mix {} {} packets FROM layer {}",
                 self.id,
                 i,
                 packets.len(),
-                layer + 1
+                layer
             );
             // Verify packets if needed
             handle_verify_on_output(
@@ -216,10 +226,11 @@ impl MyServer {
         return messages;
     }
 
-    async fn measure_time(&self) {
+    async fn measure_time(&self, round: u32) {
         let time_guard = self.time.lock().await;
         info!(
-            "This round took mix {} {:?} seconds",
+            " Round {} took mix {} {:?} seconds",
+            round,
             self.id,
             time_guard.elapsed()
         );

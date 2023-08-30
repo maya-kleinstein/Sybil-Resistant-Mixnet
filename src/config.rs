@@ -44,21 +44,13 @@ pub enum MixnetVerification {
 }
 
 pub async fn run_config(mix_ips: Vec<IpAddr>) {
-    for i in 0..*NUM_ROUNDS {
-        info!("running round {}", i);
-        run_config_round(&mix_ips, i).await;
-    }
-}
-
-/// Run a single round of config
-async fn run_config_round(mix_ips: &Vec<IpAddr>, round: u32) {
     // Connect, send get request and recv get response from all mixes
     let mut tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
     for i in 0..*NUM_MIXES {
         let mut mix = connect_to_server(&mix_ips[i as usize], i).await;
         info!("connected to mix {}", i);
         let task = tokio::spawn(async move {
-            let request = Request::new(GetRequest { round });
+            let request = Request::new(GetRequest {});
             let response = mix.get(request).await.unwrap().into_inner();
             info!(
                 "{}",
