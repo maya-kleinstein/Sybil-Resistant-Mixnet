@@ -1,0 +1,199 @@
+{
+  "base_port": 8000,
+  "num_mixes": 2,
+  "num_clients": 100,
+  "percentage_bad_clients": 1.0,
+  "num_layers": 5,
+  "first_middle_layer": 2,
+  "mix_verification": "OnlyVerifyEdgeCases",
+  "num_rounds": 3,
+  "edge_limit": 0.3
+}
+ Round 0 took mix 0 53.9205ms seconds
+ Round 0 took mix 1 31.1238ms seconds
+ Round 1 took mix 1 48.1075ms seconds
+ Round 1 took mix 0 57.4854ms seconds
+ Round 2 took mix 1 1.5163ms seconds
+ Round 2 took mix 0 46.6449ms seconds
+<local>[10:49:23.749][INFO]mix 0 started
+<local>[10:49:23.762][INFO]mix 1 started
+<local>[10:49:24.259][INFO]mix 0 connected to 0 mix
+<local>[10:49:24.260][INFO]mix 0 connected to 1 mix
+<local>[10:49:24.262][INFO]mix 1 got 0 packets FROM layer 1
+<local>[10:49:24.262][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.263][INFO]mix 0 got 54 packets FROM layer 1
+<local>[10:49:24.266][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.273][INFO]mix 1 connected to 1 mix
+<local>[10:49:24.274][INFO]mix 1 connected to 0 mix
+<local>[10:49:24.275][INFO]connected to mix 0
+<local>[10:49:24.275][INFO]mix 0 got 0 packets FROM layer 1
+<local>[10:49:24.276][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+<local>[10:49:24.277][INFO]mix 0 got a get request
+<local>[10:49:24.277][INFO]mix 1 got 46 packets FROM layer 1
+<local>[10:49:24.277][INFO]connected to mix 1
+<local>[10:49:24.277][INFO]mix 0 sent to mix 0 54 packets FROM layer 2
+<local>[10:49:24.277][INFO]mix 0 is starting round 0
+<local>[10:49:24.278][INFO]mix 1 got a get request
+<local>[10:49:24.279][INFO]OVER BOUND! number of packets: 54, total outgoing: 54, probability: 0
+<local>[10:49:24.279][DEBUG]mix 0 is waiting for 8 permits
+<local>[10:49:24.279][INFO]mix 1 is starting round 0
+<local>[10:49:24.279][INFO]mix 0 is verifying edge case to mix 0
+<local>[10:49:24.279][DEBUG]mix 1 is waiting for 8 permits
+<local>[10:49:24.299][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+<local>[10:49:24.301][INFO]mix 1 sent to mix 0 46 packets FROM layer 2
+<local>[10:49:24.301][INFO]OVER BOUND! number of packets: 46, total outgoing: 46, probability: 0
+<local>[10:49:24.302][INFO]mix 1 is verifying edge case to mix 0
+<local>[10:49:24.303][INFO]mix 1 got 0 packets FROM layer 2
+<local>[10:49:24.303][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.321][INFO]mix 1 got 0 packets FROM layer 2
+<local>[10:49:24.321][INFO]mix 0 got 0 packets FROM layer 2
+<local>[10:49:24.321][INFO]mix 0 got 0 packets FROM layer 2
+<local>[10:49:24.321][INFO]mix 1 sent to mix 1 0 packets FROM layer 3
+<local>[10:49:24.321][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.322][INFO]mix 1 sent to mix 0 0 packets FROM layer 3
+<local>[10:49:24.322][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.322][INFO]mix 0 sent to mix 1 0 packets FROM layer 3
+<local>[10:49:24.323][INFO]mix 0 sent to mix 0 0 packets FROM layer 3
+<local>[10:49:24.324][INFO]mix 1 got 0 packets FROM layer 3
+<local>[10:49:24.324][INFO]mix 0 got 0 packets FROM layer 3
+<local>[10:49:24.324][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.324][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.324][INFO]mix 1 got 0 packets FROM layer 3
+<local>[10:49:24.324][INFO]mix 0 got 0 packets FROM layer 3
+<local>[10:49:24.325][INFO]mix 1 sent to mix 1 0 packets FROM layer 4
+<local>[10:49:24.325][INFO]mix 1 sent to mix 0 0 packets FROM layer 4
+<local>[10:49:24.326][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.326][INFO]mix 0 sent to mix 1 0 packets FROM layer 4
+<local>[10:49:24.326][INFO]mix 1 got 0 packets FROM layer 4
+<local>[10:49:24.327][INFO]mix 0 got 0 packets FROM layer 4
+<local>[10:49:24.327][INFO]mix 0 sent to mix 0 0 packets FROM layer 4
+<local>[10:49:24.327][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.327][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.328][INFO]mix 1 got 0 packets FROM layer 4
+<local>[10:49:24.328][INFO]mix 0 got 0 packets FROM layer 4
+<local>[10:49:24.328][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.328][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.329][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.330][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.330][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.330][INFO] Results: Round 0 took mix 0 53.9205ms seconds
+<local>[10:49:24.330][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.330][INFO] Results: Round 0 took mix 1 31.1238ms seconds
+<local>[10:49:24.348][INFO]mix 0 connected to 0 mix
+<local>[10:49:24.348][INFO]mix 1 connected to 0 mix
+<local>[10:49:24.348][INFO]mix 1 connected to 1 mix
+<local>[10:49:24.348][INFO]mix 0 connected to 1 mix
+<local>[10:49:24.349][INFO]mix 0 got 0 packets FROM layer 1
+<local>[10:49:24.350][INFO]mix 1 got 0 packets FROM layer 1
+<local>[10:49:24.350][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.350][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.352][INFO]mix 0 got 54 packets FROM layer 1
+<local>[10:49:24.353][INFO]mix 1 got 46 packets FROM layer 1
+<local>[10:49:24.356][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+<local>[10:49:24.356][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+<local>[10:49:24.357][INFO]mix 1 sent to mix 0 46 packets FROM layer 2
+<local>[10:49:24.357][INFO]mix 0 sent to mix 0 54 packets FROM layer 2
+<local>[10:49:24.358][INFO]OVER BOUND! number of packets: 46, total outgoing: 46, probability: 0
+<local>[10:49:24.358][INFO]OVER BOUND! number of packets: 54, total outgoing: 54, probability: 0
+<local>[10:49:24.358][INFO]mix 0 is verifying edge case to mix 0
+<local>[10:49:24.359][INFO]mix 1 is verifying edge case to mix 0
+<local>[10:49:24.400][INFO]mix 1 got 0 packets FROM layer 2
+<local>[10:49:24.400][INFO]mix 1 got 0 packets FROM layer 2
+<local>[10:49:24.400][INFO]mix 0 got 0 packets FROM layer 2
+<local>[10:49:24.400][INFO]mix 0 got 0 packets FROM layer 2
+<local>[10:49:24.401][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.401][INFO]mix 1 sent to mix 1 0 packets FROM layer 3
+<local>[10:49:24.401][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.401][INFO]mix 0 sent to mix 1 0 packets FROM layer 3
+<local>[10:49:24.402][INFO]mix 1 sent to mix 0 0 packets FROM layer 3
+<local>[10:49:24.403][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.403][INFO]mix 0 sent to mix 0 0 packets FROM layer 3
+<local>[10:49:24.404][INFO]mix 1 is starting round 1
+<local>[10:49:24.404][DEBUG]mix 1 is waiting for 8 permits
+<local>[10:49:24.404][INFO] Results: Round 1 took mix 1 48.1075ms seconds
+<local>[10:49:24.405][INFO]mix 1 got 0 packets FROM layer 3
+<local>[10:49:24.405][INFO]mix 1 got 0 packets FROM layer 3
+<local>[10:49:24.405][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.405][INFO]mix 0 got 0 packets FROM layer 3
+<local>[10:49:24.405][INFO]mix 0 got 0 packets FROM layer 3
+<local>[10:49:24.406][INFO]mix 1 sent to mix 1 0 packets FROM layer 4
+<local>[10:49:24.406][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.407][INFO]mix 1 sent to mix 0 0 packets FROM layer 4
+<local>[10:49:24.407][INFO]mix 0 sent to mix 1 0 packets FROM layer 4
+<local>[10:49:24.408][INFO]mix 0 sent to mix 0 0 packets FROM layer 4
+<local>[10:49:24.409][INFO]mix 1 got 0 packets FROM layer 4
+<local>[10:49:24.409][INFO]mix 0 got 0 packets FROM layer 4
+<local>[10:49:24.409][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.409][INFO]mix 1 got 0 packets FROM layer 4
+<local>[10:49:24.409][INFO]mix 0 got 0 packets FROM layer 4
+<local>[10:49:24.409][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.410][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.410][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.410][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.411][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.411][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.411][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.412][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.412][INFO]mix 0 is starting round 1
+<local>[10:49:24.413][DEBUG]mix 0 is waiting for 8 permits
+<local>[10:49:24.414][INFO] Results: Round 1 took mix 0 57.4854ms seconds
+<local>[10:49:24.423][INFO]mix 1 connected to 1 mix
+<local>[10:49:24.426][INFO]mix 1 got 46 packets FROM layer 1
+<local>[10:49:24.429][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.435][INFO]mix 1 connected to 0 mix
+<local>[10:49:24.435][INFO]mix 0 connected to 0 mix
+<local>[10:49:24.435][INFO]mix 0 connected to 1 mix
+<local>[10:49:24.436][INFO]mix 0 got 0 packets FROM layer 1
+<local>[10:49:24.436][INFO]mix 1 got 0 packets FROM layer 1
+<local>[10:49:24.436][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.437][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+<local>[10:49:24.437][INFO]mix 1 sent to mix 0 46 packets FROM layer 2
+<local>[10:49:24.437][INFO]mix 1 is starting round 2
+<local>[10:49:24.437][INFO]OVER BOUND! number of packets: 46, total outgoing: 46, probability: 0
+<local>[10:49:24.437][INFO]mix 0 got 54 packets FROM layer 1
+<local>[10:49:24.437][DEBUG]mix 1 is waiting for 8 permits
+<local>[10:49:24.438][INFO]mix 1 is verifying edge case to mix 0
+<local>[10:49:24.438][INFO] Results: Round 2 took mix 1 1.5163ms seconds
+<local>[10:49:24.439][INFO]recv'd get response from mix 1 of size: 0
+<local>[10:49:24.461][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+<local>[10:49:24.463][INFO]mix 0 sent to mix 0 54 packets FROM layer 2
+<local>[10:49:24.463][INFO]OVER BOUND! number of packets: 54, total outgoing: 54, probability: 0
+<local>[10:49:24.464][INFO]mix 1 got 0 packets FROM layer 2
+<local>[10:49:24.464][INFO]mix 0 is verifying edge case to mix 0
+<local>[10:49:24.464][INFO]mix 0 got 0 packets FROM layer 2
+<local>[10:49:24.464][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.465][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.465][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.492][INFO]mix 0 got 0 packets FROM layer 2
+<local>[10:49:24.492][INFO]mix 1 got 0 packets FROM layer 2
+<local>[10:49:24.493][INFO]mix 0 sent to mix 1 0 packets FROM layer 3
+<local>[10:49:24.494][INFO]mix 1 sent to mix 1 0 packets FROM layer 3
+<local>[10:49:24.495][INFO]mix 0 sent to mix 0 0 packets FROM layer 3
+<local>[10:49:24.496][INFO]mix 1 sent to mix 0 0 packets FROM layer 3
+<local>[10:49:24.498][INFO]mix 1 got 0 packets FROM layer 3
+<local>[10:49:24.498][INFO]mix 0 got 0 packets FROM layer 3
+<local>[10:49:24.498][INFO]mix 0 got 0 packets FROM layer 3
+<local>[10:49:24.498][INFO]mix 1 got 0 packets FROM layer 3
+<local>[10:49:24.499][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.499][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.499][INFO]mix 0 sent to mix 1 0 packets FROM layer 4
+<local>[10:49:24.499][INFO]mix 1 sent to mix 1 0 packets FROM layer 4
+<local>[10:49:24.501][INFO]mix 0 sent to mix 0 0 packets FROM layer 4
+<local>[10:49:24.501][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.502][INFO]mix 1 sent to mix 0 0 packets FROM layer 4
+<local>[10:49:24.503][INFO]mix 1 got 0 packets FROM layer 4
+<local>[10:49:24.504][INFO]mix 0 got 0 packets FROM layer 4
+<local>[10:49:24.504][INFO]mix 1 got 0 packets FROM layer 4
+<local>[10:49:24.504][INFO]mix 0 got 0 packets FROM layer 4
+<local>[10:49:24.504][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.504][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.504][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.504][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.505][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.505][DEBUG]mix 1 got a permit!!!
+<local>[10:49:24.506][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.506][DEBUG]mix 0 got a permit!!!
+<local>[10:49:24.507][INFO]mix 0 is starting round 2
+<local>[10:49:24.507][DEBUG]mix 0 is waiting for 8 permits
+<local>[10:49:24.507][INFO] Results: Round 2 took mix 0 46.6449ms seconds
+<local>[10:49:24.509][INFO]recv'd get response from mix 0 of size: 0

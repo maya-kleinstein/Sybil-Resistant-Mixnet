@@ -60,6 +60,7 @@ pub async fn run_config(mix_ips: Vec<IpAddr>) {
                     response.messages.len()
                 )
             );
+            // TODO: check messages correctness
         });
         tasks.push(task);
     }
