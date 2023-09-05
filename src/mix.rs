@@ -370,6 +370,8 @@ fn is_out_of_bounds(i: usize, total: usize) -> bool {
 }
 
 async fn wait_for_shutdown() {
+    // In case of leftovers from previous run
+    let _ = std::fs::remove_file(&*SHUTDOWN_FILE);
     loop {
         if tokio::fs::metadata(&*SHUTDOWN_FILE).await.is_ok() {
             // rm shutdown file for next run
