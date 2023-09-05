@@ -1,0 +1,141 @@
+{
+  "base_port": 8000,
+  "num_mixes": 2,
+  "num_clients": 100,
+  "percentage_bad_clients": 1.0,
+  "num_layers": 5,
+  "first_middle_layer": 2,
+  "mix_verification": "NoVerification",
+  "num_rounds": 3,
+  "edge_limit": 0.3
+}
+ Round 0 took mix 0 20.0647ms seconds
+ Round 0 took mix 1 20.4878ms seconds
+ Round 1 took mix 1 139.5011ms seconds
+ Round 1 took mix 0 140.9531ms seconds
+ Round 2 took mix 1 94.6089ms seconds
+ Round 2 took mix 0 97.8242ms seconds
+<mix 0>[15:27:51.971][INFO]mix 0 started
+<mix 0>[15:27:51.971][INFO]mix 1 started
+<config>[15:27:52.433][INFO]Config connected to mix 0
+<config>[15:27:52.436][INFO]Config connected to mix 1
+<mix 0>[15:27:52.437][INFO]mix 0 got a get request
+<mix 0>[15:27:52.438][INFO]mix 0 is starting round 0
+<mix 0>[15:27:52.438][INFO]mix 1 got a get request
+<mix 0>[15:27:52.439][INFO]mix 1 is starting round 0
+<mix 0>[15:27:52.478][INFO]mix 1 connected to 0 mix
+<mix 0>[15:27:52.478][INFO]mix 0 connected to 1 mix
+<mix 0>[15:27:52.478][INFO]mix 0 connected to 0 mix
+<mix 0>[15:27:52.478][INFO]mix 1 connected to 1 mix
+<mix 0>[15:27:52.479][INFO]mix 0 got 0 packets FROM layer 1
+<mix 0>[15:27:52.479][INFO]mix 1 got 0 packets FROM layer 1
+<mix 0>[15:27:52.480][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.480][INFO]mix 1 got 51 packets FROM layer 1
+<mix 0>[15:27:52.480][INFO]mix 0 got 49 packets FROM layer 1
+<mix 0>[15:27:52.480][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.484][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+<mix 0>[15:27:52.484][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+<mix 0>[15:27:52.484][INFO]mix 1 sent to mix 0 51 packets FROM layer 2
+<mix 0>[15:27:52.484][INFO]mix 0 sent to mix 0 49 packets FROM layer 2
+<mix 0>[15:27:52.486][INFO]mix 1 got 0 packets FROM layer 2
+<mix 0>[15:27:52.486][INFO]mix 1 got 0 packets FROM layer 2
+<mix 0>[15:27:52.487][INFO]mix 0 got 51 packets FROM layer 2
+<mix 0>[15:27:52.487][INFO]mix 0 got 49 packets FROM layer 2
+<mix 0>[15:27:52.487][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.488][INFO]mix 1 sent to mix 1 0 packets FROM layer 3
+<mix 0>[15:27:52.488][INFO]mix 1 sent to mix 0 0 packets FROM layer 3
+<mix 0>[15:27:52.490][INFO]mix 1 got 0 packets FROM layer 3
+<mix 0>[15:27:52.490][INFO]mix 0 got 0 packets FROM layer 3
+<mix 0>[15:27:52.490][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.491][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.491][INFO]mix 0 sent to mix 1 100 packets FROM layer 3
+<mix 0>[15:27:52.491][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.492][INFO]mix 0 sent to mix 0 0 packets FROM layer 3
+<mix 0>[15:27:52.492][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.493][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.493][INFO]mix 0 got 0 packets FROM layer 3
+<mix 0>[15:27:52.493][INFO]mix 1 got 100 packets FROM layer 3
+<mix 0>[15:27:52.493][INFO]mix 0 sent to mix 1 0 packets FROM layer 4
+<mix 0>[15:27:52.496][INFO]mix 0 sent to mix 0 0 packets FROM layer 4
+<mix 0>[15:27:52.496][INFO]mix 1 sent to mix 1 0 packets FROM layer 4
+<mix 0>[15:27:52.496][INFO]mix 1 sent to mix 0 100 packets FROM layer 4
+<mix 0>[15:27:52.498][INFO]mix 1 got 0 packets FROM layer 4
+<mix 0>[15:27:52.498][INFO]mix 1 got 0 packets FROM layer 4
+<mix 0>[15:27:52.498][INFO]mix 0 got 0 packets FROM layer 4
+<mix 0>[15:27:52.498][INFO]mix 0 got 100 packets FROM layer 4
+<mix 0>[15:27:52.498][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.498][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.498][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.499][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.502][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.503][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.503][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.504][INFO] Results: Round 0 took mix 0 20.0647ms seconds
+<mix 0>[15:27:52.504][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.504][INFO] Results: Round 0 took mix 1 20.4878ms seconds
+<mix 0>[15:27:52.531][INFO]mix 0 connected to 1 mix
+<mix 0>[15:27:52.531][INFO]mix 1 connected to 1 mix
+<mix 0>[15:27:52.531][INFO]mix 1 connected to 0 mix
+<mix 0>[15:27:52.531][INFO]mix 0 connected to 0 mix
+<mix 0>[15:27:52.532][INFO]mix 1 got 0 packets FROM layer 1
+<mix 0>[15:27:52.532][INFO]mix 1 got 42 packets FROM layer 1
+<mix 0>[15:27:52.532][INFO]mix 0 got 58 packets FROM layer 1
+<mix 0>[15:27:52.532][INFO]mix 0 got 0 packets FROM layer 1
+<mix 0>[15:27:52.533][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.533][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.622][INFO]mix 1 is starting round 1
+<mix 0>[15:27:52.623][INFO] Results: Round 1 took mix 1 139.5011ms seconds
+<mix 0>[15:27:52.624][INFO]mix 0 is starting round 1
+<mix 0>[15:27:52.625][INFO] Results: Round 1 took mix 0 140.9531ms seconds
+<mix 0>[15:27:52.629][INFO]mix 1 connected to 0 mix
+<mix 0>[15:27:52.629][INFO]mix 1 connected to 1 mix
+<mix 0>[15:27:52.630][INFO]mix 0 connected to 0 mix
+<mix 0>[15:27:52.630][INFO]mix 0 connected to 1 mix
+<mix 0>[15:27:52.630][INFO]mix 0 got 0 packets FROM layer 1
+<mix 0>[15:27:52.630][INFO]mix 0 got 58 packets FROM layer 1
+<mix 0>[15:27:52.630][INFO]mix 1 got 42 packets FROM layer 1
+<mix 0>[15:27:52.630][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+<mix 0>[15:27:52.630][INFO]mix 1 got 0 packets FROM layer 1
+<mix 0>[15:27:52.631][INFO]mix 0 sent to mix 0 0 packets FROM layer 2
+<mix 0>[15:27:52.631][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+<mix 0>[15:27:52.633][INFO]mix 1 sent to mix 0 0 packets FROM layer 2
+<mix 0>[15:27:52.633][INFO]mix 0 got 0 packets FROM layer 2
+<mix 0>[15:27:52.637][INFO]mix 1 got 0 packets FROM layer 2
+<mix 0>[15:27:52.638][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.638][INFO]mix 1 got 0 packets FROM layer 2
+<mix 0>[15:27:52.638][INFO]mix 0 got 0 packets FROM layer 2
+<mix 0>[15:27:52.642][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.642][INFO]mix 0 sent to mix 1 0 packets FROM layer 3
+<mix 0>[15:27:52.645][INFO]mix 1 sent to mix 1 0 packets FROM layer 3
+<mix 0>[15:27:52.645][INFO]mix 0 sent to mix 0 0 packets FROM layer 3
+<mix 0>[15:27:52.647][INFO]mix 1 got 0 packets FROM layer 3
+<mix 0>[15:27:52.647][INFO]mix 0 got 0 packets FROM layer 3
+<mix 0>[15:27:52.647][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.648][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.649][INFO]mix 1 sent to mix 0 0 packets FROM layer 3
+<mix 0>[15:27:52.650][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.654][INFO]mix 1 got 0 packets FROM layer 3
+<mix 0>[15:27:52.654][INFO]mix 0 got 0 packets FROM layer 3
+<mix 0>[15:27:52.655][INFO]mix 0 sent to mix 1 0 packets FROM layer 4
+<mix 0>[15:27:52.655][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.655][INFO]mix 1 sent to mix 1 0 packets FROM layer 4
+<mix 0>[15:27:52.657][INFO]mix 0 sent to mix 0 0 packets FROM layer 4
+<mix 0>[15:27:52.657][INFO]mix 1 sent to mix 0 0 packets FROM layer 4
+<mix 0>[15:27:52.658][INFO]mix 1 got 0 packets FROM layer 4
+<mix 0>[15:27:52.659][INFO]mix 0 got 0 packets FROM layer 4
+<mix 0>[15:27:52.660][INFO]mix 1 got 0 packets FROM layer 4
+<mix 0>[15:27:52.660][INFO]mix 0 got 0 packets FROM layer 4
+<mix 0>[15:27:52.661][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.662][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.664][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.665][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.669][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.673][DEBUG]mix 0 got a permit!!!
+<mix 0>[15:27:52.675][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.677][DEBUG]mix 1 got a permit!!!
+<mix 0>[15:27:52.725][INFO]mix 1 is starting round 2
+<mix 0>[15:27:52.726][INFO] Results: Round 2 took mix 1 94.6089ms seconds
+<config>[15:27:52.727][INFO]recv'd get response from mix 1 of size: 0
+<mix 0>[15:27:52.728][INFO]mix 0 is starting round 2
+<mix 0>[15:27:52.728][INFO] Results: Round 2 took mix 0 97.8242ms seconds
+<config>[15:27:52.729][INFO]recv'd get response from mix 0 of size: 100

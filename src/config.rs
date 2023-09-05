@@ -48,7 +48,7 @@ pub async fn run_config(mix_ips: Vec<IpAddr>) {
     let mut tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
     for i in 0..*NUM_MIXES {
         let mut mix = connect_to_server(&mix_ips[i as usize], i).await;
-        info!("connected to mix {}", i);
+        info!("Config connected to mix {}", i);
         let task = tokio::spawn(async move {
             let request = Request::new(GetRequest {});
             let response = mix.get(request).await.unwrap().into_inner();

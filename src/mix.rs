@@ -77,11 +77,12 @@ impl Mix for MyServer {
             info!("mix {} is starting round {}", self.id, round);
             // Wait til the mix is done getting all add requests for this round
             let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32);
-            debug!(
-                "mix {} is waiting for {} permits",
-                self.id, amount_to_acquire
-            );
-            let _ = self.notify.acquire_many(amount_to_acquire).await.unwrap();
+            let _ = self
+                .notify
+                .acquire_many(amount_to_acquire)
+                .await
+                .unwrap()
+                .forget();
 
             messages = self.output_all().await;
 

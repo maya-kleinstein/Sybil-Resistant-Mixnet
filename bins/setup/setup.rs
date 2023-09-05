@@ -10,9 +10,8 @@ pub fn main() {
         num_layers: 5,
         first_middle_layer: 2,
         mix_verification: MixnetVerification::NoVerification,
-        num_rounds: 1,
+        num_rounds: 3,
         edge_limit: 0.3,
     };
-
     setup_info(config_info);
 }
