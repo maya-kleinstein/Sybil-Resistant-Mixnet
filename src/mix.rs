@@ -1,6 +1,7 @@
 use crate::config::*;
 use crate::marshal::info::{get_init_packets, get_network_info, process_init_packets};
 use crate::marshal::logs::RESULTS;
+use crate::marshal::SHUTDOWN_FILE;
 use crate::network::{decrypt_layer, verify_batch, verify_packet, Network, Packet};
 use futures::future::join_all;
 use log::*;
@@ -65,7 +66,6 @@ impl Mix for MyServer {
 
         // Notify config
         self.notify.add_permits(1);
-        debug!("mix {} got a permit!!!", self.id);
         let reply = AddResponse {};
         Ok(Response::new(reply))
     }
@@ -74,7 +74,6 @@ impl Mix for MyServer {
         info!("mix {} got a get request", self.id);
         let mut messages = Vec::new();
         for round in 0..*NUM_ROUNDS {
-            info!("mix {} is starting round {}", self.id, round);
             // Wait til the mix is done getting all add requests for this round
             let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32);
             let _ = self
@@ -91,6 +90,7 @@ impl Mix for MyServer {
 
             if round < *NUM_ROUNDS - 1 {
                 // Run next round
+                info!("mix {} is starting round {}", self.id, round + 1);
                 start_mix_round(&self.mix_ips, self.id).await;
             }
         }
@@ -369,6 +369,17 @@ fn is_out_of_bounds(i: usize, total: usize) -> bool {
     result
 }
 
+async fn wait_for_shutdown() {
+    loop {
+        if tokio::fs::metadata(&*SHUTDOWN_FILE).await.is_ok() {
+            // rm shutdown file for next run
+            let _ = std::fs::remove_file(&*SHUTDOWN_FILE);
+            break;
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
 fn send_init_packets(mix_ips: &Vec<IpAddr>, id: u16) -> Vec<JoinHandle<()>> {
     let mut mix_tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
     let mut init_buffer = process_init_packets(get_init_packets(id), &get_network_info(), id, 0);
@@ -413,8 +424,9 @@ async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
             .serve_with_shutdown(
                 format!("{}:{}", my_ip, *BASE_PORT + id).parse().unwrap(),
                 async {
-                    // Wait for a SIGINT signal to shutdown
-                    tokio::signal::ctrl_c().await.unwrap();
+                    // // Wait for a SIGINT signal to shutdown
+                    // tokio::signal::ctrl_c().await.unwrap();
+                    wait_for_shutdown().await;
                 },
             )
     });

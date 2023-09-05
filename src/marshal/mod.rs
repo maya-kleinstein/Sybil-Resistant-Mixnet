@@ -29,6 +29,8 @@ lazy_static! {
     pub static ref INFO_FOLDER: String = format!("info{}", MAIN_SEPARATOR);
     /// The folder for all logs
     pub static ref LOGS_FOLDER: String = format!("logs{}", MAIN_SEPARATOR);
+    /// The path to the shutdown file
+    pub static ref SHUTDOWN_FILE: String = format!("{}{}", *BASE_FOLDER, "shutdown");
 }
 
 pub fn serialize_data_to_file<T: Serialize>(
@@ -59,4 +61,6 @@ pub fn manage_files() {
     merge_log_files().unwrap();
     delete_ip_files();
     delete_old_log_files();
+    // Create shutdown file
+    let _file = File::create(&*SHUTDOWN_FILE).unwrap();
 }
