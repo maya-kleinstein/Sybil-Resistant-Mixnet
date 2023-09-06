@@ -1,7 +1,5 @@
 FROM rust:1.67
 
-COPY . /code
-
 # Update, Upgrade, Install necessary libraries and tools for cross-compilation, and clean up
 RUN apt-get update && \
     apt upgrade -y && \
@@ -18,4 +16,4 @@ RUN PROTOC_ZIP=protoc-3.3.0-linux-x86_64.zip && \
 
 WORKDIR /code
 
-CMD ["cargo", "build", "--target", "x86_64-unknown-linux-gnu"]
+CMD ["cargo", "build", "--release", "--target", "x86_64-unknown-linux-gnu"]
