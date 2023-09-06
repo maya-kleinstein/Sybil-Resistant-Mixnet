@@ -1,25 +1,21 @@
-FROM rust:latest
+FROM rust:1.67
 
-COPY . .
+COPY . /code
 
-RUN apt update && apt upgrade -y
-RUN apt install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross
-
-RUN rustup target add aarch64-unknown-linux-gnu
-RUN rustup toolchain install stable-aarch64-unknown-linux-gnu
+# Update, Upgrade, Install necessary libraries and tools for cross-compilation, and clean up
+RUN apt-get update && \
+    apt upgrade -y && \
+    apt-get install -y gcc-multilib g++-multilib unzip curl && \
+    rustup target add x86_64-unknown-linux-gnu && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install protoc
-RUN apt-get update && apt-get install -y unzip \
-    && PROTOC_ZIP=protoc-3.3.0-linux-x86_64.zip \
-    && curl -OL https://github.com/google/protobuf/releases/download/v3.3.0/$PROTOC_ZIP \
-    && unzip -o $PROTOC_ZIP -d /usr/local bin/protoc \
-    && rm -f $PROTOC_ZIP
-
-WORKDIR /app
-
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-    CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
-    CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
+RUN PROTOC_ZIP=protoc-3.3.0-linux-x86_64.zip && \
+    curl -OL https://github.com/google/protobuf/releases/download/v3.3.0/$PROTOC_ZIP && \
+    unzip -o $PROTOC_ZIP -d /usr/local bin/protoc && \
+    rm -f $PROTOC_ZIP
 
 
-CMD ["cargo", "build", "--target", "aarch64-unknown-linux-gnu"]
+WORKDIR /code
+
+CMD ["cargo", "build", "--target", "x86_64-unknown-linux-gnu"]
