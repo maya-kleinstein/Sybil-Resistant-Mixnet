@@ -1,3 +1,5 @@
+# NOTE: this should ONLY work on the cluster.
+
 import argparse
 import subprocess
 import time
@@ -13,34 +15,20 @@ parser.add_argument('setup', type=bool,
 
 args = parser.parse_args()
 
-bin_path = "C:\\university\\Thesis\\bbs\\target\\release"
+bin_path = "/cs/labs/yossigi/maya_k/Sybil_Resistant_Mixnet/target/x86_64-unknown-linux-gnu/release"
 
 # Setup files
 if args.setup:
     print("Setting up all files")
-    cmd = "{}\\setup.exe".format(bin_path)
+    cmd = "{}/setup".format(bin_path)
     setup_p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
-
-
-# Launch the Mixes
-print("launching mixes")
-mprocesses = []
-for i in range(args.mixes):
-    cmd = "{}\\mix.exe {} {}".format(bin_path, args.remote, i)
-    p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
-    mprocesses.append(p)
-# time.sleep(0.1)
-
 
 # Launch the Configurator
 print("launching configurator")
-cmd = "{}\\config.exe {}".format(bin_path, args.remote)
+cmd = "{}/config {}".format(bin_path, args.remote)
 config_p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
 # time.sleep(0.5)
 
-
 # Cleanup
 # print("cleanup processes")
-# for p in mprocesses:
-#     os.kill(p.pid, signal.SIGINT)
 # os.kill(config_p.pid, signal.SIGINT)
