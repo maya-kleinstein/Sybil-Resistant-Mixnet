@@ -6,8 +6,6 @@ import time
 
 # Parse flags (num servers, num clients, etc.)
 parser = argparse.ArgumentParser(description='Start remote test.')
-parser.add_argument('mixes', type=int,
-                    help='number of servers')
 parser.add_argument('remote', type=str,
                     help='running on remote ips or local ips')
 parser.add_argument('setup', type=bool,

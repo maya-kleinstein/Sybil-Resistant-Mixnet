@@ -1,4 +1,5 @@
-FROM rust:1.67
+# Use a Rust image based on Debian 10 (buster)
+FROM rust:1.67-buster
 
 # Update, Upgrade, Install necessary libraries and tools for cross-compilation, and clean up
 RUN apt-get update && \

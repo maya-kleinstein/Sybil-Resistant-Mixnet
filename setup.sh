@@ -26,7 +26,7 @@ echo "Code compiled successfully!"
 ##### STEP 2: Extract compiled rust code to output dir #####
 
 # Copy the file from the container to the local directory
-docker cp $CONTAINER_NAME:/code/target/x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu $LOCAL_ELF_DIR
+docker cp $CONTAINER_NAME:/code/target/x86_64-unknown-linux-gnu $LOCAL_ELF_DIR
 
 echo "Results copied successfully!"
 
