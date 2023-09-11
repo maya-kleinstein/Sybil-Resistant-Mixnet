@@ -8,7 +8,7 @@ bin_path = "/cs/labs/yossigi/maya_k/Sybil_Resistant_Mixnet/target/x86_64-unknown
 # Launch the Mixes
 print("launching mix")
 cmd = "{}/mix remote".format(bin_path)
-p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
+p = subprocess.Popen(cmd, stdin=subprocess.PIPE, shell=True)
 # time.sleep(0.5)
 
 # Cleanup

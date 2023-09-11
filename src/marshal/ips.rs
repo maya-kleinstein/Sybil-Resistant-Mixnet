@@ -24,7 +24,7 @@ pub fn get_all_ips_from_files() -> std::io::Result<Vec<IpAddr>> {
     while ips.len() as u16 != *NUM_MIXES {
         let missing_ips = format!("Could only find: {:?}", ips);
         warn!("{:?}", missing_ips);
-        sleep(Duration::from_millis(10));
+        sleep(Duration::from_millis(500));
         ips = get_cur_ip_files(&*IPS_FOLDER)?;
     }
     Ok(ips)
