@@ -6,7 +6,8 @@ use bbs::{config::*, marshal::ips::*, marshal::logs::*, mix::*};
 pub async fn main() -> Result<(), &'static str> {
     let id: u16;
     let mix_ips: Vec<IpAddr>;
-    init_logger(&get_my_ip().unwrap().to_string()).unwrap();
+    let my_ip : String = get_my_ip().unwrap().to_string();
+    init_logger(&my_ip).unwrap();
 
     let remote_arg = std::env::args().nth(1).expect("no remote classifier given");
     match remote_arg.as_str() {

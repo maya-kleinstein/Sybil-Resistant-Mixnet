@@ -55,7 +55,7 @@ pub fn deserialize_data_from_file<T: for<'a> Deserialize<'a>>(
     return result;
 }
 
-/// Runs all function needed to manage \data dir. at the end of a round
+/// Runs all function needed to manage \data dir. at the end of a run.
 pub fn manage_files() {
     rename_ip_logs();
     merge_log_files().unwrap();

@@ -1,0 +1,48 @@
+[21:23:17.128][INFO]mix 0 started
+[21:23:17.148][INFO]mix 1 started
+[21:23:17.148][INFO]mix 1 connected to 0 mix
+[21:23:17.149][INFO]mix 0 got 0 packets FROM layer 1
+[21:23:17.563][INFO]mix 0 got a get request
+[21:23:17.563][INFO]mix 1 got a get request
+[21:23:17.636][INFO]mix 0 connected to 0 mix
+[21:23:17.636][INFO]mix 0 connected to 1 mix
+[21:23:17.637][INFO]mix 1 got 0 packets FROM layer 1
+[21:23:17.644][INFO]mix 0 got 520 packets FROM layer 1
+[21:23:17.654][INFO]mix 0 sent to mix 1 0 packets FROM layer 2
+[21:23:17.655][INFO]mix 0 sent to mix 0 520 packets FROM layer 2
+[21:23:17.656][INFO]mix 1 got 0 packets FROM layer 2
+[21:23:17.661][INFO]mix 0 got 520 packets FROM layer 2
+[21:23:17.665][INFO]mix 1 connected to 1 mix
+[21:23:17.675][INFO]mix 1 got 480 packets FROM layer 1
+[21:23:17.685][INFO]mix 1 sent to mix 1 0 packets FROM layer 2
+[21:23:17.685][INFO]mix 1 sent to mix 0 480 packets FROM layer 2
+[21:23:17.686][INFO]mix 1 got 0 packets FROM layer 2
+[21:23:17.687][INFO]mix 1 sent to mix 1 0 packets FROM layer 3
+[21:23:17.687][INFO]mix 1 sent to mix 0 0 packets FROM layer 3
+[21:23:17.688][INFO]mix 1 got 0 packets FROM layer 3
+[21:23:17.691][INFO]mix 0 got 480 packets FROM layer 2
+[21:23:17.704][INFO]mix 0 sent to mix 1 1000 packets FROM layer 3
+[21:23:17.705][INFO]mix 0 sent to mix 0 0 packets FROM layer 3
+[21:23:17.706][INFO]mix 0 got 0 packets FROM layer 3
+[21:23:17.731][INFO]mix 0 got 0 packets FROM layer 3
+[21:23:17.731][INFO]mix 0 sent to mix 1 0 packets FROM layer 4
+[21:23:17.731][INFO]mix 0 sent to mix 0 0 packets FROM layer 4
+[21:23:17.733][INFO]mix 0 got 0 packets FROM layer 4
+[21:23:17.735][INFO]mix 1 got 0 packets FROM layer 4
+[21:23:17.738][INFO]mix 1 got 1000 packets FROM layer 3
+[21:23:17.765][INFO]mix 1 sent to mix 1 0 packets FROM layer 4
+[21:23:17.765][INFO]mix 1 sent to mix 0 1000 packets FROM layer 4
+[21:23:17.767][INFO]mix 1 got 0 packets FROM layer 4
+[21:23:17.787][INFO]mix 0 got 1000 packets FROM layer 4
+[21:23:17.802][INFO] Results: Round 0 took mix 1 117.5931ms seconds
+[21:23:17.802][INFO]mix 1 is starting round 1
+[21:23:17.803][INFO] Results: Round 0 took mix 0 148.5309ms seconds
+[21:23:17.803][INFO]mix 0 is starting round 1
+[21:23:17.816][INFO]mix 0 connected to 0 mix
+[21:23:17.816][INFO]mix 0 connected to 1 mix
+[21:23:17.816][INFO]mix 1 connected to 1 mix
+[21:23:17.816][INFO]mix 1 connected to 0 mix
+[21:23:17.817][INFO]mix 0 got 57 packets FROM layer 1
+[21:23:17.817][INFO]mix 1 got 0 packets FROM layer 1
+[21:23:17.817][INFO]mix 0 got 0 packets FROM layer 1
+[21:23:17.817][INFO]mix 1 got 43 packets FROM layer 1

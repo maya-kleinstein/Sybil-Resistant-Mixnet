@@ -50,11 +50,7 @@ chrono = "0.4.26"
 criterion = {version = "0.5.1", features = ["async", "async_tokio"]}
 
 [[bench]]
-name="network_benchmark"
-harness=false
-
-[[bench]]
-name="mix_benchmark"
+name="crypto_benchmark"
 harness=false
 
 [profile.bench]
