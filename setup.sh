@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Setting my code directory on local machine
-LOCAL_CODE_DIR='C:\\university\\Thesis\\bbs'
-LOCAL_ELF_DIR='C:\\university\\Thesis\\bbs\\target\\x86_64-unknown-linux-gnu\\'
-CONTAINER_NAME="myCompiler"
+LOCAL_CODE_DIR='C:\\Thesis\\Sybil-Resistant-Mixnet'
+LOCAL_ELF_DIR='C:\\Thesis\\Sybil-Resistant-Mixnet\\target\\x86_64-unknown-linux-gnu\\'
+CONTAINER_NAME="cur_compiler"
+IMAGE_NAME="mycompiler"
 
 ##### STEP 1: Update Project (local) + Compile the Rust code using Docker #####
 
 # Start the container
-docker run -d --name $CONTAINER_NAME -v $LOCAL_CODE_DIR:/code rust_compiler bash -c "while true; do sleep 10; done"
+docker run -d --name $CONTAINER_NAME -v $LOCAL_CODE_DIR:/code $IMAGE_NAME bash -c "while true; do sleep 10; done"
 
 # Execute the cargo build within the running container
 docker exec $CONTAINER_NAME bash -c "cargo build --release --target x86_64-unknown-linux-gnu"
