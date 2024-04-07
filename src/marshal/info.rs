@@ -12,10 +12,8 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 /// Write all heavy computation info to predetermined files
-pub fn setup_info(config_info: ConfigInfo) {
-    // Write config data to file
-    let filename = format!("{}config_info", *INFO_FOLDER);
-    serialize_data_to_file::<ConfigInfo>(&config_info, &filename).unwrap();
+pub fn setup_info() {
+    let config_info: ConfigInfo = get_config_info();
 
     // Generate all data needed to test the mixnet
     let network = Network::new(
@@ -29,6 +27,8 @@ pub fn setup_info(config_info: ConfigInfo) {
     // get ticket server mapping
     let mapping = ticket_server_map_generator(config_info.num_mixes.into());
     let mut bad_tickets_vec = vec![];
+    // build vector of tickets to travel in path of your choice (i%2 is zig-zag for example)
+    // TODO: add "bad packet path" choice to config values - zigzag, etc. maybe add more then 1 option?
     for i in 0..config_info.num_layers {
         bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
     }
@@ -89,6 +89,12 @@ pub fn get_config_info() -> ConfigInfo {
     let filename = format!("{}config_info", *INFO_FOLDER);
     let config_info: ConfigInfo = deserialize_data_from_file(&filename).unwrap();
     return config_info;
+}
+
+pub fn write_config_info(config_info: ConfigInfo) {
+    // Write config data to file
+    let filename = format!("{}config_info", *INFO_FOLDER);
+    serialize_data_to_file::<ConfigInfo>(&config_info, &filename).unwrap();
 }
 
 /*

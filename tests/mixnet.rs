@@ -19,6 +19,17 @@ fn system_test() {
 
 #[test]
 fn marshalling_test() {
+    setup_info();
+    let config_info = get_config_info();
+
+    for i in 0..(config_info.num_mixes) {
+        let packets = get_init_packets(i);
+        println!("{} recv'd {} packets", i, packets.len());
+    }
+}
+
+#[test]
+fn write_to_config_file_test(){
     let config_info = ConfigInfo {
         base_port: 8000,
         num_mixes: 2,
@@ -29,14 +40,13 @@ fn marshalling_test() {
         mix_verification: MixnetVerification::OnlyVerifyEdgeCases,
         num_rounds: 3,
         edge_limit: 0.3,
-    };
+    };  
 
-    setup_info(config_info);
-    for i in 0..(config_info.num_mixes) {
-        let packets = get_init_packets(i);
-        println!("{} recv'd {} packets", i, packets.len());
-    }
+    // Write config data to file
+    write_config_info(config_info);
 }
+
+
 
 #[test]
 fn how_do_tasks_work() {
