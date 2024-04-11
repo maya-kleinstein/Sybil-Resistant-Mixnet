@@ -1,4 +1,6 @@
 use std::net::IpAddr;
+use std::thread::sleep;
+use std::time::Duration;
 
 use crate::marshal::manage_files;
 use crate::mix::connect_to_server;
@@ -47,6 +49,7 @@ pub async fn run_config(mix_ips: Vec<IpAddr>) {
     // Connect, send get request and recv get response from all mixes
     let mut tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
     for i in 0..*NUM_MIXES {
+        debug!("Connecting to mix {} at addr {}", i, mix_ips[i as usize]);
         let mut mix = connect_to_server(&mix_ips[i as usize], i).await;
         info!("Config connected to mix {}", i);
         let task = tokio::spawn(async move {
@@ -66,6 +69,7 @@ pub async fn run_config(mix_ips: Vec<IpAddr>) {
     }
     join_all(tasks).await;
 
+    sleep(Duration::from_secs(3));
     // Generate final log, clear all IP files
     manage_files();
 }

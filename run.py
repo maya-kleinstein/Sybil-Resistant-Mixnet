@@ -20,6 +20,7 @@ if args.setup:
     print("Setting up all files")
     cmd = "{}\\setup.exe".format(bin_path)
     setup_p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
+    stdout, stderr = setup_p.communicate()
 
 
 # Launch the Mixes
@@ -40,7 +41,9 @@ config_p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE
 
 
 # Cleanup
-# print("cleanup processes")
-# for p in mprocesses:
-#     os.kill(p.pid, signal.SIGINT)
-# os.kill(config_p.pid, signal.SIGINT)
+print("cleanup processes")
+for p in mprocesses:
+    stdout, stderr = p.communicate()
+
+stdout, stderr = config_p.communicate()
+

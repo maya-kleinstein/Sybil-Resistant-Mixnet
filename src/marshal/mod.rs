@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::MAIN_SEPARATOR;
 
-use self::ips::delete_ip_files;
+use self::ips::{delete_ip_files, create_all_shutdown_files};
 use self::logs::{delete_old_log_files, merge_log_files, rename_ip_logs};
 
 pub mod info;
@@ -61,6 +61,5 @@ pub fn manage_files() {
     merge_log_files().unwrap();
     delete_ip_files();
     delete_old_log_files();
-    // Create shutdown file
-    let _file = File::create(&*SHUTDOWN_FILE).unwrap();
+    create_all_shutdown_files();
 }

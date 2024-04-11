@@ -8,9 +8,8 @@ use std::time::Duration;
 /// Get's all mixes IP's sorted, and my mix's index
 pub fn init_mix_ips() -> io::Result<(Vec<IpAddr>, u16)> {
     let my_ip = write_my_ip_to_file()?;
-    let mut ips = get_all_ips_from_files()?;
+    let ips = get_all_ips_from_files()?;
 
-    ips.sort();
     let index = ips.iter().position(|&r| r == my_ip).unwrap();
 
     debug!("All IPs: {:?}", ips);
@@ -19,14 +18,16 @@ pub fn init_mix_ips() -> io::Result<(Vec<IpAddr>, u16)> {
     Ok((ips, index as u16))
 }
 
+// Get all mixes IP's from files, sorted
 pub fn get_all_ips_from_files() -> std::io::Result<Vec<IpAddr>> {
     let mut ips = get_cur_ip_files(&*IPS_FOLDER)?;
     while ips.len() as u16 != *NUM_MIXES {
         let missing_ips = format!("Could only find: {:?}", ips);
         warn!("{:?}", missing_ips);
-        sleep(Duration::from_millis(500));
+        sleep(Duration::from_secs(1));
         ips = get_cur_ip_files(&*IPS_FOLDER)?;
     }
+    ips.sort();
     Ok(ips)
 }
 
@@ -69,6 +70,13 @@ pub fn delete_ip_files() {
         fs::remove_file(path).unwrap();
     }
 }
+
+pub fn create_all_shutdown_files(){
+    for i in 0..*NUM_MIXES {
+        let _file = File::create(format!("{}{}", *SHUTDOWN_FILE, i)).unwrap();
+    }
+}
+
 
 #[cfg(test)]
 mod test {

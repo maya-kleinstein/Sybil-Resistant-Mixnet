@@ -38,7 +38,8 @@ pub fn rename_ip_logs() {
     // enumerate through file_ips
     for (ip_index, ip) in ips.iter().enumerate() {
         let ip_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip.to_string());
-        let mix_str = format!("{}{}mix {}", *BASE_FOLDER, *LOGS_FOLDER, ip_index);
+        let mix_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip_index);
+        debug!("Renaming {} to {}", &ip_str, &mix_str);
         fs::rename(ip_str, mix_str).unwrap();
     }
 }
@@ -98,13 +99,16 @@ pub fn merge_log_files() -> io::Result<()> {
     let entries: Vec<_> = fs::read_dir(&dir)?
         .map(|res| res.map(|e| e.path()))
         .collect::<Result<_, _>>()?;
-
+    
     let merged_data: Vec<_> = entries
         .iter()
         .filter(|path| !is_final_log(path))
         .flat_map(|path| {
+            debug!("1. Reading file: {:?}", path);
             let file = File::open(path).unwrap();
+            debug!("2. Opened file: {:?}", path);
             let filename = path.file_name().unwrap().to_string_lossy().into_owned();
+            debug!("3. Filename: {:?}", filename);
             io::BufReader::new(file).lines().filter_map(move |line| {
                 line.ok()
                     .map(|l| (extract_timestamp(&l), format!("<{}>{}", filename, l)))

@@ -351,6 +351,7 @@ fn get_edge_case_info(output_buffer: &Vec<Vec<Packet>>) -> (usize, usize) {
     return (max_index, total_outgoing);
 }
 
+// TODO: the exact "limit" can be pre-calculated in the setup stage, why not - ya know?
 /// Returns if the amount of packets "i" is to be considered questionable
 fn is_out_of_bounds(i: usize, total: usize) -> bool {
     let p = 1_f64 / (*NUM_MIXES as f64);
@@ -369,16 +370,17 @@ fn is_out_of_bounds(i: usize, total: usize) -> bool {
     result
 }
 
-async fn wait_for_shutdown() {
+async fn wait_for_shutdown(id: u16) {
+    let my_shutdown_path = format!("{}{}", *SHUTDOWN_FILE, id);
     // In case of leftovers from previous run
-    let _ = std::fs::remove_file(&*SHUTDOWN_FILE);
+    let _ = std::fs::remove_file(&my_shutdown_path);
     loop {
-        if tokio::fs::metadata(&*SHUTDOWN_FILE).await.is_ok() {
+        if tokio::fs::metadata(&my_shutdown_path).await.is_ok() {
             // rm shutdown file for next run
-            let _ = std::fs::remove_file(&*SHUTDOWN_FILE);
+            let _ = std::fs::remove_file(&my_shutdown_path);
             break;
         }
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        tokio::time::sleep(Duration::from_secs(2)).await;
     }
 }
 
@@ -407,7 +409,7 @@ pub async fn connect_to_server(dst_ip: &IpAddr, dst: u16) -> MixClient<Channel> 
             }
             Err(err) => {
                 warn!("Failed to connect to mix {}: {:?}", dst, err);
-                sleep(Duration::from_micros(1)).await;
+                sleep(Duration::from_millis(500)).await;
                 conn_result =
                     MixClient::connect(format!("http://{}:{}", dst_ip, *BASE_PORT + dst)).await;
             }
@@ -425,10 +427,10 @@ async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
             .add_service(MixServer::new(mix))
             .serve_with_shutdown(
                 format!("{}:{}", my_ip, *BASE_PORT + id).parse().unwrap(),
-                async {
+                async move {
                     // // Wait for a SIGINT signal to shutdown
                     // tokio::signal::ctrl_c().await.unwrap();
-                    wait_for_shutdown().await;
+                    wait_for_shutdown(id).await;
                 },
             )
     });
