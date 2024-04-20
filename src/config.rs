@@ -3,7 +3,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use crate::marshal::manage_files;
-use crate::mix::connect_to_server;
+use crate::mix::{connect_to_server, get_edge_limit};
 use crate::{marshal::info::get_config_info, mix::mix_service::GetRequest};
 use futures::future::join_all;
 use log::*;
@@ -20,7 +20,7 @@ lazy_static! {
     pub static ref FIRST_MIDDLE_LAYER: u32 = CONFIG_INFO.first_middle_layer;
     pub static ref MIX_VERIFICATION: MixnetVerification = CONFIG_INFO.mix_verification;
     pub static ref NUM_ROUNDS: u32 = CONFIG_INFO.num_rounds;
-    pub static ref EDGE_LIMIT: f64 = CONFIG_INFO.edge_limit;
+    pub static ref EDGE_LIMIT: u64 = get_edge_limit(CONFIG_INFO.num_clients, CONFIG_INFO.num_mixes);
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -33,7 +33,6 @@ pub struct ConfigInfo {
     pub first_middle_layer: u32,
     pub mix_verification: MixnetVerification,
     pub num_rounds: u32,
-    pub edge_limit: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]

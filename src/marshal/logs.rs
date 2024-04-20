@@ -104,17 +104,16 @@ pub fn merge_log_files() -> io::Result<()> {
         .iter()
         .filter(|path| !is_final_log(path))
         .flat_map(|path| {
-            debug!("1. Reading file: {:?}", path);
             let file = File::open(path).unwrap();
-            debug!("2. Opened file: {:?}", path);
             let filename = path.file_name().unwrap().to_string_lossy().into_owned();
-            debug!("3. Filename: {:?}", filename);
             io::BufReader::new(file).lines().filter_map(move |line| {
                 line.ok()
                     .map(|l| (extract_timestamp(&l), format!("<{}>{}", filename, l)))
             })
         })
         .collect();
+    
+    debug!("Len merged data: {}", merged_data.len());
 
     let content: String = get_sorted_string(merged_data);
 

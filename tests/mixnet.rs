@@ -1,5 +1,6 @@
 use bbs::config::*;
 use bbs::marshal::info::*;
+use bbs::marshal::logs::merge_log_files;
 use bbs::mixnet::*;
 use bbs::network::Network;
 use futures::future::join_all;
@@ -29,6 +30,11 @@ fn marshalling_test() {
 }
 
 #[test]
+fn log_test() {
+    merge_log_files().unwrap();
+}
+
+#[test]
 fn write_to_config_file_test(){
     let config_info = ConfigInfo {
         base_port: 8000,
@@ -39,7 +45,6 @@ fn write_to_config_file_test(){
         first_middle_layer: 2,
         mix_verification: MixnetVerification::OnlyVerifyEdgeCases,
         num_rounds: 3,
-        edge_limit: 0.3,
     };  
 
     // Write config data to file

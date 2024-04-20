@@ -11,7 +11,6 @@ use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rayon::prelude::*;
-use statrs::distribution::{Binomial, DiscreteCDF};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
@@ -351,23 +350,26 @@ fn get_edge_case_info(output_buffer: &Vec<Vec<Packet>>) -> (usize, usize) {
     return (max_index, total_outgoing);
 }
 
+pub fn get_edge_limit(n: u64, m: u16) -> u64 {
+    // calculate n/m + sqrt(nlog(m)/m) rounded up
+    let n = n as f64;
+    let m = m as f64;
+    let edge_limit = (n / m + (n * m.log(2.0) / m).sqrt()).ceil() as u64;
+    return edge_limit;
+}
+
 // TODO: the exact "limit" can be pre-calculated in the setup stage, why not - ya know?
 /// Returns if the amount of packets "i" is to be considered questionable
 fn is_out_of_bounds(i: usize, total: usize) -> bool {
-    let p = 1_f64 / (*NUM_MIXES as f64);
-    let binomial = Binomial::new(p, total as u64).unwrap();
-    // cdf = Prob(Bin(n,p) <= i)
-    let cdf = binomial.cdf(i as u64);
-    let result = (1_f64 - cdf) < *EDGE_LIMIT && i > total / (*NUM_MIXES as usize);
-    if result {
+    let is_over_edge = i > *EDGE_LIMIT as usize;
+    if is_over_edge {
         info!(
-            "OVER BOUND! number of packets: {}, total outgoing: {}, probability: {}",
+            "OVER BOUND! number of packets: {}, total outgoing: {}",
             i,
-            total,
-            (1_f64 - cdf)
+            total
         );
     }
-    result
+    is_over_edge
 }
 
 async fn wait_for_shutdown(id: u16) {
