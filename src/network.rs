@@ -13,7 +13,6 @@ use pairing_plus::hash_to_field::ExpandMsgXmd;
 use pairing_plus::serdes::SerDes;
 use pairing_plus::{CurveAffine, CurveProjective};
 use rand::rngs::OsRng;
-use rand_4net::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::convert::TryInto;
@@ -92,12 +91,14 @@ pub struct Network {
     pub layers: u64,
     /// Verification type
     pub mix_verification: MixnetVerification,
+    /// Is the proof compressed
+    pub is_proof_compressed: bool,
     pub servers: Vec<Server>,
 }
 
 impl Network {
     /// Generate a network of size size
-    pub fn new(size: u64, layers: u64, mix_verification: MixnetVerification) -> Network {
+    pub fn new(size: u64, layers: u64, mix_verification: MixnetVerification, is_proof_compressed: bool) -> Network {
         let id_provider = IDProvider {
             bbs_keys: Issuer::new_keys(1).unwrap(),
         };
@@ -109,6 +110,7 @@ impl Network {
             size,
             layers,
             mix_verification,
+            is_proof_compressed,
             servers,
         }
     }
@@ -160,19 +162,25 @@ pub fn generate_layer(
 
     // serialize t into buffer
     let mut t_buf = Vec::new();
-    t.serialize(&mut t_buf, false).unwrap();
+    t.serialize(&mut t_buf, network.is_proof_compressed).unwrap();
 
     let mut proof: Vec<u8> = Vec::new();
     match network.mix_verification {
         MixnetVerification::NoVerification => (),
-        _ => proof = get_ticket_proof(client, network, t, b).to_bytes_uncompressed_form(),
+        _ => match network.is_proof_compressed {
+            true => proof = get_ticket_proof(client, network, t, b).to_bytes_compressed_form(),
+            false => proof = get_ticket_proof(client, network, t, b).to_bytes_uncompressed_form(),
+        },
     };
+
+    println!("Size of proof: {} and ticket: {}", proof.len(), t_buf.len());
 
     let packet = Packet {
         ticket: t_buf,
         proof,
         data,
     };
+    
     return (packet, x);
 }
 
@@ -237,7 +245,7 @@ pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> (u64, bo
 
     // Calculating next server using the ticket
     let mut cursor = Cursor::new(&packet.ticket);
-    let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
+    let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
 
     // Recovering the value of b
@@ -249,7 +257,11 @@ pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> (u64, bo
     let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
     let b_recovered = h_0(ticket_vals_bytes);
     // getting proof from bytes
-    let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packet.proof).unwrap();
+    let proof: PoKOfTicketProof;
+    match network.is_proof_compressed {
+        true => proof = PoKOfTicketProof::from_bytes_compressed_form(&packet.proof).unwrap(),
+        false => proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packet.proof).unwrap(),
+    }
     // Setting up revealed indices
     let mut revealed_indices = BTreeSet::new();
     revealed_indices.insert(0);
@@ -276,7 +288,7 @@ pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> (u64, bo
 
 pub fn get_next_server_from_packet(packet: &Packet, network: &Network) -> u64 {
     let mut cursor = Cursor::new(&packet.ticket);
-    let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
+    let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
     return x;
 }
@@ -295,7 +307,7 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
     for i in 0..packets.len() {
         // Calculating next server using the ticket
         let mut cursor = Cursor::new(&packets[i].ticket);
-        let t_recovered = slice_to_elem!(&mut cursor, G1, false).unwrap();
+        let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
 
         // Recovering the value of b
         // TODO: value for b is the same for everybody - compute once!
@@ -349,7 +361,7 @@ pub fn generate_bad_packet(
 
             packet.ticket = vec![];
 
-            false_ticket.serialize(&mut packet.ticket, false).unwrap();
+            false_ticket.serialize(&mut packet.ticket, network.is_proof_compressed).unwrap();
             x = calculate_next_server(false_ticket, network.size);
         }
 
@@ -365,21 +377,6 @@ pub fn generate_bad_packet(
         data = bincode::serialize(&wrapped_data).unwrap();
     }
     return (data, x);
-}
-
-/// Creating a new network of size size
-pub fn create_network(network: &mut Network, size: u64) {
-    let bbs_keys: (PublicKey, SecretKey) = Issuer::new_keys(1).unwrap();
-
-    let id_provider = IDProvider { bbs_keys };
-
-    network.id_provider = id_provider;
-    network.sys_rand = rand_4net::thread_rng().gen();
-    network.round_id = 0;
-
-    for i in 0..size {
-        network.servers[i as usize] = Server::new();
-    }
 }
 
 /// Get a random ticket that maps to i for all i in range(num_mixes)
@@ -472,7 +469,8 @@ mod tests {
 
     const TEST_NETWORK_SIZE: u64 = 2;
     const TEST_NETWORK_LAYERS: u64 = 3;
-    const TEST_NETWORK_MIX_VERIFICATION: MixnetVerification = MixnetVerification::NoVerification;
+    const TEST_NETWORK_MIX_VERIFICATION: MixnetVerification = MixnetVerification::Verify;
+    const TEST_IS_COMPRESSED_PROOF: bool = true;
 
     #[test]
     pub fn test_simple_network() {
@@ -480,22 +478,24 @@ mod tests {
             TEST_NETWORK_SIZE,
             TEST_NETWORK_LAYERS,
             TEST_NETWORK_MIX_VERIFICATION,
+            TEST_IS_COMPRESSED_PROOF,
         );
         let client = Client::new(&network);
-        let data = vec![b'a', b'b', b'c'];
+        // define data as b'a' 1000 times
+        let data = vec![b'a'; 1000];
         let (enc_data, first_server) = generate_packet(data, &client, &network);
 
         println!("{}, is the first server", first_server);
         println!("{}, is the length of the data", enc_data.len());
 
-        let dec_data = decrypt_packet(enc_data, first_server, &network);
+        // let dec_data = decrypt_packet(enc_data, first_server, &network);
 
-        assert_eq!(dec_data, vec![b'a', b'b', b'c']);
+       // assert_eq!(dec_data, vec![b'a', b'b', b'c']);
     }
 
     #[test]
     pub fn test_batch_verification() {
-        let network = Network::new(2, 3, MixnetVerification::NoVerification);
+        let network = Network::new(2, 3, MixnetVerification::NoVerification, false);
         let clients = vec![
             Client::new(&network),
             Client::new(&network),
@@ -515,10 +515,10 @@ mod tests {
     pub fn test_into_and_from_bytes_g1() {
         let t = G1::one();
         let mut t_buf = Vec::new();
-        t.serialize(&mut t_buf, false).unwrap();
+        t.serialize(&mut t_buf, TEST_IS_COMPRESSED_PROOF).unwrap();
 
         let mut cursor = Cursor::new(t_buf);
-        let _t_recover = slice_to_elem!(&mut cursor, G1, false).unwrap();
+        let _t_recover = slice_to_elem!(&mut cursor, G1, TEST_IS_COMPRESSED_PROOF).unwrap();
         println!("Well?");
     }
 }

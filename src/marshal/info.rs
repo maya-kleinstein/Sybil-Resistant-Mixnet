@@ -20,6 +20,7 @@ pub fn setup_info() {
         config_info.num_mixes.into(),
         config_info.num_layers,
         config_info.mix_verification,
+        config_info.is_proof_compressed,
     );
 
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
@@ -34,7 +35,7 @@ pub fn setup_info() {
     }
 
     for i in 0..config_info.num_clients {
-        let data = vec![i as u8; 3];
+        let data = vec![i as u8; config_info.data_size as usize];
         let client = Client::new(&network);
         let (packet, first_server): (Vec<u8>, u64);
         if i < ((config_info.num_clients as f64) * config_info.percentage_bad_clients) as u64 {
@@ -114,6 +115,7 @@ pub struct SerialNetwork {
     pub layers: u64,
     /// Verification type
     pub mix_verification: MixnetVerification,
+    pub is_proof_compressed: bool,
     pub servers: Vec<Server>,
 }
 
@@ -131,6 +133,7 @@ pub fn serialize_network(data: &Network, filename: &str) -> Result<(), Box<dyn s
         size: data.size,
         layers: data.layers,
         mix_verification: data.mix_verification,
+        is_proof_compressed: data.is_proof_compressed,
         servers: data.servers.clone(),
     };
     let filename = format!("{}{}", *INFO_FOLDER, filename);
@@ -156,6 +159,7 @@ pub fn deserialize_network(filename: &str) -> Result<Network, serde_json::Error>
         size: serial_network.size,
         layers: serial_network.layers,
         mix_verification: serial_network.mix_verification,
+        is_proof_compressed: serial_network.is_proof_compressed,
         servers: serial_network.servers,
     };
     return Ok(network);

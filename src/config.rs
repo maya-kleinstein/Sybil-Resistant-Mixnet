@@ -21,6 +21,8 @@ lazy_static! {
     pub static ref MIX_VERIFICATION: MixnetVerification = CONFIG_INFO.mix_verification;
     pub static ref NUM_ROUNDS: u32 = CONFIG_INFO.num_rounds;
     pub static ref EDGE_LIMIT: u64 = get_edge_limit(CONFIG_INFO.num_clients, CONFIG_INFO.num_mixes);
+    pub static ref DATA_SIZE: u64 = CONFIG_INFO.data_size;
+    pub static ref IS_PROOF_COMPRESSED: bool = CONFIG_INFO.is_proof_compressed;
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -33,6 +35,8 @@ pub struct ConfigInfo {
     pub first_middle_layer: u32,
     pub mix_verification: MixnetVerification,
     pub num_rounds: u32,
+    pub data_size: u64,
+    pub is_proof_compressed: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
