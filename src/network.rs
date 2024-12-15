@@ -6,7 +6,8 @@ use blake2::Blake2b;
 use blake2::VarBlake2b;
 use dryoc::dryocbox;
 use dryoc::dryocbox::DryocBox;
-use dryoc::types::StackByteArray;
+use dryoc::types::{Bytes, MutBytes, NewByteArray, StackByteArray};
+use dryoc::dryocsecretbox::{DryocSecretBox, Key, Nonce};
 use pairing_plus::bls12_381::{Fr, G1};
 use pairing_plus::hash_to_curve::HashToCurve;
 use pairing_plus::hash_to_field::ExpandMsgXmd;
@@ -28,16 +29,29 @@ pub struct IDProvider {
     pub bbs_keys: (PublicKey, SecretKey),
 }
 
+type ConnID = u64;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Connection {
+    conn_id: ConnID,
+    key: Vec<u8>,
+    layer: u64,
+    dest_server: u64,
+}
+
 /// Server configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Server {
     key_pair: dryocbox::KeyPair,
+    // Mapping of connection ID to connection
+    conns: HashMap<ConnID, Connection>
 }
 
 impl Server {
     pub fn new() -> Server {
         Server {
             key_pair: dryocbox::KeyPair::gen(),
+            conns: HashMap::new(),
         }
     }
 }
@@ -46,6 +60,8 @@ impl Server {
 #[derive(Debug)]
 pub struct Client {
     signature: Signature,
+    // Current circuit connections
+    circuit: Vec<(ConnID, Connection)>
 }
 
 impl Client {
@@ -59,7 +75,8 @@ impl Client {
                 &network.id_provider.bbs_keys.0,
             )
             .unwrap(),
-        }
+            circuit: Vec::with_capacity(network.layers as usize),
+        } 
     }
 }
 
@@ -71,11 +88,37 @@ struct TicketValues {
     sys_rand: i32,
 }
 
+/// Setup Packet Header
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct SetupPacketHeader {
+    // Ticket and proof for connections circuit
+    // No need to add destination server since it's derived from the ticket
+    ticket: Vec<u8>,
+    pub proof: Vec<u8>,
+    // Connection Symmetric Key for the circuit
+    key: Vec<u8>,
+    // Connection ID for future packets on the circuit
+    conn_id: ConnID,
+}
+
+/// Setup Packet configuration
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SetupPacket {
+    pub setup_header: SetupPacketHeader,
+    pub data: Vec<u8>,
+}
+
+/// Packet configuration
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PacketHeader {
+    conn_id: ConnID,
+    nonce: Nonce,
+}
+
 /// Packet configuration
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Packet {
-    ticket: Vec<u8>,
-    pub proof: Vec<u8>,
+    pub header: PacketHeader,
     pub data: Vec<u8>,
 }
 
@@ -119,37 +162,49 @@ impl Network {
 //TODO: eventually take care of private-public values (e.g. Network can see all private keys)
 
 /// Generate a packet from the client to the network with the given data
-pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> (Vec<u8>, u64) {
-    let mut data: Vec<u8> = data;
-    let mut x: u64 = 0;
-    let mut packet: Packet;
+pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>, u64) {
+    let mut data: Vec<u8> = Vec::new();
+    let mut cur_server: u64 = 0;
+    let mut dest_server : u64;
+    let mut setup_packet: SetupPacket;
 
     // Onion Encrypt the data using the keys matching the calculated tickets
     for i in (0..network.layers).rev() {
+        dest_server = cur_server;
         // Creates packet layer (proof + ticket)
-        (packet, x) = generate_layer(data, client, network, i);
+        (setup_packet, cur_server) = generate_setup_packet_layer(data, client, network, i);
+
+        // Add connection to client
+        let conn : Connection = Connection {
+            conn_id: setup_packet.setup_header.conn_id,
+            key: setup_packet.setup_header.key.clone(),
+            layer: i,
+            dest_server, // NOTE: the last layer destination server is always 0
+        };
+        client.circuit.push((setup_packet.setup_header.conn_id, conn));
 
         // Serialize packet
-        let encoded_packet = bincode::serialize(&packet).unwrap();
+        let encoded_setup_packet = bincode::serialize(&setup_packet).unwrap();
 
         // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
         let wrapped_data = DryocBox::seal_to_vecbox(
-            &encoded_packet,
-            &network.servers[x as usize].key_pair.public_key.clone(),
+            &encoded_setup_packet,
+            &network.servers[cur_server as usize].key_pair.public_key.clone(),
         )
         .expect("Unable to seal");
         data = bincode::serialize(&wrapped_data).unwrap();
     }
-    return (data, x);
+    client.circuit.reverse();
+    return (data, cur_server);
 }
 
 /// Create packet with data proof and ticket
-pub fn generate_layer(
+pub fn generate_setup_packet_layer(
     data: Vec<u8>,
     client: &Client,
     network: &Network,
     layer: u64,
-) -> (Packet, u64) {
+) -> (SetupPacket, u64) {
     // t = b^e, where b=H0(layer, RoundID, SysRand) and e is part of signature
     let (b, t) = calculate_ticket(
         layer,
@@ -158,7 +213,7 @@ pub fn generate_layer(
         client.signature.e,
     );
     // server x = H(t) % network size, H: {0,1}^* -> Zp
-    let x = calculate_next_server(t, network.size);
+    let server_id = calculate_next_server(t, network.size);
 
     // serialize t into buffer
     let mut t_buf = Vec::new();
@@ -175,76 +230,86 @@ pub fn generate_layer(
 
     println!("Size of proof: {} and ticket: {}", proof.len(), t_buf.len());
 
-    let packet = Packet {
-        ticket: t_buf,
-        proof,
-        data,
+    // Get Random Number for ConnID
+    let conn_id = rand::random::<u64>();
+    // Generate random symmetric key for connection
+    let key = Key::gen();
+    let setup_packet = SetupPacket {
+        setup_header: SetupPacketHeader {
+            ticket: t_buf,
+            proof,
+            key: key.as_slice().to_vec(),
+            conn_id,
+        },
+        data: data,
     };
-    
-    return (packet, x);
+
+    return (setup_packet, server_id);
 }
 
-/// Decrypt a packet traversing through the network
-pub fn decrypt_packet(enc_packet: Vec<u8>, x_0: u64, network: &Network) -> Vec<u8> {
+/// Decrypt a setup packet traversing through the network
+pub fn decrypt_setup_packet(enc_packet: Vec<u8>, x_0: u64, network: &mut Network) -> Vec<u8> {
     let mut data = enc_packet;
-    let mut x = x_0;
+    let mut cur_server = x_0;
 
     for i in 0..network.layers {
         // Decrypt Packet
-        let dryocbox: DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> =
-            bincode::deserialize(&data).unwrap();
-        let decrypted = dryocbox
-            .unseal_to_vec(&network.servers[x as usize].key_pair)
-            .expect("unable to decrypt");
-        let mut packet: Packet = bincode::deserialize(&decrypted).unwrap();
-
-        // Verify ticket and proof (done by x)
-        x = verify_packet(&mut packet, &network, i).0;
-        // Retrieving data and next server
-        data = packet.data;
+        let decrypted_packet = decrypt_setup_layer(&data, cur_server, network, i).unwrap();
+        data = decrypted_packet.0.data;
+        cur_server = decrypted_packet.1;
     }
     return data;
 }
 
 /// unwraps single layer of packet, given the current server and layer
 /// Verifies in case of mixnet type verify
-pub fn decrypt_layer(
+pub fn decrypt_setup_layer(
     enc_packet: &[u8],
-    x: u64,
-    network: &Network,
+    cur_server: u64,
+    network: &mut Network,
     layer: u64,
-) -> Option<(Packet, u64)> {
+) -> Option<(SetupPacket, u64)> {
     // Decrypt Packet
     let dryocbox: DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> =
         bincode::deserialize(enc_packet).unwrap();
     let decrypted = dryocbox
-        .unseal_to_vec(&network.servers[x as usize].key_pair)
+        .unseal_to_vec(&network.servers[cur_server as usize].key_pair)
         .expect("unable to decrypt");
-    let packet: Packet = bincode::deserialize(&decrypted).unwrap();
+    let packet: SetupPacket = bincode::deserialize(&decrypted).unwrap();
 
+    // Verify ticket and proof (done by cur_server)
     let next_server: u64;
     let valid: bool;
-    // Verify ticket and proof (done by x)
     match network.mix_verification {
         MixnetVerification::Verify => {
-            (next_server, valid) = verify_packet(&packet, &network, layer);
+            (next_server, valid) = verify_setup_packet(&packet, &network, layer);
             if !valid {
                 return None;
             }
         }
         _ => next_server = get_next_server_from_packet(&packet, &network),
     };
+
+    // update connections
+    let conn: Connection = Connection {
+        conn_id: packet.setup_header.conn_id,
+        key: packet.setup_header.key.as_slice().to_vec(),
+        layer,
+        dest_server: next_server, 
+    };
+    network.servers[cur_server as usize].conns.insert(packet.setup_header.conn_id, conn);
+
     // Retrieving data and next server
     return Some((packet, next_server));
 }
 
 /// Verify the proof of knowledge of the signature and the ticket
 /// Return the next server and is_valid
-pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> (u64, bool) {
+pub fn verify_setup_packet(packet: &SetupPacket, network: &Network, layer: u64) -> (u64, bool) {
     let revealed_msgs = setup_default_msgs();
 
     // Calculating next server using the ticket
-    let mut cursor = Cursor::new(&packet.ticket);
+    let mut cursor = Cursor::new(&packet.setup_header.ticket);
     let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
 
@@ -259,8 +324,8 @@ pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> (u64, bo
     // getting proof from bytes
     let proof: PoKOfTicketProof;
     match network.is_proof_compressed {
-        true => proof = PoKOfTicketProof::from_bytes_compressed_form(&packet.proof).unwrap(),
-        false => proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packet.proof).unwrap(),
+        true => proof = PoKOfTicketProof::from_bytes_compressed_form(&packet.setup_header.proof).unwrap(),
+        false => proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packet.setup_header.proof).unwrap(),
     }
     // Setting up revealed indices
     let mut revealed_indices = BTreeSet::new();
@@ -286,15 +351,15 @@ pub fn verify_packet(packet: &Packet, network: &Network, layer: u64) -> (u64, bo
     return (x, valid);
 }
 
-pub fn get_next_server_from_packet(packet: &Packet, network: &Network) -> u64 {
-    let mut cursor = Cursor::new(&packet.ticket);
+pub fn get_next_server_from_packet(packet: &SetupPacket, network: &Network) -> u64 {
+    let mut cursor = Cursor::new(&packet.setup_header.ticket);
     let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
     return x;
 }
 
 /// Verify batch
-pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
+pub fn verify_batch(packets: &Vec<SetupPacket>, network: &Network, layer: u64) {
     // Set up msg.'s info before decrypting
     let mut revealed_indices = BTreeSet::new();
     revealed_indices.insert(0);
@@ -306,7 +371,7 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
 
     for i in 0..packets.len() {
         // Calculating next server using the ticket
-        let mut cursor = Cursor::new(&packets[i].ticket);
+        let mut cursor = Cursor::new(&packets[i].setup_header.ticket);
         let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
 
         // Recovering the value of b
@@ -319,7 +384,7 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
         let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
         let b_recovered = h_0(ticket_vals_bytes);
         // getting proof from bytes
-        let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packets[i].proof).unwrap();
+        let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packets[i].setup_header.proof).unwrap();
 
         // The verifier generates the challenge on its own.
         let challenge_bytes = proof.get_bytes_for_challenge(
@@ -340,7 +405,7 @@ pub fn verify_batch(packets: &Vec<Packet>, network: &Network, layer: u64) {
 }
 
 /// Generating packets with false proofs
-pub fn generate_bad_packet(
+pub fn generate_bad_setup_packet(
     data: Vec<u8>,
     client: &Client,
     network: &Network,
@@ -348,20 +413,20 @@ pub fn generate_bad_packet(
 ) -> (Vec<u8>, u64) {
     let mut data: Vec<u8> = data;
     let mut x: u64 = 0;
-    let mut packet: Packet;
+    let mut packet: SetupPacket;
 
     // Onion Encrypt the data using the keys matching the calculated tickets
     for i in (0..network.layers).rev() {
         // Creates packet layer (proof + ticket)
-        (packet, x) = generate_layer(data, client, network, i);
+        (packet, x) = generate_setup_packet_layer(data, client, network, i);
 
         // Mess with packet by setting ticket to default
         if i > 0 {
             let false_ticket = bad_tickets[i as usize - 1];
 
-            packet.ticket = vec![];
+            packet.setup_header.ticket = vec![];
 
-            false_ticket.serialize(&mut packet.ticket, network.is_proof_compressed).unwrap();
+            false_ticket.serialize(&mut packet.setup_header.ticket, network.is_proof_compressed).unwrap();
             x = calculate_next_server(false_ticket, network.size);
         }
 
@@ -394,6 +459,35 @@ pub fn ticket_server_map_generator(num_mixes: u16) -> HashMap<u64, G1> {
         }
     }
     return ticket_server_map;
+}
+
+pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Vec<u8> {
+    let mut data : Vec<u8> = data;
+    let mut packet: Packet;
+
+    for i in (0..network.layers).rev() {
+        let nonce = Nonce::gen();
+        let key_bytes: &[u8] = &client.circuit[i as usize].1.key;
+        let mut key: Key = Key::default(); 
+        Key::copy_from_slice(&mut key, key_bytes);
+        // Creates packet layer (encrypt with circuit keys)
+        let dryocsecretbox = DryocSecretBox::encrypt_to_vecbox(
+            &data, 
+            &nonce, 
+            &key,
+        );
+        packet = Packet {
+            header: PacketHeader {
+                conn_id: client.circuit[i as usize].0,
+                nonce,
+            },
+            data: dryocsecretbox.to_vec(),
+        };
+
+        data = bincode::serialize(&packet).unwrap();
+    }
+
+    return data;
 }
 
 // Calculating ticket = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
@@ -480,13 +574,11 @@ mod tests {
             TEST_NETWORK_MIX_VERIFICATION,
             TEST_IS_COMPRESSED_PROOF,
         );
-        let client = Client::new(&network);
-        // define data as b'a' 1000 times
-        let data = vec![b'a'; 1000];
-        let (enc_data, first_server) = generate_packet(data, &client, &network);
+        let mut client = Client::new(&network);
+        let (enc_data, first_server) = generate_setup_packet(&mut client, &network);
 
         println!("{}, is the first server", first_server);
-        println!("{}, is the length of the data", enc_data.len());
+        println!("{}, is the length of the packet", enc_data.len());
 
         // let dec_data = decrypt_packet(enc_data, first_server, &network);
 
@@ -503,9 +595,9 @@ mod tests {
         ];
 
         let packets = vec![
-            generate_layer(vec![1, 2, 3], &clients[0], &network, 0).0,
-            generate_layer(vec![1, 2, 3], &clients[1], &network, 0).0,
-            generate_layer(vec![1, 2, 3], &clients[2], &network, 0).0,
+            generate_setup_packet_layer(vec![1, 2, 3], &clients[0], &network, 0).0,
+            generate_setup_packet_layer(vec![1, 2, 3], &clients[1], &network, 0).0,
+            generate_setup_packet_layer(vec![1, 2, 3], &clients[2], &network, 0).0,
         ];
 
         verify_batch(&packets, &network, 0);
