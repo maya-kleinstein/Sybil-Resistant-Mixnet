@@ -36,6 +36,7 @@ pub struct Connection {
     conn_id: ConnID,
     key: Vec<u8>,
     layer: u64,
+    cur_server: u64,
     dest_server: u64,
 }
 
@@ -90,15 +91,12 @@ struct TicketValues {
 
 /// Setup Packet Header
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct SetupPacketHeader {
+pub struct SetupPacketHeader {
     // Ticket and proof for connections circuit
-    // No need to add destination server since it's derived from the ticket
     ticket: Vec<u8>,
     pub proof: Vec<u8>,
-    // Connection Symmetric Key for the circuit
-    key: Vec<u8>,
-    // Connection ID for future packets on the circuit
-    conn_id: ConnID,
+    // Connection details for the circuit
+    conn: Connection,
 }
 
 /// Setup Packet configuration
@@ -165,23 +163,17 @@ impl Network {
 pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>, u64) {
     let mut data: Vec<u8> = Vec::new();
     let mut cur_server: u64 = 0;
-    let mut dest_server : u64;
     let mut setup_packet: SetupPacket;
 
     // Onion Encrypt the data using the keys matching the calculated tickets
-    for i in (0..network.layers).rev() {
-        dest_server = cur_server;
+    for i in (0..network.layers).rev() { 
         // Creates packet layer (proof + ticket)
         (setup_packet, cur_server) = generate_setup_packet_layer(data, client, network, i);
+        println!("The layer {} server is {}", i, cur_server); 
 
-        // Add connection to client
-        let conn : Connection = Connection {
-            conn_id: setup_packet.setup_header.conn_id,
-            key: setup_packet.setup_header.key.clone(),
-            layer: i,
-            dest_server, // NOTE: the last layer destination server is always 0
-        };
-        client.circuit.push((setup_packet.setup_header.conn_id, conn));
+        // Add connection to client path
+        client.circuit.push((setup_packet.setup_header.conn.conn_id, setup_packet.setup_header.conn.clone()));
+        println!("Just added connection {} to dest server {}", setup_packet.setup_header.conn.conn_id, cur_server);
 
         // Serialize packet
         let encoded_setup_packet = bincode::serialize(&setup_packet).unwrap();
@@ -195,6 +187,11 @@ pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>
         data = bincode::serialize(&wrapped_data).unwrap();
     }
     client.circuit.reverse();
+    client.circuit[0].1.cur_server = cur_server;
+    for i in 1..client.circuit.len() {
+        client.circuit[i].1.cur_server = client.circuit[i-1].1.dest_server;
+    }
+
     return (data, cur_server);
 }
 
@@ -228,18 +225,21 @@ pub fn generate_setup_packet_layer(
         },
     };
 
-    println!("Size of proof: {} and ticket: {}", proof.len(), t_buf.len());
+    // Create connection
+    let conn = Connection {
+        conn_id: rand::random::<u64>(),
+        key: Key::gen().as_slice().to_vec(),
+        layer,
+        cur_server: 0, // NOTE: cur_server is set to 0, as it is updated at the end of packet generation
+        dest_server : server_id,
+    };
 
-    // Get Random Number for ConnID
-    let conn_id = rand::random::<u64>();
-    // Generate random symmetric key for connection
-    let key = Key::gen();
+    
     let setup_packet = SetupPacket {
         setup_header: SetupPacketHeader {
             ticket: t_buf,
             proof,
-            key: key.as_slice().to_vec(),
-            conn_id,
+            conn,
         },
         data: data,
     };
@@ -247,10 +247,10 @@ pub fn generate_setup_packet_layer(
     return (setup_packet, server_id);
 }
 
-/// Decrypt a setup packet traversing through the network
-pub fn decrypt_setup_packet(enc_packet: Vec<u8>, x_0: u64, network: &mut Network) -> Vec<u8> {
+/// Decrypt a setup packet traversing through the network, while updating network connections
+pub fn decrypt_setup_packet(enc_packet: Vec<u8>, first_server: u64, network: &mut Network) -> Vec<u8> {
     let mut data = enc_packet;
-    let mut cur_server = x_0;
+    let mut cur_server = first_server;
 
     for i in 0..network.layers {
         // Decrypt Packet
@@ -291,13 +291,10 @@ pub fn decrypt_setup_layer(
     };
 
     // update connections
-    let conn: Connection = Connection {
-        conn_id: packet.setup_header.conn_id,
-        key: packet.setup_header.key.as_slice().to_vec(),
-        layer,
-        dest_server: next_server, 
-    };
-    network.servers[cur_server as usize].conns.insert(packet.setup_header.conn_id, conn);
+    let mut conn = packet.setup_header.conn.clone();
+    conn.cur_server = cur_server;
+    network.servers[cur_server as usize].conns.insert(packet.setup_header.conn.conn_id, conn);
+    println!("Just added connection {} to server {}", packet.setup_header.conn.conn_id, cur_server);
 
     // Retrieving data and next server
     return Some((packet, next_server));
@@ -567,22 +564,35 @@ mod tests {
     const TEST_IS_COMPRESSED_PROOF: bool = true;
 
     #[test]
-    pub fn test_simple_network() {
-        let network = Network::new(
+    pub fn test_basic_setup_packet() {
+        let mut network = Network::new(
             TEST_NETWORK_SIZE,
             TEST_NETWORK_LAYERS,
             TEST_NETWORK_MIX_VERIFICATION,
             TEST_IS_COMPRESSED_PROOF,
         );
         let mut client = Client::new(&network);
-        let (enc_data, first_server) = generate_setup_packet(&mut client, &network);
-
+        let (enc_data, first_server) = generate_setup_packet(&mut client, &network);    
+        
         println!("{}, is the first server", first_server);
         println!("{}, is the length of the packet", enc_data.len());
 
-        // let dec_data = decrypt_packet(enc_data, first_server, &network);
+        let dec_data = decrypt_setup_packet(enc_data, first_server, &mut network);
+        assert_eq!(0, dec_data.len());
 
-       // assert_eq!(dec_data, vec![b'a', b'b', b'c']);
+        let circuit = &client.circuit;
+        assert_eq!(TEST_NETWORK_LAYERS as usize, circuit.len());
+        assert_eq!(circuit[0].1.cur_server, first_server);
+
+        let mut num_conn_ids = vec![0; network.size as usize];
+        for i in 0..circuit.len() {
+            num_conn_ids[circuit[i].1.cur_server as usize] += 1;
+        }
+
+        for i in 0..network.size as usize {
+            println!("Server {} has {} connections", i, num_conn_ids[i]);
+            assert_eq!(network.servers[i].conns.len(), num_conn_ids[i] as usize);
+        }
     }
 
     #[test]
