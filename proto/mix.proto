@@ -2,6 +2,8 @@ syntax = "proto3";
 package mix;
 
 service Mix {
+    rpc Setup(SetupRequest) returns (SetupResponse) {}
+
     rpc Add(AddRequest) returns (AddResponse) {}
 
     // only coordinator calls this:
@@ -9,10 +11,16 @@ service Mix {
     // rpc Start()
 }
 
-// grpc context (for round i, from mix m in layer l, for mix n in layer l+1 OR for cordinator)
-message AddRequest {
+  // grpc context, prepares all circuits for following round.
+  message SetupRequest {
     repeated bytes packets = 1;
-    uint32 layer = 2;
+  }
+
+  message SetupResponse {
+  }
+
+  message AddRequest {
+    repeated bytes packets = 1;
   }
   
   message AddResponse {
