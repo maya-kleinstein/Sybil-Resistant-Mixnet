@@ -23,6 +23,7 @@ pub fn setup_info() {
         config_info.is_proof_compressed,
     );
 
+    let mut setup_packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
     let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
 
     // get ticket server mapping
@@ -39,44 +40,38 @@ pub fn setup_info() {
         let client = Client::new(&network);
         let (packet, first_server): (Vec<u8>, u64);
         if i < ((config_info.num_clients as f64) * config_info.percentage_bad_clients) as u64 {
-            (packet, first_server) = generate_bad_packet(data, &client, &network, &bad_tickets_vec);
+            (packet, first_server) = generate_bad_setup_packet(data, &client, &network, &bad_tickets_vec);
         } else {
-            (packet, first_server) = generate_packet(data, &client, &network);
+            (packet, first_server) = generate_setup_packet(data, &client, &network);
         }
+        setup_packets[first_server as usize].push(packet);
+        let packet = generate_packet(data, &client, &network);
         packets[first_server as usize].push(packet);
     }
 
     // Write packets to intended files
     for i in 0..config_info.num_mixes {
-        let filename = format!("{}packets_{}", *INFO_FOLDER, i);
-        serialize_data_to_file::<Vec<Vec<u8>>>(&packets[i as usize], &filename).unwrap();
+        let setup_filename = format!("{}setup_packets_{}", *INFO_FOLDER, i);
+        serialize_data_to_file::<Vec<Vec<u8>>>(&setup_packets[i as usize], &setup_filename).unwrap();
+        let packets_filename = format!("{}packets_{}", *INFO_FOLDER, i);
+        serialize_data_to_file::<Vec<Vec<u8>>>(&packets[i as usize], &packets_filename).unwrap();
+
     }
 
-    let filename = "network_info";
+    let network_filename = "network_info";
     //serialize_info_to_file::<Network>(&network, filename).unwrap();
-    serialize_network(&network, filename).unwrap();
+    serialize_network(&network, network_filename).unwrap();
+}
+
+pub fn get_init_setup_packets(mix_id: u16) -> Vec<Vec<u8>> {
+    let filename = format!("{}setup_packets_{}", *INFO_FOLDER, mix_id);
+    let packets: Vec<Vec<u8>> = deserialize_data_from_file(&filename).unwrap();
+    return packets;
 }
 
 pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>> {
     let filename = format!("{}packets_{}", *INFO_FOLDER, mix_id);
     let packets: Vec<Vec<u8>> = deserialize_data_from_file(&filename).unwrap();
-    return packets;
-}
-
-pub fn process_init_packets(
-    init_packets: Vec<Vec<u8>>,
-    network: &Network,
-    id: u16,
-    layer: u64,
-) -> Vec<Vec<Vec<u8>>> {
-    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); Into::<usize>::into(*NUM_MIXES)];
-
-    let dec_packets = decrypt_incoming_packets(init_packets, id, layer as u32, network);
-
-    // Insert decrypted packets to output_buffer
-    for (dec_packet, next) in dec_packets {
-        packets[next as usize].push(dec_packet.data);
-    }
     return packets;
 }
 

@@ -21,7 +21,7 @@ use std::io::Cursor;
 
 /// Network module
 /// Contains network related functionality
-/// Entities Included: ID provider, Server, Client, Tickets, etc.
+/// Entities Included: ID provider, Server, Client, Tickets, Conneciton, SetupPacket, Packet, etc.
 
 /// IDprovider configuration
 #[derive(Debug, Serialize, Deserialize)]
