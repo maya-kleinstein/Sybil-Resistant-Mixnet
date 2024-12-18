@@ -1,13 +1,13 @@
 use crate::config::*;
-use crate::marshal::info::{get_init_packets, get_network_info, process_init_packets};
+use crate::marshal::info::{get_init_packets, get_network_info};
 use crate::marshal::logs::RESULTS;
 use crate::marshal::SHUTDOWN_FILE;
-use crate::network::{decrypt_layer, verify_batch, verify_packet, Network, Packet};
+use crate::network::{decrypt_setup_layer, verify_batch, verify_setup_packet, Network, Packet};
 use futures::future::join_all;
 use log::*;
 use mix_service::mix_client::MixClient;
 use mix_service::mix_server::{Mix, MixServer};
-use mix_service::{AddRequest, AddResponse, GetRequest, GetResponse};
+use mix_service::{SetupRequest, SetupResponse, AddRequest, AddResponse, GetRequest, GetResponse};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rayon::prelude::*;
@@ -58,6 +58,17 @@ impl MyServer {
 
 #[tonic::async_trait]
 impl Mix for MyServer {
+    async fn setup(&self, request: Request<SetupRequest>) -> Result<Response<SetupResponse>, Status> {
+        self.parse_input(request).await;
+
+        self.handle_middle_layer().await;
+
+        // Notify config
+        self.notify.add_permits(1);
+        let reply = AddResponse {};
+        Ok(Response::new(reply))
+    }
+
     async fn add(&self, request: Request<AddRequest>) -> Result<Response<AddResponse>, Status> {
         self.parse_input(request).await;
 
@@ -100,35 +111,35 @@ impl Mix for MyServer {
 }
 
 impl MyServer {
-    /// Process (decrypt) incoming stream to proper output buffer
-    async fn parse_input(&self, request: Request<AddRequest>) -> () {
-        let add_req = request.into_inner();
+    /// Process (decrypt) incoming setup stream to proper output buffer
+    async fn parse_input(&self, request: Request<SetupRequest>) -> () {
+        let setup_req = request.into_inner();
         info!(
             "mix {} got {} packets FROM layer {}",
             self.id,
-            add_req.packets.len(),
-            add_req.layer
+            setup_req.packets.len(),
+            setup_req.layer
         );
         // Decrypt packets - Verify as well in case of MixnetVerification::Verify
         let dec_packets =
-            decrypt_incoming_packets(add_req.packets, self.id, add_req.layer, &self.network_info);
+            decrypt_incoming_setup_packets(setup_req.packets, self.id, setup_req.layer, &self.network_info);
 
         let mut buffer_guard = self.output_buffer.lock().await;
         // Update counter
         (*buffer_guard)
-            .entry(add_req.layer + 1)
+            .entry(setup_req.layer + 1)
             .or_insert((vec![vec![].into(); Into::<usize>::into(*NUM_MIXES)], 0))
             .1 += 1;
 
         // Insert decrypted packets to output_buffer
         for (dec_packet, next) in dec_packets {
-            (*buffer_guard).entry(add_req.layer + 1).and_modify(|e| {
+            (*buffer_guard).entry(setup_req.layer + 1).and_modify(|e| {
                 e.0[next as usize].push(dec_packet);
             });
         }
     }
 
-    /// Send add from current layer to all mixes
+    /// Send setup from current layer to all mixes
     async fn handle_middle_layer(&self) -> () {
         let mut mix_tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
 
@@ -262,7 +273,7 @@ async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u
 }
 
 /// Decrypt incoming packets
-pub fn decrypt_incoming_packets(
+pub fn decrypt_incoming_setup_packets(
     packets: Vec<Vec<u8>>,
     id: u16,
     layer: u32,
@@ -270,7 +281,7 @@ pub fn decrypt_incoming_packets(
 ) -> Vec<(Packet, u64)> {
     let dec_packets = packets
         .par_iter()
-        .filter_map(|i| decrypt_layer(i, id.into(), network_info, layer as u64))
+        .filter_map(|i| decrypt_setup_layer(i, id.into(), network_info, layer as u64))
         .collect();
     return dec_packets;
 }
@@ -384,6 +395,23 @@ async fn wait_for_shutdown(id: u16) {
         }
         tokio::time::sleep(Duration::from_secs(2)).await;
     }
+}
+
+fn process_init_packets(
+    init_packets: Vec<Vec<u8>>,
+    network: &Network,
+    id: u16,
+    layer: u64,
+) -> Vec<Vec<Vec<u8>>> {
+    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); Into::<usize>::into(*NUM_MIXES)];
+
+    let dec_packets = decrypt_incoming_packets(init_packets, id, layer as u32, network);
+
+    // Insert decrypted packets to output_buffer
+    for (dec_packet, next) in dec_packets {
+        packets[next as usize].push(dec_packet.data);
+    }
+    return packets;
 }
 
 fn send_init_packets(mix_ips: &Vec<IpAddr>, id: u16) -> Vec<JoinHandle<()>> {
