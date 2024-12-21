@@ -40,19 +40,39 @@ pub struct Connection {
     dest_server: u64,
 }
 
+pub struct Connections {
+    conns: Vec<HashMap<ConnID, Connection>>,
+    pub size: u64,
+}
+
+impl Connections {
+    pub fn new(size: u64) -> Connections {
+        let mut conns = Vec::with_capacity(size as usize);
+        for _ in 0..size {
+            conns.push(HashMap::new());
+        }
+        Connections { conns, size }
+    }
+
+    pub fn get(&self, server: u64, conn_id: ConnID) -> Option<&Connection> {
+        self.conns[server as usize].get(&conn_id)
+    }
+
+    pub fn insert(&mut self, server: u64, conn_id: ConnID, conn: Connection) {
+        self.conns[server as usize].insert(conn_id, conn);
+    }
+}
+
 /// Server configuration
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Server {
     key_pair: dryocbox::KeyPair,
-    // Mapping of connection ID to connection
-    conns: HashMap<ConnID, Connection>
 }
 
 impl Server {
     pub fn new() -> Server {
         Server {
             key_pair: dryocbox::KeyPair::gen(),
-            conns: HashMap::new(),
         }
     }
 }
@@ -248,13 +268,19 @@ pub fn generate_setup_packet_layer(
 }
 
 /// Decrypt a setup packet traversing through the network, while updating network connections
-pub fn decrypt_setup_packet(enc_packet: Vec<u8>, first_server: u64, network: &mut Network) -> Vec<u8> {
+pub fn decrypt_setup_packet(
+    enc_packet: Vec<u8>, 
+    first_server: u64, 
+    network: &Network, 
+    conns: &mut Connections,
+) -> Vec<u8> {
     let mut data = enc_packet;
     let mut cur_server = first_server;
 
     for i in 0..network.layers {
         // Decrypt Packet
         let decrypted_packet = decrypt_setup_layer(&data, cur_server, network, i).unwrap();
+        conns.insert(cur_server, decrypted_packet.2.conn_id, decrypted_packet.2);
         data = decrypted_packet.0.data;
         cur_server = decrypted_packet.1;
     }
@@ -266,9 +292,9 @@ pub fn decrypt_setup_packet(enc_packet: Vec<u8>, first_server: u64, network: &mu
 pub fn decrypt_setup_layer(
     enc_packet: &[u8],
     cur_server: u64,
-    network: &mut Network,
+    network: &Network,
     layer: u64,
-) -> Option<(SetupPacket, u64)> {
+) -> Option<(SetupPacket, u64, Connection)> {
     // Decrypt Packet
     let dryocbox: DryocBox<StackByteArray<32>, StackByteArray<16>, Vec<u8>> =
         bincode::deserialize(enc_packet).unwrap();
@@ -290,14 +316,11 @@ pub fn decrypt_setup_layer(
         _ => next_server = get_next_server_from_packet(&packet, &network),
     };
 
-    // update connections
-    let mut conn = packet.setup_header.conn.clone();
-    conn.cur_server = cur_server;
-    network.servers[cur_server as usize].conns.insert(packet.setup_header.conn.conn_id, conn);
-    println!("Just added connection {} to server {}", packet.setup_header.conn.conn_id, cur_server);
+    let conn = packet.setup_header.conn.clone();
+    // TODO: add verification that dest server in conn is next_server
 
     // Retrieving data and next server
-    return Some((packet, next_server));
+    return Some((packet, next_server, conn));
 }
 
 /// Verify the proof of knowledge of the signature and the ticket
@@ -487,6 +510,33 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Vec
     return data;
 }
 
+pub fn decrypt_packet_layer(
+    enc_packet: &[u8], 
+    cur_server: u64, 
+    conns: &Connections,
+    layer: u64
+) -> Option<(Vec<u8>, u64)> {
+    let packet: Packet = bincode::deserialize(enc_packet).unwrap();
+    // TODO: This is also a "verification" step, make sure it's handled properly
+    let dryocsecretbox = DryocSecretBox::from_bytes(&packet.data).expect("unable to load box");
+    let conn_id = packet.header.conn_id;
+    // TODO: This is the "verification" step, make sure it's handled properly
+    let conn = conns.get(cur_server, conn_id).unwrap() ;
+    if conn.layer != layer && conn.cur_server != cur_server {
+        return None;
+    }
+    let key_bytes: &[u8] = &conn.key;
+    let mut key: Key = Key::default(); 
+    Key::copy_from_slice(&mut key, key_bytes);
+    let nonce = &packet.header.nonce;
+
+    let decrypted_packet = dryocsecretbox
+    .decrypt_to_vec(nonce, &key)
+    .expect("decrypt failed");
+
+    return Some((decrypted_packet, conn.dest_server));
+}
+
 // Calculating ticket = b^s, where b=H(layer, RoundID, SysRand) and s is part of signature
 fn calculate_ticket(layer: u64, round_id: u32, sys_rand: i32, e: Fr) -> (G1, G1) {
     let ticket_vals = TicketValues {
@@ -565,19 +615,20 @@ mod tests {
 
     #[test]
     pub fn test_basic_setup_packet() {
-        let mut network = Network::new(
+        let network = Network::new(
             TEST_NETWORK_SIZE,
             TEST_NETWORK_LAYERS,
             TEST_NETWORK_MIX_VERIFICATION,
             TEST_IS_COMPRESSED_PROOF,
         );
         let mut client = Client::new(&network);
+        let mut conns = Connections::new(network.size);
         let (enc_data, first_server) = generate_setup_packet(&mut client, &network);    
         
         println!("{}, is the first server", first_server);
         println!("{}, is the length of the packet", enc_data.len());
 
-        let dec_data = decrypt_setup_packet(enc_data, first_server, &mut network);
+        let dec_data = decrypt_setup_packet(enc_data, first_server, &network, &mut conns);
         assert_eq!(0, dec_data.len());
 
         let circuit = &client.circuit;
@@ -591,8 +642,36 @@ mod tests {
 
         for i in 0..network.size as usize {
             println!("Server {} has {} connections", i, num_conn_ids[i]);
-            assert_eq!(network.servers[i].conns.len(), num_conn_ids[i] as usize);
+            assert_eq!(num_conn_ids[i], conns.conns[i].len());
         }
+    }
+
+    #[test]
+    pub fn test_basic_generate_packet() {
+        // First create connection circuit
+        let network = Network::new(
+            TEST_NETWORK_SIZE,
+            TEST_NETWORK_LAYERS,
+            TEST_NETWORK_MIX_VERIFICATION,
+            TEST_IS_COMPRESSED_PROOF,
+        );
+        let mut client = Client::new(&network);
+        let mut conns = Connections::new(network.size);
+        let (enc_data, first_server) = generate_setup_packet(&mut client, &network);    
+        
+        let _ = decrypt_setup_packet(enc_data, first_server, &network, &mut conns);
+
+        let data = vec![b'a'; 100];
+        let mut enc_packet = generate_packet(data, &client, &network);
+        println!("The encrypted data is of len: {}", enc_packet.len());
+        let mut cur_server = first_server;
+        for layer in 0..network.layers {
+            let decrypted = decrypt_packet_layer(&enc_packet, cur_server, &conns, layer).unwrap();
+            enc_packet = decrypted.0;
+            cur_server = decrypted.1;
+        }
+        println!("The decrypted data is of len: {}", enc_packet.len());
+        
     }
 
     #[test]
