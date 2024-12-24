@@ -2,23 +2,26 @@ use crate::config::*;
 use crate::marshal::info::{get_init_packets, get_network_info};
 use crate::marshal::logs::RESULTS;
 use crate::marshal::SHUTDOWN_FILE;
-use crate::network::{decrypt_setup_layer, verify_batch, verify_setup_packet, Network, Packet};
+use crate::network::{decrypt_setup_layer, verify_batch, Connections, Network, Packet, SetupPacket};
 use futures::future::join_all;
 use log::*;
 use mix_service::mix_client::MixClient;
 use mix_service::mix_server::{Mix, MixServer};
-use mix_service::{SetupRequest, SetupResponse, AddRequest, AddResponse, GetRequest, GetResponse};
+use mix_service::{PacketRequest, PacketResponse, GetRequest, GetResponse};
+use mixnet_request::{MixnetPacketType, MixnetPacket};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::{Mutex, Semaphore, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration, Instant};
 use tonic::transport::{Channel, Server};
 use tonic::{Request, Response, Status};
+
+pub mod mixnet_request;
 
 /// Service created from proto file
 pub mod mix_service {
@@ -33,10 +36,11 @@ pub struct MyServer {
     id: u16,
     mix_ips: Vec<IpAddr>,
     // Maps between layer to (layer output buffer, layer add request counter)
-    output_buffer: Mutex<HashMap<u32, (Vec<Vec<Packet>>, u32)>>,
+    output_buffer: Mutex<HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>>,
     // Maps between mix id to connection
     channels: Arc<Mutex<HashMap<u32, MixClient<Channel>>>>,
     network_info: Network,
+    connections: Arc<RwLock<Connections>>,
     notify: Arc<Semaphore>,
     time: Mutex<Instant>,
 }
@@ -44,12 +48,15 @@ pub struct MyServer {
 impl MyServer {
     /// Create instance of MyServer
     pub fn new(mix_ips: Vec<IpAddr>, id: u16) -> Self {
+        let network_info = get_network_info();
+        let network_size = network_info.size;
         return MyServer {
             id,
             mix_ips,
             output_buffer: Mutex::new(HashMap::new()),
             channels: Arc::new(Mutex::new(HashMap::new())),
-            network_info: get_network_info(),
+            network_info,
+            connections: Arc::new(RwLock::new(Connections::new(network_size))),
             notify: Arc::new(Semaphore::new(0)),
             time: Mutex::new(Instant::now()),
         };
@@ -58,25 +65,25 @@ impl MyServer {
 
 #[tonic::async_trait]
 impl Mix for MyServer {
-    async fn setup(&self, request: Request<SetupRequest>) -> Result<Response<SetupResponse>, Status> {
-        self.parse_input(request).await;
+    async fn setup(&self, request: Request<PacketRequest>) -> Result<Response<PacketResponse>, Status> {
+        self.parse_input::<SetupPacket>(request).await;
 
         self.handle_middle_layer().await;
 
         // Notify config
         self.notify.add_permits(1);
-        let reply = AddResponse {};
+        let reply = PacketResponse {};
         Ok(Response::new(reply))
     }
 
-    async fn add(&self, request: Request<AddRequest>) -> Result<Response<AddResponse>, Status> {
-        self.parse_input(request).await;
+    async fn add(&self, request: Request<PacketRequest>) -> Result<Response<PacketResponse>, Status> {
+        self.parse_input::<Vec<u8>>(request).await;
 
         self.handle_middle_layer().await;
 
         // Notify config
         self.notify.add_permits(1);
-        let reply = AddResponse {};
+        let reply = PacketResponse {};
         Ok(Response::new(reply))
     }
 
@@ -112,28 +119,33 @@ impl Mix for MyServer {
 
 impl MyServer {
     /// Process (decrypt) incoming setup stream to proper output buffer
-    async fn parse_input(&self, request: Request<SetupRequest>) -> () {
-        let setup_req = request.into_inner();
+    async fn parse_input<T: MixnetPacket>(&self, request: Request<PacketRequest>) -> () {
+        let req = request.into_inner();
         info!(
             "mix {} got {} packets FROM layer {}",
             self.id,
-            setup_req.packets.len(),
-            setup_req.layer
+            req.packets.len(),
+            req.layer
         );
         // Decrypt packets - Verify as well in case of MixnetVerification::Verify
-        let dec_packets =
-            decrypt_incoming_setup_packets(setup_req.packets, self.id, setup_req.layer, &self.network_info);
+        let dec_packets = T::decrypt_incoming_packets(
+                req.packets, 
+                self.id as u64, 
+                &self.network_info, 
+                &self.connections,
+                req.layer as u64
+            ).await;
 
         let mut buffer_guard = self.output_buffer.lock().await;
         // Update counter
         (*buffer_guard)
-            .entry(setup_req.layer + 1)
+            .entry(req.layer + 1)
             .or_insert((vec![vec![].into(); Into::<usize>::into(*NUM_MIXES)], 0))
             .1 += 1;
 
         // Insert decrypted packets to output_buffer
         for (dec_packet, next) in dec_packets {
-            (*buffer_guard).entry(setup_req.layer + 1).and_modify(|e| {
+            (*buffer_guard).entry(req.layer + 1).and_modify(|e| {
                 e.0[next as usize].push(dec_packet);
             });
         }
@@ -144,11 +156,11 @@ impl MyServer {
         let mut mix_tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
 
         let mut guard = self.output_buffer.lock().await;
-        // Check if it is a middle layer
+        // Check if it is a middle layer and that all packets for this layer have been recv'd
         if !is_middle_layer(&*guard) {
             return;
         }
-        // Start timer when first packet recv'd
+        // Start timer when last packet of first layer recv'd
         if (*guard).keys().min().unwrap().clone() == *FIRST_MIDDLE_LAYER {
             let mut time_guard = self.time.lock().await;
             *time_guard = Instant::now();
@@ -272,20 +284,6 @@ async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u
         .expect("Failed to send add");
 }
 
-/// Decrypt incoming packets
-pub fn decrypt_incoming_setup_packets(
-    packets: Vec<Vec<u8>>,
-    id: u16,
-    layer: u32,
-    network_info: &Network,
-) -> Vec<(Packet, u64)> {
-    let dec_packets = packets
-        .par_iter()
-        .filter_map(|i| decrypt_setup_layer(i, id.into(), network_info, layer as u64))
-        .collect();
-    return dec_packets;
-}
-
 /// Verify outgoing packets when MIX_VERIFICATION is set to BatchVerify OR OnlyVerifyEdgeCases
 fn handle_verify_on_output(
     packets: &mut Vec<Packet>,
@@ -335,7 +333,7 @@ fn verify_outgoing_packets(packets: &mut Vec<Packet>, network_info: &Network, la
     *packets = valid_packets;
 }
 
-fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<Packet>>, u32)>) -> bool {
+fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>) -> bool {
     if output_buf.is_empty() {
         return false;
     }

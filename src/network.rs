@@ -33,13 +33,14 @@ type ConnID = u64;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Connection {
-    conn_id: ConnID,
+    pub conn_id: ConnID,
     key: Vec<u8>,
     layer: u64,
     cur_server: u64,
     dest_server: u64,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Connections {
     conns: Vec<HashMap<ConnID, Connection>>,
     pub size: u64,
