@@ -2,7 +2,7 @@ use crate::config::*;
 use crate::marshal::info::{get_init_packets, get_network_info};
 use crate::marshal::logs::RESULTS;
 use crate::marshal::SHUTDOWN_FILE;
-use crate::network::{decrypt_setup_layer, verify_batch, Connections, Network, Packet, SetupPacket};
+use crate::network::{decrypt_setup_layer, verify_setup_packet, Connections, Network, Packet, SetupPacket};
 use futures::future::join_all;
 use log::*;
 use mix_service::mix_client::MixClient;
@@ -68,7 +68,7 @@ impl Mix for MyServer {
     async fn setup(&self, request: Request<PacketRequest>) -> Result<Response<PacketResponse>, Status> {
         self.parse_input::<SetupPacket>(request).await;
 
-        self.handle_middle_layer().await;
+        self.handle_middle_layer::<SetupPacket>().await;
 
         // Notify config
         self.notify.add_permits(1);
@@ -79,7 +79,7 @@ impl Mix for MyServer {
     async fn add(&self, request: Request<PacketRequest>) -> Result<Response<PacketResponse>, Status> {
         self.parse_input::<Vec<u8>>(request).await;
 
-        self.handle_middle_layer().await;
+        self.handle_middle_layer::<Vec<u8>>().await;
 
         // Notify config
         self.notify.add_permits(1);
@@ -100,7 +100,7 @@ impl Mix for MyServer {
                 .unwrap()
                 .forget();
 
-            messages = self.output_all().await;
+            messages = self.output_last_layer(round).await;
 
             // Measure time for this round
             self.measure_time(round).await;
@@ -152,7 +152,7 @@ impl MyServer {
     }
 
     /// Send setup from current layer to all mixes
-    async fn handle_middle_layer(&self) -> () {
+    async fn handle_middle_layer<T: MixnetPacket>(&self) -> () {
         let mut mix_tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
 
         let mut guard = self.output_buffer.lock().await;
@@ -182,15 +182,15 @@ impl MyServer {
                 packets.len(),
                 layer
             );
-            // Verify packets if needed
-            handle_verify_on_output(
-                &mut packets,
-                &self.network_info,
-                layer,
-                self.id,
-                Some(i),
-                edge_case_index,
-                total_outgoing,
+            // Verify packets if needed - AKA if packet type is SetupPacket
+            T::handle_verify_on_output(
+                    &mut packets,
+                    &self.network_info,
+                    layer,
+                    self.id,
+                    Some(i),
+                    edge_case_index,
+                    total_outgoing
             );
             packets.shuffle(&mut thread_rng());
             let mut packets_data = Vec::new();
@@ -204,7 +204,7 @@ impl MyServer {
     }
 
     async fn send_to_mix(&self, dst: u16, layer: u32, packets: Vec<Vec<u8>>) -> () {
-        let add_req = AddRequest {
+        let packet_request = PacketRequest {
             packets: packets,
             layer: layer,
         };
@@ -223,29 +223,30 @@ impl MyServer {
             .clone();
         drop(channels_guard);
         channel
-            .add(Request::new(add_req))
+            .add(Request::new(packet_request))
             .await
             .expect("Failed to send add");
     }
 
     /// Process all layers into single output message
-    async fn output_all(&self) -> Vec<Vec<u8>> {
+    async fn output_last_layer(&self, round: u32) -> Vec<Vec<u8>> {
         let buffer_guard = self.output_buffer.lock().await;
         let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty");
         let mut packets = (0..*NUM_MIXES)
             .map(|i| (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec())
             .flatten()
-            .collect::<Vec<Packet>>();
-        handle_verify_on_output(
-            &mut packets,
-            &self.network_info,
-            send_layer.clone(),
-            self.id,
-            None,
-            0,
-            0,
-        );
-
+            .collect::<Vec<MixnetPacketType>>();
+        if round == 1 { // This is the setup packet round
+            SetupPacket::handle_verify_on_output(
+                &mut packets,
+                &self.network_info,
+                send_layer.clone(),
+                self.id,
+                None,
+                0,
+                0,
+            );
+        }
         let mut messages = Vec::new();
         while !packets.is_empty() {
             messages.push(packets.pop().unwrap().data);
@@ -284,53 +285,20 @@ async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u
         .expect("Failed to send add");
 }
 
-/// Verify outgoing packets when MIX_VERIFICATION is set to BatchVerify OR OnlyVerifyEdgeCases
-fn handle_verify_on_output(
-    packets: &mut Vec<Packet>,
-    network_info: &Network,
-    layer: u32,
-    src: u16,
-    dst: Option<u16>, // None if output is to client
-    edge_case_index: usize,
-    total_outgoing: usize,
-) {
-    match *MIX_VERIFICATION {
-        MixnetVerification::BatchVerify => verify_batch(&packets, network_info, (layer - 1) as u64),
-        MixnetVerification::OnlyVerifyEdgeCases => match dst {
-            // In the case of a middle layer outputing to mix
-            Some(dst) => {
-                if dst == edge_case_index as u16
-                    && is_out_of_bounds(packets.len(), total_outgoing.clone())
-                {
-                    info!("mix {} is verifying edge case to mix {}", src, dst);
-                    // Verify all packets, "throw away" all non valid packets
-                    verify_outgoing_packets(packets, network_info, layer);
+/// Verifies outgoing packets, drops invalid ones.
+fn verify_outgoing_setup_packets(packets: &mut Vec<MixnetPacketType>, network_info: &Network, layer: u32) {
+    *packets = packets
+        .par_iter()
+        .filter_map(|packet| {
+            if let MixnetPacketType::SetupPacket(setup_packet) = packet {
+                // Verify the setup packet
+                if verify_setup_packet(setup_packet, network_info, (layer - 1) as u64).1 {
+                    return Some(packet.clone());
                 }
             }
-            // In the case of last layer outputing to config ("clients")
-            None => (),
-        },
-        _ => (),
-    }
-}
-
-/// Verifies outgoing packets, drops invalid ones.
-fn verify_outgoing_packets(packets: &mut Vec<Packet>, network_info: &Network, layer: u32) {
-    let retain_flags: Vec<bool> = packets
-        .par_iter()
-        .map(|packet| verify_packet(packet, network_info, (layer - 1) as u64).1)
+            None
+        })
         .collect();
-
-    let mut valid_packets: Vec<Packet> =
-        Vec::with_capacity(retain_flags.iter().filter(|&&item| item).count());
-
-    for (packet, flag) in packets.drain(..).zip(retain_flags.into_iter()) {
-        if flag {
-            valid_packets.push(packet);
-        }
-    }
-
-    *packets = valid_packets;
 }
 
 fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>) -> bool {
