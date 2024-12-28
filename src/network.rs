@@ -326,6 +326,7 @@ pub fn decrypt_setup_layer(
 
 /// Verify the proof of knowledge of the signature and the ticket
 /// Return the next server and is_valid
+/// TODO: this function can panic easily - need to handle errors better
 pub fn verify_setup_packet(packet: &SetupPacket, network: &Network, layer: u64) -> (u64, bool) {
     let revealed_msgs = setup_default_msgs();
 
@@ -517,12 +518,19 @@ pub fn decrypt_packet_layer(
     conns: &Connections,
     layer: u64
 ) -> Option<(Vec<u8>, u64)> {
-    let packet: Packet = bincode::deserialize(enc_packet).unwrap();
-    // TODO: This is also a "verification" step, make sure it's handled properly
-    let dryocsecretbox = DryocSecretBox::from_bytes(&packet.data).expect("unable to load box");
+    let packet: Packet = match bincode::deserialize(enc_packet) {
+        Ok(p) => p,
+        Err(_) => return None,
+    };
+    let dryocsecretbox = match DryocSecretBox::from_bytes(&packet.data) {
+        Ok(boxed) => boxed,
+        Err(_) => return None,
+    };
     let conn_id = packet.header.conn_id;
-    // TODO: This is the "verification" step, make sure it's handled properly
-    let conn = conns.get(cur_server, conn_id).unwrap() ;
+    let conn = match conns.get(cur_server, conn_id) {
+        Some(c) => c,
+        None => return None,
+    };
     if conn.layer != layer && conn.cur_server != cur_server {
         return None;
     }
