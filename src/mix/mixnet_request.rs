@@ -16,6 +16,16 @@ pub trait MixnetPacket {
         conns: &Arc<RwLock<Connections>>,
         layer: u64,
     ) -> Vec<(MixnetPacketType, u64)>;
+
+    fn handle_verify_on_output(
+        packets: &mut Vec<MixnetPacketType>,
+        network_info: &Network,
+        layer: u32,
+        src: u16,
+        dst: Option<u16>, // None if output is to client
+        edge_case_index: usize,
+        total_outgoing: usize,
+    );
 }
 
 impl MixnetPacket for SetupPacket {
@@ -47,6 +57,35 @@ impl MixnetPacket for SetupPacket {
         let ret_packets = dec_packets.into_iter().map(|(packet, next_server, _)| (packet, next_server)).collect();
         return ret_packets;
     }
+
+    /// Verify outgoing packets when MIX_VERIFICATION is set to OnlyVerifyEdgeCases
+    fn handle_verify_on_output(
+            packets: &mut Vec<MixnetPacketType>,
+            network_info: &Network,
+            layer: u32,
+            src: u16,
+            dst: Option<u16>, // None if output is to client
+            edge_case_index: usize,
+            total_outgoing: usize,
+        ) {
+            match *MIX_VERIFICATION {
+                MixnetVerification::OnlyVerifyEdgeCases => match dst {
+                    // In the case of a middle layer outputing to mix
+                    Some(dst) => {
+                        if dst == edge_case_index as u16
+                            && is_out_of_bounds(packets.len(), total_outgoing.clone())
+                        {
+                            info!("mix {} is verifying edge case to mix {}", src, dst);
+                            // Verify all packets, "throw away" all non valid packets
+                            verify_outgoing_setup_packets(packets, network_info, layer);
+                        }
+                    }
+                    // In the case of last layer outputing to config ("clients")
+                    None => (),
+                },
+                _ => (),
+            }
+    }
 }
 
 impl MixnetPacket for Vec<u8> {
@@ -70,5 +109,17 @@ impl MixnetPacket for Vec<u8> {
             })
             .collect();
         return dec_packets;
+    }
+
+    fn handle_verify_on_output(
+            _: &mut Vec<MixnetPacketType>,
+            _: &Network,
+            _: u32,
+            _: u16,
+            _: Option<u16>, // None if output is to client
+            _: usize,
+            _: usize,
+        ) {
+        // Do nothing
     }
 }
