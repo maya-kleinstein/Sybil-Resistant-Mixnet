@@ -9,6 +9,8 @@ pub enum MixnetPacketType {
 }
 
 pub trait MixnetPacket {
+    fn is_setup_packet() -> bool;
+
     async fn decrypt_incoming_packets(
         enc_packets: Vec<Vec<u8>>,
         cur_server: u64,
@@ -29,6 +31,10 @@ pub trait MixnetPacket {
 }
 
 impl MixnetPacket for SetupPacket {
+    fn is_setup_packet() -> bool {
+        return true;
+    }
+
     async fn decrypt_incoming_packets(
         enc_packets: Vec<Vec<u8>>,
         cur_server: u64,
@@ -89,6 +95,10 @@ impl MixnetPacket for SetupPacket {
 }
 
 impl MixnetPacket for Vec<u8> {
+    fn is_setup_packet() -> bool {
+        return false;
+    }
+
     async fn decrypt_incoming_packets(
         enc_packets: Vec<Vec<u8>>,
         cur_server: u64,
@@ -122,4 +132,20 @@ impl MixnetPacket for Vec<u8> {
         ) {
         // Do nothing
     }
+}
+
+/// Verifies outgoing packets, drops invalid ones.
+fn verify_outgoing_setup_packets(packets: &mut Vec<MixnetPacketType>, network_info: &Network, layer: u32) {
+    *packets = packets
+        .par_iter()
+        .filter_map(|packet| {
+            if let MixnetPacketType::SetupPacket(setup_packet) = packet {
+                // Verify the setup packet
+                if verify_setup_packet(setup_packet, network_info, (layer - 1) as u64).1 {
+                    return Some(packet.clone());
+                }
+            }
+            None
+        })
+        .collect();
 }

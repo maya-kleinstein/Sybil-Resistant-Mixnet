@@ -194,16 +194,19 @@ impl MyServer {
             );
             packets.shuffle(&mut thread_rng());
             let mut packets_data = Vec::new();
-            while !packets.is_empty() {
-                packets_data.push(packets.pop().unwrap().data);
+            while let Some(packet) = packets.pop() {
+                match packet {
+                    MixnetPacketType::Packet(data) => packets_data.push(data),
+                    MixnetPacketType::SetupPacket(setup_packet) => packets_data.push(setup_packet.data),
+                }
             }
-            let task = self.send_to_mix(i, layer, packets_data);
+            let task = self.send_to_mix::<T>(i, layer, packets_data);
             mix_tasks.push(task);
         }
         join_all(mix_tasks).await;
     }
 
-    async fn send_to_mix(&self, dst: u16, layer: u32, packets: Vec<Vec<u8>>) -> () {
+    async fn send_to_mix<T: MixnetPacket>(&self, dst: u16, layer: u32, packets: Vec<Vec<u8>>) -> () {
         let packet_request = PacketRequest {
             packets: packets,
             layer: layer,
@@ -222,10 +225,12 @@ impl MyServer {
             )
             .clone();
         drop(channels_guard);
-        channel
-            .add(Request::new(packet_request))
-            .await
-            .expect("Failed to send add");
+        // Call setup if T is a setup packet, Call add if T is Vec<u8>
+        let _ = if T::is_setup_packet() {
+            channel.setup(Request::new(packet_request)).await.expect("Failed to send setup");
+        } else {
+            channel.add(Request::new(packet_request)).await.expect("Failed to send add");
+        };
     }
 
     /// Process all layers into single output message
@@ -248,8 +253,11 @@ impl MyServer {
             );
         }
         let mut messages = Vec::new();
-        while !packets.is_empty() {
-            messages.push(packets.pop().unwrap().data);
+        while let Some(packet) = packets.pop() {
+            match packet {
+                MixnetPacketType::Packet(data) => messages.push(data),
+                MixnetPacketType::SetupPacket(setup_packet) => messages.push(setup_packet.data),
+            }
         }
         // Shuffle the mix output
         messages.shuffle(&mut thread_rng());
@@ -275,7 +283,7 @@ async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u
 
     info!("mix {} connected to {} mix", src, dst);
 
-    let add_req = AddRequest {
+    let add_req = PacketRequest {
         packets: packets,
         layer: layer,
     };
@@ -283,22 +291,6 @@ async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u
     conn.add(Request::new(add_req))
         .await
         .expect("Failed to send add");
-}
-
-/// Verifies outgoing packets, drops invalid ones.
-fn verify_outgoing_setup_packets(packets: &mut Vec<MixnetPacketType>, network_info: &Network, layer: u32) {
-    *packets = packets
-        .par_iter()
-        .filter_map(|packet| {
-            if let MixnetPacketType::SetupPacket(setup_packet) = packet {
-                // Verify the setup packet
-                if verify_setup_packet(setup_packet, network_info, (layer - 1) as u64).1 {
-                    return Some(packet.clone());
-                }
-            }
-            None
-        })
-        .collect();
 }
 
 fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>) -> bool {
@@ -313,7 +305,7 @@ fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>)
 
 /// returns the number of outgoing packets
 /// and the server that will get the maximum amount of packets
-fn get_edge_case_info(output_buffer: &Vec<Vec<Packet>>) -> (usize, usize) {
+fn get_edge_case_info(output_buffer: &Vec<Vec<MixnetPacketType>>) -> (usize, usize) {
     let mut max_index = 0;
     let mut max_size = 0;
     let mut total_outgoing = 0;
