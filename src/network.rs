@@ -428,12 +428,11 @@ pub fn verify_batch(packets: &Vec<SetupPacket>, network: &Network, layer: u64) {
 
 /// Generating packets with false proofs
 pub fn generate_bad_setup_packet(
-    data: Vec<u8>,
     client: &Client,
     network: &Network,
     bad_tickets: &Vec<G1>,
 ) -> (Vec<u8>, u64) {
-    let mut data: Vec<u8> = data;
+    let mut data: Vec<u8> = Vec::new();
     let mut x: u64 = 0;
     let mut packet: SetupPacket;
 
@@ -670,7 +669,7 @@ mod tests {
         
         let _ = decrypt_setup_packet(enc_data, first_server, &network, &mut conns);
 
-        let data = vec![b'a'; 100];
+        let data = vec![b'a'; 128];
         let mut enc_packet = generate_packet(data, &client, &network);
         println!("The encrypted data is of len: {}", enc_packet.len());
         let mut cur_server = first_server;

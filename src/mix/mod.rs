@@ -1,8 +1,8 @@
 use crate::config::*;
-use crate::marshal::info::{get_init_packets, get_network_info};
+use crate::marshal::info::{get_init_packets, get_init_setup_packets, get_network_info};
 use crate::marshal::logs::RESULTS;
 use crate::marshal::SHUTDOWN_FILE;
-use crate::network::{decrypt_setup_layer, verify_setup_packet, Connections, Network, Packet, SetupPacket};
+use crate::network::{decrypt_setup_layer, verify_setup_packet, Connections, Network, SetupPacket};
 use futures::future::join_all;
 use log::*;
 use mix_service::mix_client::MixClient;
@@ -27,8 +27,6 @@ pub mod mixnet_request;
 pub mod mix_service {
     tonic::include_proto!("mix");
 }
-
-// TODO: add typedef for vec<u8> raw_packet
 
 #[derive(Debug)]
 /// Mix server struct
@@ -91,8 +89,8 @@ impl Mix for MyServer {
         info!("mix {} got a get request", self.id);
         let mut messages = Vec::new();
         for round in 0..*NUM_ROUNDS {
-            // Wait til the mix is done getting all add requests for this round
-            let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32);
+            // Wait til the mix is done getting all requests for this round
+            let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32) + 1;
             let _ = self
                 .notify
                 .acquire_many(amount_to_acquire)
@@ -108,7 +106,7 @@ impl Mix for MyServer {
             if round < *NUM_ROUNDS - 1 {
                 // Run next round
                 info!("mix {} is starting round {}", self.id, round + 1);
-                start_mix_round(&self.mix_ips, self.id).await;
+                start_mix_round::<Vec<u8>>(&self.mix_ips, self.id).await;
             }
         }
         // Note: messages should be the same for each round so it doesn't matter which one we use
@@ -206,6 +204,7 @@ impl MyServer {
         join_all(mix_tasks).await;
     }
 
+    // Send packets from mix layer "layer" to mix "dst", if setup packet send setup, else add
     async fn send_to_mix<T: MixnetPacket>(&self, dst: u16, layer: u32, packets: Vec<Vec<u8>>) -> () {
         let packet_request = PacketRequest {
             packets: packets,
@@ -264,6 +263,7 @@ impl MyServer {
         return messages;
     }
 
+    // Print time since last measurement
     async fn measure_time(&self, round: u32) {
         let time_guard = self.time.lock().await;
         info!(
@@ -277,22 +277,6 @@ impl MyServer {
     }
 }
 
-async fn connect_and_send(dst_ip: IpAddr, dst: u16, src: u16, packets: Vec<Vec<u8>>, layer: u32) {
-    // Try connecting until success
-    let mut conn = connect_to_server(&dst_ip, dst).await;
-
-    info!("mix {} connected to {} mix", src, dst);
-
-    let add_req = PacketRequest {
-        packets: packets,
-        layer: layer,
-    };
-
-    conn.add(Request::new(add_req))
-        .await
-        .expect("Failed to send add");
-}
-
 fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>) -> bool {
     if output_buf.is_empty() {
         return false;
@@ -300,7 +284,7 @@ fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>)
     let current_layer = output_buf.keys().min().expect("HashMap is Empty").clone();
     let counter: u32 = output_buf.get(&current_layer).unwrap().1;
 
-    return counter % (*NUM_MIXES as u32) == 0 && (current_layer as u64) != *NUM_LAYERS;
+    return counter % (*NUM_MIXES as u32) == 1 && (current_layer as u64) != *NUM_LAYERS;
 }
 
 /// returns the number of outgoing packets
@@ -355,35 +339,36 @@ async fn wait_for_shutdown(id: u16) {
     }
 }
 
-fn process_init_packets(
-    init_packets: Vec<Vec<u8>>,
-    network: &Network,
-    id: u16,
-    layer: u64,
-) -> Vec<Vec<Vec<u8>>> {
-    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); Into::<usize>::into(*NUM_MIXES)];
-
-    let dec_packets = decrypt_incoming_packets(init_packets, id, layer as u32, network);
-
-    // Insert decrypted packets to output_buffer
-    for (dec_packet, next) in dec_packets {
-        packets[next as usize].push(dec_packet.data);
+fn send_init_packets<T: MixnetPacket>(mix_ips: &Vec<IpAddr>, id: u16) -> JoinHandle<()> {
+    let init_buffer : Vec<Vec<u8>>;
+    if T::is_setup_packet() {
+        init_buffer = get_init_setup_packets(id);
+    } else {
+        init_buffer = get_init_packets(id);
     }
-    return packets;
-}
+    let dst_ip = mix_ips[id as usize];
+    let task = tokio::spawn(async move {
+        let mut conn = connect_to_server(&dst_ip, id).await;
 
-fn send_init_packets(mix_ips: &Vec<IpAddr>, id: u16) -> Vec<JoinHandle<()>> {
-    let mut mix_tasks = Vec::with_capacity(Into::<usize>::into(*NUM_MIXES));
-    let mut init_buffer = process_init_packets(get_init_packets(id), &get_network_info(), id, 0);
-    for dst in (0..*NUM_MIXES).rev() {
-        let packets = init_buffer.pop().unwrap();
-        let dst_ip = mix_ips[dst as usize];
-        let task = tokio::spawn(async move {
-            connect_and_send(dst_ip, dst, id, packets, 1).await;
-        });
-        mix_tasks.push(task);
-    }
-    return mix_tasks;
+        info!("mix {} connected to {} mix", id, id);
+    
+        let add_req = PacketRequest {
+            packets: init_buffer,
+            layer: 1,
+        };
+    
+        if T::is_setup_packet() {
+            conn.setup(Request::new(add_req))
+                .await
+                .expect("Failed to send setup");
+            
+        } else {
+            conn.add(Request::new(add_req))
+            .await
+            .expect("Failed to send add");
+        }
+    });
+    return task;
 }
 
 /// Try connecting to server dst until success
@@ -426,15 +411,14 @@ async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
     task.await.unwrap().await.expect("Failed to Start Server");
 }
 
-async fn start_mix_round(mix_ips: &Vec<IpAddr>, id: u16) {
-    let mix_tasks = send_init_packets(mix_ips, id);
-    join_all(mix_tasks).await;
+async fn start_mix_round<T: MixnetPacket>(mix_ips: &Vec<IpAddr>, id: u16) {
+    send_init_packets::<T>(mix_ips, id).await.unwrap();
 }
 
 /// runs Mix
 pub async fn run_mix(mix_ips: Vec<IpAddr>, id: u16) {
-    let mix_tasks = send_init_packets(&mix_ips, id);
+    let mix_task = send_init_packets::<SetupPacket>(&mix_ips, id);
     let server_task = start_server(mix_ips, id);
     server_task.await;
-    join_all(mix_tasks).await;
+    mix_task.await.unwrap();
 }

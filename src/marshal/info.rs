@@ -1,10 +1,8 @@
 use crate::{
     keys::{PublicKey, SecretKey},
     marshal::*,
-    mix::decrypt_incoming_packets,
     network::{
-        generate_bad_packet, generate_packet, ticket_server_map_generator, Client, IDProvider,
-        Network, Server,
+        generate_bad_setup_packet, generate_packet, generate_setup_packet, ticket_server_map_generator, Client, IDProvider, Network, Server
     },
     ToVariableLengthBytes,
 };
@@ -37,14 +35,15 @@ pub fn setup_info() {
 
     for i in 0..config_info.num_clients {
         let data = vec![i as u8; config_info.data_size as usize];
-        let client = Client::new(&network);
-        let (packet, first_server): (Vec<u8>, u64);
+        let mut client = Client::new(&network);
+        let (setup_packet, first_server): (Vec<u8>, u64);
         if i < ((config_info.num_clients as f64) * config_info.percentage_bad_clients) as u64 {
-            (packet, first_server) = generate_bad_setup_packet(data, &client, &network, &bad_tickets_vec);
+            // TODO: FIXXXX - this should recieve mut client too since it still makes a circuit
+            (setup_packet, first_server) = generate_bad_setup_packet(&client, &network, &bad_tickets_vec);
         } else {
-            (packet, first_server) = generate_setup_packet(data, &client, &network);
+            (setup_packet, first_server) = generate_setup_packet(&mut client, &network);
         }
-        setup_packets[first_server as usize].push(packet);
+        setup_packets[first_server as usize].push(setup_packet);
         let packet = generate_packet(data, &client, &network);
         packets[first_server as usize].push(packet);
     }

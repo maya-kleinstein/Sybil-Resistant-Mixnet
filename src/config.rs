@@ -3,7 +3,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use crate::marshal::manage_files;
-use crate::mix::{connect_to_server, get_edge_limit};
+use crate::mix::connect_to_server;
 use crate::{marshal::info::get_config_info, mix::mix_service::GetRequest};
 use futures::future::join_all;
 use log::*;
@@ -20,7 +20,7 @@ lazy_static! {
     pub static ref FIRST_MIDDLE_LAYER: u32 = CONFIG_INFO.first_middle_layer;
     pub static ref MIX_VERIFICATION: MixnetVerification = CONFIG_INFO.mix_verification;
     pub static ref NUM_ROUNDS: u32 = CONFIG_INFO.num_rounds;
-    pub static ref EDGE_LIMIT: u64 = get_edge_limit(CONFIG_INFO.num_clients, CONFIG_INFO.num_mixes);
+    pub static ref EDGE_LIMIT: u64 = 0;
     pub static ref DATA_SIZE: u64 = CONFIG_INFO.data_size;
     pub static ref IS_PROOF_COMPRESSED: bool = CONFIG_INFO.is_proof_compressed;
 }
@@ -44,7 +44,6 @@ pub struct ConfigInfo {
 pub enum MixnetVerification {
     NoVerification,
     Verify,
-    BatchVerify,
     OnlyVerifyEdgeCases,
 }
 
@@ -72,7 +71,7 @@ pub async fn run_config(mix_ips: Vec<IpAddr>) {
     }
     join_all(tasks).await;
 
-    sleep(Duration::from_secs(3));
+    sleep(Duration::from_secs(3)); // TODO: adjust based on remote/local run
     // Generate final log, clear all IP files
     manage_files();
 }
