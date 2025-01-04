@@ -225,7 +225,7 @@ impl MyServer {
             .clone();
         drop(channels_guard);
         // Call setup if T is a setup packet, Call add if T is Vec<u8>
-        let _ = if T::is_setup_packet() {
+        if T::is_setup_packet() {
             channel.setup(Request::new(packet_request)).await.expect("Failed to send setup");
         } else {
             channel.add(Request::new(packet_request)).await.expect("Failed to send add");
@@ -354,14 +354,13 @@ fn send_init_packets<T: MixnetPacket>(mix_ips: &Vec<IpAddr>, id: u16) -> JoinHan
     
         let add_req = PacketRequest {
             packets: init_buffer,
-            layer: 1,
+            layer: 0,
         };
     
         if T::is_setup_packet() {
             conn.setup(Request::new(add_req))
                 .await
                 .expect("Failed to send setup");
-            
         } else {
             conn.add(Request::new(add_req))
             .await
