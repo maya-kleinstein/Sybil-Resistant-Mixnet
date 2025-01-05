@@ -55,8 +55,8 @@ impl MixnetPacket for SetupPacket {
             })
             .collect();
         let mut conns_guard = conns.write().await;
-        for (_, next_server, conn) in &dec_packets {
-            (*conns_guard).insert(next_server.clone(), conn.conn_id.clone(), conn.clone());
+        for (_, _, conn) in &dec_packets {
+            (*conns_guard).insert(cur_server.clone(), conn.conn_id.clone(), conn.clone());
         }
         drop(conns_guard);
         // remove the connections from dec_packets without copying the rest of the data

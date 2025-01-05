@@ -110,6 +110,7 @@ impl Mix for MyServer {
             }
         }
         // Note: messages should be the same for each round so it doesn't matter which one we use
+        // TODO: above assumption is now wrong, fix that.
         let reply = GetResponse { messages };
         Ok(Response::new(reply))
     }
@@ -240,7 +241,7 @@ impl MyServer {
             .map(|i| (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec())
             .flatten()
             .collect::<Vec<MixnetPacketType>>();
-        if round == 1 { // This is the setup packet round
+        if round == 0 { // This is the setup packet round
             SetupPacket::handle_verify_on_output(
                 &mut packets,
                 &self.network_info,
@@ -284,7 +285,8 @@ fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>)
     let current_layer = output_buf.keys().min().expect("HashMap is Empty").clone();
     let counter: u32 = output_buf.get(&current_layer).unwrap().1;
 
-    return counter % (*NUM_MIXES as u32) == 1 && (current_layer as u64) != *NUM_LAYERS;
+    return (current_layer == 1 && counter == 1) || 
+        (counter % (*NUM_MIXES as u32) == 0 && (current_layer as u64) != *NUM_LAYERS);
 }
 
 /// returns the number of outgoing packets

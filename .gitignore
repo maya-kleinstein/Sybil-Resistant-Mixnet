@@ -1,2 +1,3 @@
 target/
-data/info/
+data/info/*
+data/ips/*

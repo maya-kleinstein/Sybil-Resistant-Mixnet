@@ -617,7 +617,7 @@ mod tests {
     use super::*;
 
     const TEST_NETWORK_SIZE: u64 = 2;
-    const TEST_NETWORK_LAYERS: u64 = 3;
+    const TEST_NETWORK_LAYERS: u64 = 10;
     const TEST_NETWORK_MIX_VERIFICATION: MixnetVerification = MixnetVerification::Verify;
     const TEST_IS_COMPRESSED_PROOF: bool = true;
 
@@ -681,6 +681,32 @@ mod tests {
         println!("The decrypted data is of len: {}", enc_packet.len());
         
     }
+
+    #[test]
+    pub fn test_decrypt_setup_layer() {
+        let network = Network::new(
+            TEST_NETWORK_SIZE,
+            TEST_NETWORK_LAYERS,
+            TEST_NETWORK_MIX_VERIFICATION,
+            TEST_IS_COMPRESSED_PROOF,
+        );
+        let mut client = Client::new(&network);
+        // let mut conns = Connections::new(network.size);
+        let (enc_data, first_server) = generate_setup_packet(&mut client, &network);    
+        // Testing if the setup packet is bad
+        let dec_setup_packet = decrypt_setup_layer(
+            &enc_data, 
+            first_server, 
+            &network, 
+            0
+        );
+        if dec_setup_packet.is_none() {
+            println!("The packet is bad");
+        } else {
+            println!("The packet is good");
+        }
+    }
+
 
     #[test]
     pub fn test_batch_verification() {
