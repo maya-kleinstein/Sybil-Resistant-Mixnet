@@ -428,41 +428,51 @@ pub fn verify_batch(packets: &Vec<SetupPacket>, network: &Network, layer: u64) {
 
 /// Generating packets with false proofs
 pub fn generate_bad_setup_packet(
-    client: &Client,
+    client: &mut Client,
     network: &Network,
     bad_tickets: &Vec<G1>,
 ) -> (Vec<u8>, u64) {
     let mut data: Vec<u8> = Vec::new();
-    let mut x: u64 = 0;
-    let mut packet: SetupPacket;
+    let mut cur_server: u64 = 0;
+    let mut setup_packet: SetupPacket;
 
     // Onion Encrypt the data using the keys matching the calculated tickets
     for i in (0..network.layers).rev() {
         // Creates packet layer (proof + ticket)
-        (packet, x) = generate_setup_packet_layer(data, client, network, i);
+        (setup_packet, cur_server) = generate_setup_packet_layer(data, client, network, i);
 
         // Mess with packet by setting ticket to default
         if i > 0 {
             let false_ticket = bad_tickets[i as usize - 1];
 
-            packet.setup_header.ticket = vec![];
+            setup_packet.setup_header.ticket = vec![];
 
-            false_ticket.serialize(&mut packet.setup_header.ticket, network.is_proof_compressed).unwrap();
-            x = calculate_next_server(false_ticket, network.size);
+            false_ticket.serialize(&mut setup_packet.setup_header.ticket, network.is_proof_compressed).unwrap();
+            cur_server = calculate_next_server(false_ticket, network.size);
+
+            // re-write the server id in the connection
+            setup_packet.setup_header.conn.dest_server = cur_server;
         }
+        
+        client.circuit.push((setup_packet.setup_header.conn.conn_id, setup_packet.setup_header.conn.clone()));
 
         // Serialize packet
-        let encoded_packet = bincode::serialize(&packet).unwrap();
+        let encoded_packet = bincode::serialize(&setup_packet).unwrap();
 
         // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
         let wrapped_data = DryocBox::seal_to_vecbox(
             &encoded_packet,
-            &network.servers[x as usize].key_pair.public_key.clone(),
+            &network.servers[cur_server as usize].key_pair.public_key.clone(),
         )
         .expect("Unable to seal");
         data = bincode::serialize(&wrapped_data).unwrap();
     }
-    return (data, x);
+    client.circuit.reverse();
+    client.circuit[0].1.cur_server = cur_server;
+    for i in 1..client.circuit.len() {
+        client.circuit[i].1.cur_server = client.circuit[i-1].1.dest_server;
+    }
+    return (data, cur_server);
 }
 
 /// Get a random ticket that maps to i for all i in range(num_mixes)

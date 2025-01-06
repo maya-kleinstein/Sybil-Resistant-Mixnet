@@ -33,14 +33,21 @@ pub fn setup_info() {
         bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
     }
 
+    let num_bad_clients = ((config_info.num_clients as f64) * config_info.percentage_bad_clients) as u64;
+    
     for i in 0..config_info.num_clients {
         let data = vec![i as u8; config_info.data_size as usize];
         let mut client = Client::new(&network);
         let (setup_packet, first_server): (Vec<u8>, u64);
-        if i < ((config_info.num_clients as f64) * config_info.percentage_bad_clients) as u64 {
-            // TODO: FIXXXX - this should recieve mut client too since it still makes a circuit
-            (setup_packet, first_server) = generate_bad_setup_packet(&client, &network, &bad_tickets_vec);
+        if i < num_bad_clients {
+            println!("Generating bad packet {}", i);
+            (setup_packet, first_server) = generate_bad_setup_packet(
+                &mut client, 
+                &network, 
+                &bad_tickets_vec
+            );
         } else {
+            println!("Generating packet {}", i);
             (setup_packet, first_server) = generate_setup_packet(&mut client, &network);
         }
         setup_packets[first_server as usize].push(setup_packet);

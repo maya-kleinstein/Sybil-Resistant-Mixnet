@@ -305,10 +305,10 @@ fn get_edge_case_info(output_buffer: &Vec<Vec<MixnetPacketType>>) -> (usize, usi
     return (max_index, total_outgoing);
 }
 
-pub fn get_edge_limit(n: u64, m: u16) -> u64 {
+pub fn get_edge_limit(users_amount: u64, mixes_amount: u16) -> u64 {
     // calculate n/m + sqrt(nlog(m)/m) rounded up
-    let n = n as f64;
-    let m = m as f64;
+    let n = users_amount as f64;
+    let m = mixes_amount as f64;
     let edge_limit = (n / m + (n * m.log(2.0) / m).sqrt()).ceil() as u64;
     return edge_limit;
 }
