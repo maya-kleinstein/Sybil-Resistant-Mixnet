@@ -1,12 +1,6 @@
 [package]
-authors = ["The Hyperledger Ursa Contributors"]
-description = "The BBS+ signature scheme"
-documentation = "https://docs.rs/bbs"
-edition = "2018"
-license = "Apache-2.0"
 name = "bbs"
-readme = "README.md"
-repository = "https://github.com/hyperledger/ursa"
+edition = "2018"
 version = "0.4.2"
 
 [badges]
@@ -14,7 +8,7 @@ maintenance = { status = "actively-developed" }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-path = "crypto/lib.rs"
+path = "src/lib.rs"
 
 [features]
 default = ["rayon"]
@@ -41,16 +35,22 @@ dryoc = {version = "0.4.0", features = ["serde"]}
 lazy_static = "1.4.0"
 tonic = "0.8.3"
 prost = "0.11.6"
-tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.19.2", features = ["macros", "rt-multi-thread", "full"] }
 tokio-stream = "0.1.12"
 local-ip-address = "0.5.1"
 serde_json = "1.0.94"
+futures = "0.3.28"
+async-std = "1.12.0"
+statrs = "0.16.0"
+log = "0.4.20"
+fern = "0.6.2"
+chrono = "0.4.26"
 
 [dev-dependencies]
-criterion = "0.4.0"
+criterion = {version = "0.5.1", features = ["async", "async_tokio"]}
 
 [[bench]]
-name="network_benchmark"
+name="crypto_benchmark"
 harness=false
 
 [profile.bench]
@@ -60,13 +60,13 @@ debug = true
 tonic-build = "0.8.4"
 
 [[bin]]
-name = "client"
-path = "client/client.rs"
-
-[[bin]]
 name = "mix"
-path = "mix/mix.rs"
+path = "bins/mix/mix.rs"
 
 [[bin]]
 name = "config"
-path = "config/config.rs"
+path = "bins/config/config.rs"
+
+[[bin]]
+name = "setup"
+path = "bins/setup/setup.rs"

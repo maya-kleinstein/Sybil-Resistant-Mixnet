@@ -119,7 +119,7 @@ impl std::fmt::Display for BBSError {
 
         for cause in <dyn Fail>::iter_chain(&self.inner) {
             if first {
-                first = false; 
+                first = false;
                 writeln!(f, "Error: {}", cause)?;
             } else {
                 writeln!(f, "Caused by: {}", cause)?;
