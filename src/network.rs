@@ -190,7 +190,7 @@ pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>
     for i in (0..network.layers).rev() { 
         // Creates packet layer (proof + ticket)
         (setup_packet, cur_server) = generate_setup_packet_layer(data, client, network, i);
-        println!("The layer {} server is {}", i, cur_server); 
+        println!("The layer {} dest server is {}", i, cur_server); 
 
         // Add connection to client path
         client.circuit.push((setup_packet.setup_header.conn.conn_id, setup_packet.setup_header.conn.clone()));
@@ -198,6 +198,19 @@ pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>
 
         // Serialize packet
         let encoded_setup_packet = bincode::serialize(&setup_packet).unwrap();
+
+        /*
+            IMPORTANT: 
+                Since the first server doesn't have a "previous" server to verify its ticket,
+                we set it to some random value.
+                This shouldn't effect the verification process, 
+                as the first server should just verify the proof for the NEXT server.
+         */
+        if i == 0 { 
+            // Set cur_server to some random value
+            cur_server = rand::random::<u64>() % network.size;
+            println!("The layer 0 server is {}", cur_server);
+        }
 
         // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
         let wrapped_data = DryocBox::seal_to_vecbox(
