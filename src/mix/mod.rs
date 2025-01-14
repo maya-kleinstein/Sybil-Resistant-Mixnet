@@ -105,8 +105,14 @@ impl Mix for MyServer {
 
             if round < *NUM_ROUNDS - 1 {
                 // Run next round
+                // TODO: fix this so it is not hardcoded which rounds are setup and which are data
+                // TODO: fix bug when NUM_ROUNDS is 0 - this will cause infinite rounds
                 info!("mix {} is starting round {}", self.id, round + 1);
-                start_mix_round::<Vec<u8>>(&self.mix_ips, self.id).await;
+                if round == 0 {
+                    start_mix_round::<SetupPacket>(&self.mix_ips, self.id).await;
+                } else { 
+                    start_mix_round::<Vec<u8>>(&self.mix_ips, self.id).await;
+                }
             }
         }
         // Note: messages should be the same for each round so it doesn't matter which one we use
@@ -159,33 +165,29 @@ impl MyServer {
         if !is_middle_layer(&*guard) {
             return;
         }
-        // Start timer when last packet of first layer recv'd
-        if (*guard).keys().min().unwrap().clone() == *FIRST_MIDDLE_LAYER {
-            let mut time_guard = self.time.lock().await;
-            *time_guard = Instant::now();
-        }
+
         // Send to all mixes
-        let layer = (*guard).keys().min().expect("HashMap is Empty").clone();
-        let mut output_buffer = (*guard).remove(&layer).unwrap();
+        let sending_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+        let mut layer_output_buffer = (*guard).remove(&sending_layer).unwrap();
         drop(guard);
 
         // For edge case mixnet verification
-        let (edge_case_index, total_outgoing) = get_edge_case_info(&output_buffer.0);
+        let (edge_case_index, total_outgoing) = get_edge_case_info(&layer_output_buffer.0);
 
         for i in (0..*NUM_MIXES).rev() {
-            let mut packets = output_buffer.0.pop().unwrap();
+            let mut packets = layer_output_buffer.0.pop().unwrap();
             info!(
                 "mix {} sent to mix {} {} packets FROM layer {}",
                 self.id,
                 i,
                 packets.len(),
-                layer
+                sending_layer
             );
             // Verify packets if needed - AKA if packet type is SetupPacket
             T::handle_verify_on_output(
                     &mut packets,
                     &self.network_info,
-                    layer,
+                    sending_layer,
                     self.id,
                     Some(i),
                     edge_case_index,
@@ -199,10 +201,16 @@ impl MyServer {
                     MixnetPacketType::SetupPacket(setup_packet) => packets_data.push(setup_packet.data),
                 }
             }
-            let task = self.send_to_mix::<T>(i, layer, packets_data);
+            let task = self.send_to_mix::<T>(i, sending_layer, packets_data);
             mix_tasks.push(task);
         }
         join_all(mix_tasks).await;
+        // Start timer after the "first middle layer" (after the first layer) sends to mix
+        // TODO: maybe this should be somewhere else? After the join_all? After a singular add/setup?? 
+        if sending_layer == *FIRST_MIDDLE_LAYER {
+            let mut time_guard = self.time.lock().await;
+            *time_guard = Instant::now();
+        }
     }
 
     // Send packets from mix layer "layer" to mix "dst", if setup packet send setup, else add
@@ -412,6 +420,9 @@ async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
     task.await.unwrap().await.expect("Failed to Start Server");
 }
 
+// TODO: change this function to implement "send_init_packets" with the channels self has
+//       This is possible since start_mix_round is only called by get which has access to the channels 
+//       This way time measurement for next layers can be done straight after the previous round is done
 async fn start_mix_round<T: MixnetPacket>(mix_ips: &Vec<IpAddr>, id: u16) {
     send_init_packets::<T>(mix_ips, id).await.unwrap();
 }
