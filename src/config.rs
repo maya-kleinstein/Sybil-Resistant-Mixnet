@@ -19,7 +19,8 @@ lazy_static! {
     pub static ref NUM_LAYERS: u64 = CONFIG_INFO.num_layers;
     pub static ref FIRST_MIDDLE_LAYER: u32 = CONFIG_INFO.first_middle_layer;
     pub static ref MIX_VERIFICATION: MixnetVerification = CONFIG_INFO.mix_verification;
-    pub static ref NUM_ROUNDS: u32 = CONFIG_INFO.num_rounds;
+    pub static ref NUM_SETUP_ROUNDS: u32 = CONFIG_INFO.num_setup_rounds;
+    pub static ref NUM_DATA_ROUNDS: u32 = CONFIG_INFO.num_data_rounds;
     pub static ref EDGE_LIMIT: u64 = get_edge_limit(*NUM_CLIENTS, *NUM_MIXES);
     pub static ref DATA_SIZE: u64 = CONFIG_INFO.data_size;
     pub static ref IS_PROOF_COMPRESSED: bool = CONFIG_INFO.is_proof_compressed;
@@ -34,7 +35,8 @@ pub struct ConfigInfo {
     pub num_layers: u64,
     pub first_middle_layer: u32,
     pub mix_verification: MixnetVerification,
-    pub num_rounds: u32,
+    pub num_setup_rounds: u32,
+    pub num_data_rounds: u32,
     pub data_size: u64,
     pub is_proof_compressed: bool,
 }

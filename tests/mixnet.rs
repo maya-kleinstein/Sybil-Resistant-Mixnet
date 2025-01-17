@@ -44,7 +44,8 @@ fn write_to_config_file_test(){
         num_layers: 4,
         first_middle_layer: 2,
         mix_verification: MixnetVerification::Verify,
-        num_rounds: 2,
+        num_setup_rounds: 2, // Should be AT LEAST 1
+        num_data_rounds: 2,
         data_size: 3,
         is_proof_compressed: true,
     };  

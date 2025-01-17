@@ -88,7 +88,8 @@ impl Mix for MyServer {
     async fn get(&self, _request: Request<GetRequest>) -> Result<Response<GetResponse>, Status> {
         info!("mix {} got a get request", self.id);
         let mut messages = Vec::new();
-        for round in 0..*NUM_ROUNDS {
+        let num_total_rounds = *NUM_SETUP_ROUNDS + *NUM_DATA_ROUNDS;
+        for round in 0..num_total_rounds {
             // Wait til the mix is done getting all requests for this round
             let amount_to_acquire = (*NUM_MIXES as u32) * ((*NUM_LAYERS - 1) as u32) + 1;
             let _ = self
@@ -103,12 +104,12 @@ impl Mix for MyServer {
             // Measure time for this round
             self.measure_time(round).await;
 
-            if round < *NUM_ROUNDS - 1 {
+            if round < num_total_rounds - 1 {
                 // Run next round
                 // TODO: fix this so it is not hardcoded which rounds are setup and which are data
                 // TODO: fix bug when NUM_ROUNDS is 0 - this will cause infinite rounds
                 info!("mix {} is starting round {}", self.id, round + 1);
-                if round < 2 { // first 3 rounds are setup rounds
+                if round < *NUM_SETUP_ROUNDS - 1 { // first 3 rounds are setup rounds
                     start_mix_round::<SetupPacket>(&self.mix_ips, self.id).await;
                 } else { 
                     start_mix_round::<Vec<u8>>(&self.mix_ips, self.id).await;
@@ -251,7 +252,7 @@ impl MyServer {
             .map(|i| send_layer_packets.0[i as usize].to_vec())
             .flatten()
             .collect::<Vec<MixnetPacketType>>();
-        if round < 2  { // This is the setup packet round
+        if round < *NUM_SETUP_ROUNDS  { // This is the setup packet round
             SetupPacket::handle_verify_on_output(
                 &mut packets,
                 &self.network_info,
