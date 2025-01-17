@@ -33,6 +33,15 @@ pub struct ConfigInfo {
     pub num_clients: u64,
     pub percentage_bad_clients: f64,
     pub num_layers: u64,
+    /* Note:
+        The first_measured_layer is the layer from which the time measurement starts.
+        This means that once this layer is ready to be sent we start measuring.
+        For example: If it were "0", we'd start measuring after all the packets 
+        from the layer were decrypted and about to be sent.
+
+        Since the layer 0 packets are sent to random layer 1 servers (see note in generate_setup_packet),
+        we start measuring after them.
+    */
     pub first_measured_layer: u32,
     pub mix_verification: MixnetVerification,
     pub num_setup_rounds: u32,
