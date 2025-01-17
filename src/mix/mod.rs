@@ -108,7 +108,7 @@ impl Mix for MyServer {
                 // TODO: fix this so it is not hardcoded which rounds are setup and which are data
                 // TODO: fix bug when NUM_ROUNDS is 0 - this will cause infinite rounds
                 info!("mix {} is starting round {}", self.id, round + 1);
-                if round == 0 {
+                if round < 2 { // first 3 rounds are setup rounds
                     start_mix_round::<SetupPacket>(&self.mix_ips, self.id).await;
                 } else { 
                     start_mix_round::<Vec<u8>>(&self.mix_ips, self.id).await;
