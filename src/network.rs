@@ -200,7 +200,7 @@ pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>
         let encoded_setup_packet = bincode::serialize(&setup_packet).unwrap();
 
         /*
-            IMPORTANT: 
+            Note: 
                 Since the first server doesn't have a "previous" server to verify its ticket,
                 we set it to some random value.
                 This shouldn't effect the verification process, 

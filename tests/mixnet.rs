@@ -42,7 +42,16 @@ fn write_to_config_file_test(){
         num_clients: 1000,
         percentage_bad_clients: 0.0,
         num_layers: 4,
-        first_middle_layer: 2,
+        /* Note:
+            The first_measured_layer is the layer from which the time measurement starts.
+            This means that once this layer is ready to be sent we start measuring.
+            For example: If it were "0", we'd start measuring after all the packets 
+            from the layer were decrypted and about to be sent.
+
+            Since the layer 0 packets are sent to random layer 1 servers (see note in generate_setup_packet),
+            we start measuring after them.
+         */
+        first_measured_layer: 2,
         mix_verification: MixnetVerification::Verify,
         num_setup_rounds: 2, // Should be AT LEAST 1
         num_data_rounds: 2,

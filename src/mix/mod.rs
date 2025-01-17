@@ -205,13 +205,15 @@ impl MyServer {
             let task = self.send_to_mix::<T>(i, sending_layer, packets_data);
             mix_tasks.push(task);
         }
-        join_all(mix_tasks).await;
-        // Start timer after the "first middle layer" (after the first layer) sends to mix
-        // TODO: maybe this should be somewhere else? After the join_all? After a singular add/setup?? 
-        if sending_layer == *FIRST_MIDDLE_LAYER {
+        /*
+            Start timer after the "first middle layer" (after the first layer) is done processing
+            This is BEFORE the packets are sent, just after they're processed
+         */
+        if sending_layer == *FIRST_MEASURED_LAYER {
             let mut time_guard = self.time.lock().await;
             *time_guard = Instant::now();
         }
+        join_all(mix_tasks).await;
     }
 
     // Send packets from mix layer "layer" to mix "dst", if setup packet send setup, else add

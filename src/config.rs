@@ -17,7 +17,7 @@ lazy_static! {
     pub static ref NUM_CLIENTS: u64 = CONFIG_INFO.num_clients;
     pub static ref PERCENTAGE_BAD_CLIENTS: f64 = CONFIG_INFO.percentage_bad_clients;
     pub static ref NUM_LAYERS: u64 = CONFIG_INFO.num_layers;
-    pub static ref FIRST_MIDDLE_LAYER: u32 = CONFIG_INFO.first_middle_layer;
+    pub static ref FIRST_MEASURED_LAYER: u32 = CONFIG_INFO.first_measured_layer;
     pub static ref MIX_VERIFICATION: MixnetVerification = CONFIG_INFO.mix_verification;
     pub static ref NUM_SETUP_ROUNDS: u32 = CONFIG_INFO.num_setup_rounds;
     pub static ref NUM_DATA_ROUNDS: u32 = CONFIG_INFO.num_data_rounds;
@@ -33,7 +33,7 @@ pub struct ConfigInfo {
     pub num_clients: u64,
     pub percentage_bad_clients: f64,
     pub num_layers: u64,
-    pub first_middle_layer: u32,
+    pub first_measured_layer: u32,
     pub mix_verification: MixnetVerification,
     pub num_setup_rounds: u32,
     pub num_data_rounds: u32,
