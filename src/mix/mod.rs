@@ -243,13 +243,15 @@ impl MyServer {
 
     /// Process all layers into single output message
     async fn output_last_layer(&self, round: u32) -> Vec<Vec<u8>> {
-        let buffer_guard = self.output_buffer.lock().await;
-        let send_layer = (*buffer_guard).keys().min().expect("HashMap is Empty");
+        let mut guard = self.output_buffer.lock().await;
+        let send_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+        let send_layer_packets = (*guard).remove(&send_layer).unwrap();
+        drop(guard);
         let mut packets = (0..*NUM_MIXES)
-            .map(|i| (*buffer_guard).get(send_layer).unwrap().0[i as usize].to_vec())
+            .map(|i| send_layer_packets.0[i as usize].to_vec())
             .flatten()
             .collect::<Vec<MixnetPacketType>>();
-        if round == 0 { // This is the setup packet round
+        if round < 2  { // This is the setup packet round
             SetupPacket::handle_verify_on_output(
                 &mut packets,
                 &self.network_info,
