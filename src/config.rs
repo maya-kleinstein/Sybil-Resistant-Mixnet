@@ -21,7 +21,6 @@ lazy_static! {
     pub static ref MIX_VERIFICATION: MixnetVerification = CONFIG_INFO.mix_verification;
     pub static ref NUM_SETUP_ROUNDS: u32 = CONFIG_INFO.num_setup_rounds;
     pub static ref NUM_DATA_ROUNDS: u32 = CONFIG_INFO.num_data_rounds;
-    pub static ref EDGE_LIMIT: u64 = get_edge_limit(*NUM_CLIENTS, *NUM_MIXES);
     pub static ref DATA_SIZE: u64 = CONFIG_INFO.data_size;
     pub static ref IS_PROOF_COMPRESSED: bool = CONFIG_INFO.is_proof_compressed;
 }

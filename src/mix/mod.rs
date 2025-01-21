@@ -173,7 +173,7 @@ impl MyServer {
         drop(guard);
 
         // For edge case mixnet verification
-        let (edge_case_index, total_outgoing) = get_edge_case_info(&layer_output_buffer.0);
+        let total_outgoing: usize = layer_output_buffer.0.iter().map(|packets| packets.len()).sum::<usize>();
 
         for i in (0..*NUM_MIXES).rev() {
             let mut packets = layer_output_buffer.0.pop().unwrap();
@@ -190,8 +190,7 @@ impl MyServer {
                     &self.network_info,
                     sending_layer,
                     self.id,
-                    Some(i),
-                    edge_case_index,
+                    i,
                     total_outgoing
             );
             packets.shuffle(&mut thread_rng());
@@ -245,7 +244,7 @@ impl MyServer {
     }
 
     /// Process all layers into single output message
-    async fn output_last_layer(&self, round: u32) -> Vec<Vec<u8>> {
+    async fn output_last_layer(&self) -> Vec<Vec<u8>> {
         let mut guard = self.output_buffer.lock().await;
         let send_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
         let send_layer_packets = (*guard).remove(&send_layer).unwrap();
@@ -254,17 +253,7 @@ impl MyServer {
             .map(|i| send_layer_packets.0[i as usize].to_vec())
             .flatten()
             .collect::<Vec<MixnetPacketType>>();
-        if round < *NUM_SETUP_ROUNDS  { // This is the setup packet round
-            SetupPacket::handle_verify_on_output(
-                &mut packets,
-                &self.network_info,
-                send_layer.clone(),
-                self.id,
-                None,
-                0,
-                0,
-            );
-        }
+
         let mut messages = Vec::new();
         while let Some(packet) = packets.pop() {
             match packet {
@@ -302,26 +291,10 @@ fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>)
         (counter % (*NUM_MIXES as u32) == 0 && (current_layer as u64) != *NUM_LAYERS);
 }
 
-/// returns the number of outgoing packets
-/// and the server that will get the maximum amount of packets
-fn get_edge_case_info(output_buffer: &Vec<Vec<MixnetPacketType>>) -> (usize, usize) {
-    let mut max_index = 0;
-    let mut max_size = 0;
-    let mut total_outgoing = 0;
-    for (i, packets) in output_buffer.iter().enumerate() {
-        total_outgoing += packets.len();
-        if packets.len() > max_size {
-            max_size = packets.len();
-            max_index = i;
-        }
-    }
-    return (max_index, total_outgoing);
-}
-
-pub fn get_edge_limit(users_amount: u64, mixes_amount: u16) -> u64 {
-    // calculate n/m + sqrt(nlog(m)/m) rounded up
+pub fn get_edge_limit(users_amount: usize) -> u64 {
+    // calculate n/m + sqrt(nlog(m)/m) rounded up - this is a load balancing constant
     let n = users_amount as f64;
-    let m = mixes_amount as f64;
+    let m = *NUM_MIXES as f64;
     let edge_limit = (n / m + (n * m.log(2.0) / m).sqrt()).ceil() as u64;
     return edge_limit;
 }
@@ -329,7 +302,7 @@ pub fn get_edge_limit(users_amount: u64, mixes_amount: u16) -> u64 {
 // TODO: the exact "limit" can be pre-calculated in the setup stage, why not - ya know?
 /// Returns if the amount of packets "i" is to be considered questionable
 fn is_out_of_bounds(i: usize, total: usize) -> bool {
-    let is_over_edge = i > *EDGE_LIMIT as usize;
+    let is_over_edge = i > get_edge_limit(total) as usize;
     if is_over_edge {
         info!(
             "OVER BOUND! number of packets: {}, total outgoing: {}",

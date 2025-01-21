@@ -24,8 +24,7 @@ pub trait MixnetPacket {
         network_info: &Network,
         layer: u32,
         src: u16,
-        dst: Option<u16>, // None if output is to client
-        edge_case_index: usize,
+        dst: u16,
         total_outgoing: usize,
     );
 }
@@ -70,24 +69,18 @@ impl MixnetPacket for SetupPacket {
             network_info: &Network,
             layer: u32,
             src: u16,
-            dst: Option<u16>, // None if output is to client
-            edge_case_index: usize,
+            dst: u16,
             total_outgoing: usize,
         ) {
             match *MIX_VERIFICATION {
-                MixnetVerification::OnlyVerifyEdgeCases => match dst {
+                MixnetVerification::OnlyVerifyEdgeCases => {
                     // In the case of a middle layer outputing to mix
-                    Some(dst) => {
-                        if dst == edge_case_index as u16
-                            && is_out_of_bounds(packets.len(), total_outgoing.clone())
-                        {
-                            info!("mix {} is verifying edge case to mix {}", src, dst);
-                            // Verify all packets, "throw away" all non valid packets
-                            verify_outgoing_setup_packets(packets, network_info, layer);
-                        }
+                    if is_out_of_bounds(packets.len(), total_outgoing.clone())
+                    {
+                        info!("mix {} is verifying edge case to mix {}", src, dst);
+                        // Verify all packets, "throw away" all non valid packets
+                        verify_outgoing_setup_packets(packets, network_info, layer);
                     }
-                    // In the case of last layer outputing to config ("clients")
-                    None => (),
                 },
                 _ => (),
             }
@@ -122,13 +115,12 @@ impl MixnetPacket for Vec<u8> {
     }
 
     fn handle_verify_on_output(
-            _: &mut Vec<MixnetPacketType>,
-            _: &Network,
-            _: u32,
-            _: u16,
-            _: Option<u16>, // None if output is to client
-            _: usize,
-            _: usize,
+        _: &mut Vec<MixnetPacketType>,
+        _: &Network,
+        _: u32,
+        _: u16,
+        _: u16,
+        _: usize,
         ) {
         // Do nothing
     }
