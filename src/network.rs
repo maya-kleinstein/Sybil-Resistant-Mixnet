@@ -321,7 +321,7 @@ pub fn decrypt_setup_layer(
     let next_server: u64;
     let valid: bool;
     match network.mix_verification {
-        MixnetVerification::Verify => {
+        MixnetVerification::Verify if layer != network.layers - 1 => {
             (next_server, valid) = verify_setup_packet(&packet, &network, layer);
             if !valid {
                 return None;
