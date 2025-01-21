@@ -99,7 +99,7 @@ impl Mix for MyServer {
                 .unwrap()
                 .forget();
 
-            messages = self.output_last_layer(round).await;
+            messages = self.output_last_layer().await;
 
             // Measure time for this round
             self.measure_time(round).await;
