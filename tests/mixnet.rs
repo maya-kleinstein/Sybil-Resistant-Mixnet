@@ -41,12 +41,12 @@ fn write_to_config_file_test(){
         num_mixes: 2,
         num_clients: 1000,
         percentage_bad_clients: 0.0,
-        num_layers: 4,
-        first_measured_layer: 2,
-        mix_verification: MixnetVerification::Verify,
-        num_setup_rounds: 2, // Should be AT LEAST 1
-        num_data_rounds: 2,
-        data_size: 3,
+        num_layers: 5,
+        first_measured_layer: 1,
+        mix_verification: MixnetVerification::OnlyVerifyEdgeCases,
+        num_setup_rounds: 3, // Should be AT LEAST 1
+        num_data_rounds: 3,
+        data_size: 128,
         is_proof_compressed: true,
     };  
 

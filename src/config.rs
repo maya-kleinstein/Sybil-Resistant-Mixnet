@@ -35,8 +35,8 @@ pub struct ConfigInfo {
     /* Note:
         The first_measured_layer is the layer from which the time measurement starts.
         This means that once this layer is ready to be sent we start measuring.
-        For example: If it were "0", we'd start measuring after all the packets 
-        from the layer were decrypted and about to be sent.
+        For example: If it were "1", we'd start measuring after all the packets 
+        from the layer "0" were decrypted and about to be sent.
 
         Since the layer 0 packets are sent to random layer 1 servers (see note in generate_setup_packet),
         we start measuring after them.
