@@ -534,6 +534,8 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Vec
     return data;
 }
 
+// TODO: make it so this function returns "Result" instead of "Option"
+//  this will be more readable and easier to maintain
 pub fn decrypt_packet_layer(
     enc_packet: &[u8], 
     cur_server: u64, 
@@ -561,9 +563,10 @@ pub fn decrypt_packet_layer(
     Key::copy_from_slice(&mut key, key_bytes);
     let nonce = &packet.header.nonce;
 
-    let decrypted_packet = dryocsecretbox
-    .decrypt_to_vec(nonce, &key)
-    .expect("decrypt failed");
+    let decrypted_packet = match dryocsecretbox.decrypt_to_vec(nonce, &key) {
+        Ok(packet) => packet,
+        Err(_) => return None,
+    };
 
     return Some((decrypted_packet, conn.dest_server));
 }
