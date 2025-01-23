@@ -176,6 +176,10 @@ impl Network {
             servers,
         }
     }
+
+    fn get_last_layer_idx(&self) -> u64 {
+        self.layers - 1
+    }
 }
 
 //TODO: eventually take care of private-public values (e.g. Network can see all private keys)
@@ -190,11 +194,9 @@ pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>
     for i in (0..network.layers).rev() { 
         // Creates packet layer (proof + ticket)
         (setup_packet, cur_server) = generate_setup_packet_layer(data, client, network, i);
-        println!("The layer {} dest server is {}", i, cur_server); 
 
         // Add connection to client path
         client.circuit.push((setup_packet.setup_header.conn.conn_id, setup_packet.setup_header.conn.clone()));
-        println!("Just added connection {} to dest server {}", setup_packet.setup_header.conn.conn_id, cur_server);
 
         // Serialize packet
         let encoded_setup_packet = bincode::serialize(&setup_packet).unwrap();
@@ -252,7 +254,7 @@ pub fn generate_setup_packet_layer(
 
     let mut proof: Vec<u8> = Vec::new();
     match network.mix_verification {
-        MixnetVerification::NoVerification => (),
+        MixnetVerification::NoVerification | _ if layer == network.get_last_layer_idx() => (),
         _ => match network.is_proof_compressed {
             true => proof = get_ticket_proof(client, network, t, b).to_bytes_compressed_form(),
             false => proof = get_ticket_proof(client, network, t, b).to_bytes_uncompressed_form(),
@@ -321,7 +323,7 @@ pub fn decrypt_setup_layer(
     let next_server: u64;
     let valid: bool;
     match network.mix_verification {
-        MixnetVerification::Verify if layer != network.layers - 1 => {
+        MixnetVerification::Verify if layer != network.get_last_layer_idx() => {
             (next_server, valid) = verify_setup_packet(&packet, &network, layer);
             if !valid {
                 return None;
@@ -643,7 +645,7 @@ mod tests {
     use super::*;
 
     const TEST_NETWORK_SIZE: u64 = 2;
-    const TEST_NETWORK_LAYERS: u64 = 10;
+    const TEST_NETWORK_LAYERS: u64 = 5;
     const TEST_NETWORK_MIX_VERIFICATION: MixnetVerification = MixnetVerification::Verify;
     const TEST_IS_COMPRESSED_PROOF: bool = true;
 
