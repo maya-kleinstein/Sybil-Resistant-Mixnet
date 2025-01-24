@@ -395,52 +395,6 @@ pub fn get_next_server_from_packet(packet: &SetupPacket, network: &Network) -> u
     return x;
 }
 
-/// Verify batch
-pub fn verify_batch(packets: &Vec<SetupPacket>, network: &Network, layer: u64) {
-    // Set up msg.'s info before decrypting
-    let mut revealed_indices = BTreeSet::new();
-    revealed_indices.insert(0);
-
-    let revealed_msgs = setup_default_msgs();
-
-    let mut batch: Vec<(PoKOfTicketProof, ProofChallenge, G1, G1)> =
-        Vec::with_capacity(packets.len());
-
-    for i in 0..packets.len() {
-        // Calculating next server using the ticket
-        let mut cursor = Cursor::new(&packets[i].setup_header.ticket);
-        let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
-
-        // Recovering the value of b
-        // TODO: value for b is the same for everybody - compute once!
-        let ticket_vals = TicketValues {
-            layer,
-            round_id: network.round_id,
-            sys_rand: network.sys_rand,
-        };
-        let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
-        let b_recovered = h_0(ticket_vals_bytes);
-        // getting proof from bytes
-        let proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packets[i].setup_header.proof).unwrap();
-
-        // The verifier generates the challenge on its own.
-        let challenge_bytes = proof.get_bytes_for_challenge(
-            revealed_indices.clone(),
-            &network.id_provider.bbs_keys.0,
-            b_recovered,
-            t_recovered,
-        );
-        let challenge_verifier = ProofChallenge::hash(&challenge_bytes);
-        batch.push((proof, challenge_verifier, b_recovered, t_recovered))
-    }
-    // Verify ticket and proof (done by x)
-    assert!(
-        PoKOfTicketProof::batch_verify(batch, &network.id_provider.bbs_keys.0, &revealed_msgs)
-            .unwrap()
-            .is_valid()
-    );
-}
-
 /// Generating packets with false proofs
 pub fn generate_bad_setup_packet(
     client: &mut Client,
@@ -733,25 +687,6 @@ mod tests {
         } else {
             println!("The packet is good");
         }
-    }
-
-
-    #[test]
-    pub fn test_batch_verification() {
-        let network = Network::new(2, 3, MixnetVerification::NoVerification, false);
-        let clients = vec![
-            Client::new(&network),
-            Client::new(&network),
-            Client::new(&network),
-        ];
-
-        let packets = vec![
-            generate_setup_packet_layer(vec![1, 2, 3], &clients[0], &network, 0).0,
-            generate_setup_packet_layer(vec![1, 2, 3], &clients[1], &network, 0).0,
-            generate_setup_packet_layer(vec![1, 2, 3], &clients[2], &network, 0).0,
-        ];
-
-        verify_batch(&packets, &network, 0);
     }
 
     #[test]

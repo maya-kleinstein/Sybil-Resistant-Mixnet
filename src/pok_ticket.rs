@@ -721,59 +721,6 @@ impl PoKOfTicketProof {
 
         return Ok(PoKOfTicketProofStatus::Success);
     }
-
-    /// Batch Verify Proofs
-    pub fn batch_verify(
-        batch: Vec<(PoKOfTicketProof, ProofChallenge, G1, G1)>,
-        vk: &PublicKey,
-        revealed_msgs: &BTreeMap<usize, SignatureMessage>,
-    ) -> Result<PoKOfTicketProofStatus, BBSError> {
-        for (proof, challenge, b, t) in batch.iter() {
-            let verify = proof
-                .verify_without_pairing(vk, revealed_msgs, challenge, *b, *t)
-                .unwrap();
-            if !verify.is_valid() {
-                return Ok(verify);
-            }
-        }
-
-        // Batch Verifying the equations e(a_prime, w) = e(a_bar, g_2)
-        let mut a_prime_product = G1::zero();
-        let mut a_bar_product = G1::zero();
-
-        for x in batch {
-            let rand_exponent = rand_non_zero_fr();
-            let mut cur_a_prime = G1::zero();
-            cur_a_prime.add_assign(&x.0.a_prime);
-            cur_a_prime.mul_assign(rand_exponent);
-            a_prime_product.add_assign(&cur_a_prime);
-
-            let mut cur_a_bar = G1::zero();
-            cur_a_bar.add_assign(&x.0.a_bar);
-            cur_a_bar.mul_assign(rand_exponent);
-            a_bar_product.sub_assign(&cur_a_bar);
-        }
-
-        match Bls12::final_exponentiation(&Bls12::miller_loop(&[
-            (
-                &a_prime_product.into_affine().prepare(),
-                &vk.w.0.into_affine().prepare(),
-            ),
-            (
-                &a_bar_product.into_affine().prepare(),
-                &G2::one().into_affine().prepare(),
-            ),
-        ])) {
-            None => return Ok(PoKOfTicketProofStatus::BadSignature),
-            Some(product) => {
-                if product != Fq12::one() {
-                    return Ok(PoKOfTicketProofStatus::BadSignature);
-                }
-            }
-        };
-
-        return Ok(PoKOfTicketProofStatus::Success);
-    }
 }
 
 impl ToVariableLengthBytes for PoKOfTicketProof {

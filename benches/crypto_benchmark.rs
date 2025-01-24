@@ -49,35 +49,6 @@ pub fn verify_layer_benchmark(c: &mut Criterion) {
     });
 }
 
-/// Verify batch benchmark
-pub fn verify_batch_benchmark(c: &mut Criterion) {
-    let network = black_box(Network::new(2, 3, MixnetVerification::NoVerification));
-    let batch_size = 40;
-
-    let client = Client::new(&network);
-
-    let mut packets = black_box(Vec::new());
-    packets.reserve(batch_size);
-
-    for _ in 0..batch_size {
-        packets.push(generate_layer(vec![1, 2, 3], &client, &network, 0).0);
-    }
-
-    // Set up msg.'s info before decrypting
-    let messages = black_box(vec![SignatureMessage::hash(b"Testing")]);
-
-    let mut revealed_indices = black_box(BTreeSet::new());
-    revealed_indices.insert(0);
-
-    let mut revealed_msgs = black_box(BTreeMap::new());
-    for i in &revealed_indices {
-        revealed_msgs.insert(i.clone(), messages[*i]);
-    }
-    c.bench_function("verify_batch", |b| {
-        b.iter(|| verify_batch(&packets, &network, 0))
-    });
-}
-
 fn cpu_work() -> Vec<u64> {
     let mut vecs = vec![];
     for i in 0..10000000 {
@@ -91,5 +62,5 @@ pub fn bench_cpu_test(c: &mut Criterion) {
     c.bench_function("generate_packet", |b| b.iter(|| cpu_work()));
 }
 
-criterion_group!(crypto_benches, verify_batch_benchmark);
+criterion_group!(crypto_benches, verify_layer_benchmark);
 criterion_main!(crypto_benches);
