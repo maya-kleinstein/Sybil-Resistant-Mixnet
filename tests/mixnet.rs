@@ -48,6 +48,7 @@ fn write_to_config_file_test(){
         num_data_rounds: 3,
         data_size: 128,
         is_proof_compressed: true,
+        edge_limit: 1.1,
     };  
 
     // Write config data to file

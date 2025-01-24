@@ -292,10 +292,9 @@ fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>)
 }
 
 pub fn get_edge_limit(users_amount: usize) -> u64 {
-    // calculate n/m + sqrt(nlog(m)/m) rounded up - this is a load balancing constant
     let n = users_amount as f64;
     let m = *NUM_MIXES as f64;
-    let edge_limit = (1.1 * n / m) as u64;// (n / m + (n * m.log(2.0) / m).sqrt()).ceil() as u64;
+    let edge_limit = (*EDGE_LIMIT * n / m) as u64;
     return edge_limit;
 }
 

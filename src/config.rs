@@ -23,6 +23,7 @@ lazy_static! {
     pub static ref NUM_DATA_ROUNDS: u32 = CONFIG_INFO.num_data_rounds;
     pub static ref DATA_SIZE: u64 = CONFIG_INFO.data_size;
     pub static ref IS_PROOF_COMPRESSED: bool = CONFIG_INFO.is_proof_compressed;
+    pub static ref EDGE_LIMIT: f64 = CONFIG_INFO.edge_limit;
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -47,6 +48,7 @@ pub struct ConfigInfo {
     pub num_data_rounds: u32,
     pub data_size: u64,
     pub is_proof_compressed: bool,
+    pub edge_limit: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
