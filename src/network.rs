@@ -186,6 +186,39 @@ impl Network {
 
 /// Generate a packet from the client to the network with the given data
 pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>, u64) {
+    return generate_setup_packet_inner(client, network, |_, _, _| {});
+}
+
+/// Generating packets with false proofs
+pub fn generate_bad_setup_packet(
+    client: &mut Client,
+    network: &Network,
+    bad_tickets: &Vec<G1>,
+) -> (Vec<u8>, u64) {
+    generate_setup_packet_inner(client, network, |setup_packet, cur_server, i| {
+        // Mess with packet by setting ticket to default
+        if i > 0 {
+            let false_ticket = bad_tickets[i as usize - 1];
+
+            setup_packet.setup_header.ticket = vec![];
+
+            false_ticket.serialize(&mut setup_packet.setup_header.ticket, network.is_proof_compressed).unwrap();
+            *cur_server = calculate_next_server(false_ticket, network.size);
+
+            // re-write the server id in the connection
+            setup_packet.setup_header.conn.dest_server = *cur_server;
+        }
+    })
+}
+
+pub fn generate_setup_packet_inner<F>(
+    client: &mut Client, 
+    network: &Network,
+    modify_setup_layer_func: F
+) -> (Vec<u8>, u64) 
+where
+    F: Fn(&mut SetupPacket, &mut u64, u64)
+{
     let mut data: Vec<u8> = Vec::new();
     let mut cur_server: u64 = 0;
     let mut setup_packet: SetupPacket;
@@ -194,6 +227,9 @@ pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>
     for i in (0..network.layers).rev() { 
         // Creates packet layer (proof + ticket)
         (setup_packet, cur_server) = generate_setup_packet_layer(data, client, network, i);
+
+        // Modify the layer
+        modify_setup_layer_func(&mut setup_packet, &mut cur_server, i);
 
         // Add connection to client path
         client.circuit.push((setup_packet.setup_header.conn.conn_id, setup_packet.setup_header.conn.clone()));
@@ -207,6 +243,7 @@ pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>
                 we set it to some random value.
                 This shouldn't effect the verification process, 
                 as the first server should just verify the proof for the NEXT server.
+                This also doesn't "matter" since we'll only start measuring the time after the first server.
          */
         if i == 0 { 
             // Set cur_server to some random value
@@ -393,55 +430,6 @@ pub fn get_next_server_from_packet(packet: &SetupPacket, network: &Network) -> u
     let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
     let x = calculate_next_server(t_recovered, network.size);
     return x;
-}
-
-/// Generating packets with false proofs
-pub fn generate_bad_setup_packet(
-    client: &mut Client,
-    network: &Network,
-    bad_tickets: &Vec<G1>,
-) -> (Vec<u8>, u64) {
-    let mut data: Vec<u8> = Vec::new();
-    let mut cur_server: u64 = 0;
-    let mut setup_packet: SetupPacket;
-
-    // Onion Encrypt the data using the keys matching the calculated tickets
-    for i in (0..network.layers).rev() {
-        // Creates packet layer (proof + ticket)
-        (setup_packet, cur_server) = generate_setup_packet_layer(data, client, network, i);
-
-        // Mess with packet by setting ticket to default
-        if i > 0 {
-            let false_ticket = bad_tickets[i as usize - 1];
-
-            setup_packet.setup_header.ticket = vec![];
-
-            false_ticket.serialize(&mut setup_packet.setup_header.ticket, network.is_proof_compressed).unwrap();
-            cur_server = calculate_next_server(false_ticket, network.size);
-
-            // re-write the server id in the connection
-            setup_packet.setup_header.conn.dest_server = cur_server;
-        }
-        
-        client.circuit.push((setup_packet.setup_header.conn.conn_id, setup_packet.setup_header.conn.clone()));
-
-        // Serialize packet
-        let encoded_packet = bincode::serialize(&setup_packet).unwrap();
-
-        // Onion Encryption, where: packet = enc(cur_pk, old_packet || (proof, challenge, proof_request, t))
-        let wrapped_data = DryocBox::seal_to_vecbox(
-            &encoded_packet,
-            &network.servers[cur_server as usize].key_pair.public_key.clone(),
-        )
-        .expect("Unable to seal");
-        data = bincode::serialize(&wrapped_data).unwrap();
-    }
-    client.circuit.reverse();
-    client.circuit[0].1.cur_server = cur_server;
-    for i in 1..client.circuit.len() {
-        client.circuit[i].1.cur_server = client.circuit[i-1].1.dest_server;
-    }
-    return (data, cur_server);
 }
 
 /// Get a random ticket that maps to i for all i in range(num_mixes)
