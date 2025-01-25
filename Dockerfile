@@ -1,5 +1,5 @@
-# Use a Rust image based on Debian 10 (buster)
-FROM rust:1.67-buster
+# Use a "full" Rust image to build the project (Note: alternatively, you can use a "slim" image)
+FROM rust:1.84.0
 
 # Update, Upgrade, Install necessary libraries and tools for cross-compilation, and clean up
 RUN apt-get update && \

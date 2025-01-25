@@ -3,8 +3,8 @@
 # Setting my code directory on local machine
 LOCAL_CODE_DIR='C:\\Thesis\\Sybil-Resistant-Mixnet'
 LOCAL_ELF_DIR='C:\\Thesis\\Sybil-Resistant-Mixnet\\target\\x86_64-unknown-linux-gnu\\'
-CONTAINER_NAME="cur_compiler"
-IMAGE_NAME="mycompiler"
+CONTAINER_NAME="compiler_container"
+IMAGE_NAME="compiler_image"
 
 ##### STEP 1: Update Project (local) + Compile the Rust code using Docker #####
 
