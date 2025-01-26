@@ -7,7 +7,8 @@ use crate::{
     ToVariableLengthBytes,
 };
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
+use std::{convert::TryInto, sync::Arc, sync::Mutex as StdMutex};
+use rayon::prelude::*;
 
 /// Write all heavy computation info to predetermined files
 pub fn setup_info() {
@@ -21,8 +22,12 @@ pub fn setup_info() {
         config_info.is_proof_compressed,
     );
 
-    let mut setup_packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
-    let mut packets: Vec<Vec<Vec<u8>>> = vec![vec![].into(); config_info.num_mixes.into()];
+    let setup_packets: Arc<StdMutex<Vec<Vec<Vec<u8>>>>> = Arc::new(
+        StdMutex::new(vec![vec![].into(); config_info.num_mixes.into()])
+    );
+    let packets: Arc<StdMutex<Vec<Vec<Vec<u8>>>>> = Arc::new(
+        StdMutex::new(vec![vec![].into(); config_info.num_mixes.into()])
+    );
 
     // get ticket server mapping
     let mapping = ticket_server_map_generator(config_info.num_mixes.into());
@@ -34,34 +39,40 @@ pub fn setup_info() {
     }
 
     let num_bad_clients = ((config_info.num_clients as f64) * config_info.percentage_bad_clients) as u64;
-    
-    for i in 0..config_info.num_clients {
+
+    (0..config_info.num_clients).into_par_iter().for_each(|i| {
         let data = vec![i as u8; config_info.data_size as usize];
         let mut client = Client::new(&network);
         let (setup_packet, first_server): (Vec<u8>, u64);
         if i < num_bad_clients {
             println!("Generating bad packet {}", i);
-            (setup_packet, first_server) = generate_bad_setup_packet(
-                &mut client, 
-                &network, 
-                &bad_tickets_vec
-            );
+            (setup_packet, first_server) = generate_bad_setup_packet(&mut client, &network, &bad_tickets_vec);
         } else {
             println!("Generating packet {}", i);
             (setup_packet, first_server) = generate_setup_packet(&mut client, &network);
         }
-        setup_packets[first_server as usize].push(setup_packet);
         let packet = generate_packet(data, &client, &network);
-        packets[first_server as usize].push(packet);
-    }
 
-    // Write packets to intended files
+        // Safely update shared data
+        {
+            let mut setup_packets_lock = setup_packets.lock().unwrap();
+            setup_packets_lock[first_server as usize].push(setup_packet);
+        }
+        {
+            let mut packets_lock = packets.lock().unwrap();
+            packets_lock[first_server as usize].push(packet);
+        }
+    });
+
+    // Write packets to files
+    let setup_packets = Arc::try_unwrap(setup_packets).unwrap().into_inner().unwrap();
+    let packets = Arc::try_unwrap(packets).unwrap().into_inner().unwrap();
+
     for i in 0..config_info.num_mixes {
         let setup_filename = format!("{}setup_packets_{}", *INFO_FOLDER, i);
         serialize_data_to_file::<Vec<Vec<u8>>>(&setup_packets[i as usize], &setup_filename).unwrap();
         let packets_filename = format!("{}packets_{}", *INFO_FOLDER, i);
         serialize_data_to_file::<Vec<Vec<u8>>>(&packets[i as usize], &packets_filename).unwrap();
-
     }
 
     let network_filename = "network_info";
