@@ -625,7 +625,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_basic_generate_packet() {
+    pub fn test_basic_data_packet() {
         // First create connection circuit
         let network = Network::new(
             TEST_NETWORK_SIZE,
@@ -651,6 +651,31 @@ mod tests {
         println!("The decrypted data is of len: {}", enc_packet.len());
         
     }
+
+    #[test]
+    pub fn test_bad_setup_packet() {
+        let network = Network::new(
+            TEST_NETWORK_SIZE,
+            TEST_NETWORK_LAYERS,
+            TEST_NETWORK_MIX_VERIFICATION,
+            TEST_IS_COMPRESSED_PROOF,
+        );
+        let mut client = Client::new(&network);
+
+        // get ticket server mapping
+        let mapping = ticket_server_map_generator(network.size.try_into().unwrap());
+        let mut bad_tickets_vec = vec![];
+        // build vector of tickets to travel in path of your choice (i%2 is zig-zag for example)
+        // TODO: add "bad packet path" choice to config values - zigzag, etc. maybe add more then 1 option?
+        for i in 0..network.layers {
+            bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
+        }
+
+        let (enc_data, first_server) = generate_bad_setup_packet(&mut client, &network, &bad_tickets_vec);
+        println!("{}, is the first server", first_server);
+        println!("{}, is the length of the packet", enc_data.len());
+    }
+
 
     #[test]
     pub fn test_decrypt_setup_layer() {
