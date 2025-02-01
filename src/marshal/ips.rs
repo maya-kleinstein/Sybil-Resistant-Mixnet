@@ -60,6 +60,7 @@ pub fn get_cur_ip_files(dir: &str) -> std::io::Result<Vec<IpAddr>> {
             }
         }
     }
+    ips.sort();
     Ok(ips)
 }
 
