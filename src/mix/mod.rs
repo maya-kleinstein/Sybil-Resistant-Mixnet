@@ -118,6 +118,9 @@ impl Mix for MyServer {
                 }
             }
         }
+        // Flush all logs
+        log::logger().flush();
+        
         // Note: messages should be the same for each round so it doesn't matter which one we use
         // TODO: above assumption is now wrong, fix that.
         let reply = GetResponse { messages };
