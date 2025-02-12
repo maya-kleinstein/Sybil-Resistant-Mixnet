@@ -3,30 +3,80 @@ use chrono::NaiveTime;
 use std::fs::{self, OpenOptions};
 use std::io::{self, BufRead};
 use std::path::PathBuf;
-
+use tracing_subscriber::{filter, fmt, Registry};
+use tracing_subscriber::fmt::time::FormatTime;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
+use tracing_appender::non_blocking;
+use tracing::level_filters::LevelFilter;
 use super::ips::get_cur_ip_files;
 
 pub const RESULTS: &str = "Results:";
 
+struct CustomTime;
+
+impl FormatTime for CustomTime {
+    fn format_time(&self, w: &mut tracing_subscriber::fmt::format::Writer) -> std::fmt::Result {
+        write!(w, "[{}]", chrono::Local::now().format("%H:%M:%S%.3f"))?;
+        Ok(())
+    }
+}
+
 /// Initializes a logger that outputs everything to both stdout and the file at file_path
-pub fn init_logger(file_path: &str) -> Result<(), fern::InitError> {
-    fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "[{}][{}]{}",
-                chrono::Local::now().format("%H:%M:%S%.3f"),
-                record.level(),
-                message
-            ))
-        })
-        .chain(fern::log_file(format!(
-            "{}{}{}",
-            *BASE_FOLDER, *LOGS_FOLDER, file_path
-        ))?)
-        .chain(std::io::stdout())
-        .level(LevelFilter::Off)
-        .level_for("bbs", LevelFilter::Trace)
-        .apply()?;
+pub fn init_logger(file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let base_folder = PathBuf::from(BASE_FOLDER.clone()); // Replace with your actual base folder
+    let logs_folder = PathBuf::from(LOGS_FOLDER.clone()); // Replace with your actual logs folder
+    let log_file = base_folder.join(logs_folder).join(file_path);
+
+    let file_appender = RollingFileAppender::new(
+        Rotation::NEVER,
+        log_file.parent().unwrap(),
+        log_file.file_name().unwrap().to_str().unwrap(),
+    );
+
+    let (file_writer, _guard) = non_blocking(file_appender);
+
+    // Stdout non-blocking writer
+    let (stdout_writer, _stdout_guard) = non_blocking(std::io::stdout());
+
+    // File layer
+    let file_layer = fmt::layer()
+        .with_timer(CustomTime)
+        .with_writer(file_writer)
+        .with_ansi(false)
+        .with_level(true)
+        .with_target(false)
+        .with_line_number(false)
+        .with_thread_ids(false)
+        .with_thread_names(false);
+
+    // Stdout layer
+    let stdout_layer = fmt::layer()
+        .with_timer(CustomTime)
+        .with_writer(stdout_writer)
+        .with_ansi(true)
+        .with_level(true)
+        .with_target(false)
+        .with_line_number(false)
+        .with_thread_ids(false)
+        .with_thread_names(false);
+
+    let filter = filter::Targets::new()
+        .with_default(LevelFilter::OFF) // Set the default log level to INFO
+        .with_target("bbs", LevelFilter::TRACE); // Set the log level for the "bbs" target to ERROR
+
+    // Combine layers
+    let subscriber = Registry::default()
+        .with(file_layer)
+        .with(stdout_layer)
+        .with(filter);
+
+    tracing::subscriber::set_global_default(subscriber)?;
+
+    // Keeping _guard alive to ensure logs are flushed on exit
+    std::mem::forget(_guard);
+    std::mem::forget(_stdout_guard);
+    
     Ok(())
 }
 
@@ -107,8 +157,13 @@ pub fn merge_log_files() -> io::Result<()> {
             let file = File::open(path).unwrap();
             let filename = path.file_name().unwrap().to_string_lossy().into_owned();
             io::BufReader::new(file).lines().filter_map(move |line| {
-                line.ok()
-                    .map(|l| (extract_timestamp(&l), format!("<{}>{}", filename, l)))
+                match line {
+                    Ok(l) => Some((extract_timestamp(&l), format!("<{}>{}", filename, l))),
+                    Err(e) => {
+                        error!("Error reading line from {}: {}", filename, e);
+                        None
+                    }
+                }
             })
         })
         .collect();

@@ -6,7 +6,7 @@ use crate::marshal::manage_files;
 use crate::mix::connect_to_server;
 use crate::{marshal::info::get_config_info, mix::mix_service::GetRequest};
 use futures::future::join_all;
-use log::*;
+use tracing::*;
 use serde::{Deserialize, Serialize};
 use tonic::Request;
 

@@ -1,5 +1,5 @@
 use crate::config::*;
-use log::*;
+use tracing::*;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read, Write};

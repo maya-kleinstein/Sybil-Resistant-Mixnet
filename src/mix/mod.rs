@@ -4,7 +4,7 @@ use crate::marshal::logs::RESULTS;
 use crate::marshal::SHUTDOWN_FILE;
 use crate::network::{decrypt_setup_layer, verify_setup_packet, Connections, Network, SetupPacket};
 use futures::future::join_all;
-use log::*;
+use tracing::*;
 use mix_service::mix_client::MixClient;
 use mix_service::mix_server::{Mix, MixServer};
 use mix_service::{PacketRequest, PacketResponse, GetRequest, GetResponse};
@@ -118,9 +118,6 @@ impl Mix for MyServer {
                 }
             }
         }
-        // Flush all logs
-        log::logger().flush();
-        
         // Note: messages should be the same for each round so it doesn't matter which one we use
         // TODO: above assumption is now wrong, fix that.
         let reply = GetResponse { messages };

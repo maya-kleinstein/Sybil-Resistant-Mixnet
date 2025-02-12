@@ -12,8 +12,8 @@ pub fn init_mix_ips() -> io::Result<(Vec<IpAddr>, u16)> {
 
     let index = ips.iter().position(|&r| r == my_ip).unwrap();
 
-    debug!("All IPs: {:?}", ips);
-    debug!("My ID: {}", index);
+    println!("All IPs: {:?}", ips);
+    println!("My ID: {}", index);
 
     Ok((ips, index as u16))
 }
