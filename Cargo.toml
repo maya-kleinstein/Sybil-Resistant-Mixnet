@@ -51,7 +51,7 @@ chrono = "0.4.39"
 criterion = {version = "0.5.1", features = ["async", "async_tokio"]}
 
 [[bench]]
-name="crypto_benchmark"
+name="packet_benchmarks"
 harness=false
 
 [profile.bench]
