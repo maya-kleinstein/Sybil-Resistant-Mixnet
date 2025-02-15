@@ -32,8 +32,9 @@ pub fn setup_info() {
     // get ticket server mapping
     let mapping = ticket_server_map_generator(config_info.num_mixes.into());
     let mut bad_tickets_vec = vec![];
-    // build vector of tickets to travel in path of your choice (i%2 is zig-zag for example)
-    // TODO: add "bad packet path" choice to config values - zigzag, etc. maybe add more then 1 option?
+    /* NOTE: notice all bad packets are generated with the same path
+        The path is a zig-zag between mix server 0 and 1 (i%2)
+        */
     for i in 0..config_info.num_layers {
         bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
     }

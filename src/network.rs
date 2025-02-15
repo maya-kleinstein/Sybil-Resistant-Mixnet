@@ -669,9 +669,7 @@ mod tests {
         // get ticket server mapping
         let mapping = ticket_server_map_generator(network.size.try_into().unwrap());
         let mut bad_tickets_vec = vec![];
-        /* NOTE: notice all bad packets are generated with the same path
-            The path is a zig-zag between mix server 0 and 1 (i%2)
-         */
+        // NOTE: See the comment in setup_info()
         for i in 0..network.layers {
             bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
         }
