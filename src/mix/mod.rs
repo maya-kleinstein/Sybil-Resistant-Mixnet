@@ -227,13 +227,7 @@ impl MyServer {
         let mut channel = (*channels_guard)
             .entry(dst.into())
             .or_insert(
-                MixClient::connect(format!(
-                    "http://{}:{}",
-                    self.mix_ips[dst as usize],
-                    *BASE_PORT + dst
-                ))
-                .await
-                .unwrap(),
+                connect_to_server(&self.mix_ips[dst as usize], dst).await,
             )
             .clone();
         drop(channels_guard);

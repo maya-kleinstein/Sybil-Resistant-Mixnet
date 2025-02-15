@@ -54,7 +54,7 @@ pub fn init_logger(file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let stdout_layer = fmt::layer()
         .with_timer(CustomTime)
         .with_writer(stdout_writer)
-        .with_ansi(true)
+        .with_ansi(false)
         .with_level(true)
         .with_target(false)
         .with_line_number(false)
@@ -84,7 +84,7 @@ pub fn init_logger(file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
 pub fn rename_ip_logs() {
     // Get all IP file paths
     let ips = get_cur_ip_files(&*LOGS_FOLDER).unwrap();
-
+    debug!("Current ORDERED IPs: {:?}", ips);
     // enumerate through file_ips
     for (ip_index, ip) in ips.iter().enumerate() {
         let ip_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip.to_string());
