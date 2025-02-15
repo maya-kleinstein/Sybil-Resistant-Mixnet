@@ -109,17 +109,16 @@ impl Mix for MyServer {
 
             if round < num_total_rounds - 1 {
                 // Run next round
-                // TODO: fix this so it is not hardcoded which rounds are setup and which are data
+                // NOTE: This harcodes all setup rounds being before all data rounds
                 info!("mix {} is starting round {}", self.id, round + 1);
-                if round < *NUM_SETUP_ROUNDS - 1 { // first 3 rounds are setup rounds
+                if round < *NUM_SETUP_ROUNDS - 1 { 
                     self.start_mix_round::<SetupPacket>().await;
                 } else { 
                     self.start_mix_round::<Vec<u8>>().await;
                 }
             }
         }
-        // Note: messages should be the same for each round so it doesn't matter which one we use
-        // TODO: above assumption is now wrong, fix that.
+        // NOTE: messages should be the same for each round so it doesn't matter which one we use
         let reply = GetResponse { messages };
         Ok(Response::new(reply))
     }
