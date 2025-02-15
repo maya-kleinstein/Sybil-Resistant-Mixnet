@@ -129,15 +129,15 @@ pub struct SetupPacket {
 
 /// Packet configuration
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PacketHeader {
+pub struct DataPacketHeader {
     conn_id: ConnID,
     nonce: Nonce,
 }
 
 /// Packet configuration
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Packet {
-    pub header: PacketHeader,
+pub struct DataPacket {
+    pub header: DataPacketHeader,
     pub data: Vec<u8>,
 }
 
@@ -449,9 +449,9 @@ pub fn ticket_server_map_generator(num_mixes: u16) -> HashMap<u64, G1> {
     return ticket_server_map;
 }
 
-pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Vec<u8> {
+pub fn generate_data_packet(data: Vec<u8>, client: &Client, network: &Network) -> Vec<u8> {
     let mut data : Vec<u8> = data;
-    let mut packet: Packet;
+    let mut packet: DataPacket;
 
     for i in (0..network.layers).rev() {
         let nonce = Nonce::gen();
@@ -464,8 +464,8 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Vec
             &nonce, 
             &key,
         );
-        packet = Packet {
-            header: PacketHeader {
+        packet = DataPacket {
+            header: DataPacketHeader {
                 conn_id: client.circuit[i as usize].0,
                 nonce,
             },
@@ -480,13 +480,13 @@ pub fn generate_packet(data: Vec<u8>, client: &Client, network: &Network) -> Vec
 
 // TODO: make it so this function returns "Result" instead of "Option"
 //  this will be more readable and easier to maintain
-pub fn decrypt_packet_layer(
+pub fn decrypt_data_packet_layer(
     enc_packet: &[u8], 
     cur_server: u64, 
     conns: &Connections,
     layer: u64
 ) -> Option<(Vec<u8>, u64)> {
-    let packet: Packet = match bincode::deserialize(enc_packet) {
+    let packet: DataPacket = match bincode::deserialize(enc_packet) {
         Ok(p) => p,
         Err(_) => return None,
     };
@@ -640,11 +640,11 @@ mod tests {
         let _ = decrypt_setup_packet(enc_data, first_server, &network, &mut conns);
 
         let data = vec![b'a'; 128];
-        let mut enc_packet = generate_packet(data, &client, &network);
+        let mut enc_packet = generate_data_packet(data, &client, &network);
         println!("The encrypted data is of len: {}", enc_packet.len());
         let mut cur_server = first_server;
         for layer in 0..network.layers {
-            let decrypted = decrypt_packet_layer(&enc_packet, cur_server, &conns, layer).unwrap();
+            let decrypted = decrypt_data_packet_layer(&enc_packet, cur_server, &conns, layer).unwrap();
             enc_packet = decrypted.0;
             cur_server = decrypted.1;
         }

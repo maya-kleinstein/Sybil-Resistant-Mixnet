@@ -1,5 +1,5 @@
 use crate::config::*;
-use crate::marshal::info::{get_init_packets, get_init_setup_packets, get_network_info};
+use crate::marshal::info::{get_init_data_packets, get_init_setup_packets, get_network_info};
 use crate::marshal::logs::RESULTS;
 use crate::marshal::SHUTDOWN_FILE;
 use crate::network::{decrypt_setup_layer, verify_setup_packet, Connections, Network, SetupPacket};
@@ -199,7 +199,7 @@ impl MyServer {
             let mut packets_data = Vec::new();
             while let Some(packet) = packets.pop() {
                 match packet {
-                    MixnetPacketType::Packet(data) => packets_data.push(data),
+                    MixnetPacketType::DataPacket(data) => packets_data.push(data),
                     MixnetPacketType::SetupPacket(setup_packet) => packets_data.push(setup_packet.data),
                 }
             }
@@ -253,7 +253,7 @@ impl MyServer {
         let mut messages = Vec::new();
         while let Some(packet) = packets.pop() {
             match packet {
-                MixnetPacketType::Packet(data) => messages.push(data),
+                MixnetPacketType::DataPacket(data) => messages.push(data),
                 MixnetPacketType::SetupPacket(setup_packet) => messages.push(setup_packet.data),
             }
         }
@@ -327,7 +327,7 @@ fn send_init_packets<T: MixnetPacket>(mix_ips: &Vec<IpAddr>, id: u16) -> JoinHan
     if T::is_setup_packet() {
         init_buffer = get_init_setup_packets(id);
     } else {
-        init_buffer = get_init_packets(id);
+        init_buffer = get_init_data_packets(id);
     }
     let dst_ip = mix_ips[id as usize];
     let task = tokio::spawn(async move {

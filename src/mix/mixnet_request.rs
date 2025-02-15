@@ -4,7 +4,7 @@ use crate::network::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MixnetPacketType {
-    Packet(Vec<u8>),
+    DataPacket(Vec<u8>),
     SetupPacket(SetupPacket),
 }
 
@@ -104,9 +104,9 @@ impl MixnetPacket for Vec<u8> {
             .par_iter()
             .filter_map(|enc_packet| {
                 // I'll decrypt the packet and return the packet, layer, and connection
-                let dec_packet = decrypt_packet_layer(enc_packet, cur_server, &(*conns_guard), layer);
+                let dec_packet = decrypt_data_packet_layer(enc_packet, cur_server, &(*conns_guard), layer);
                 return dec_packet.map(|(packet, next_server)| 
-                    (MixnetPacketType::Packet(packet), 
+                    (MixnetPacketType::DataPacket(packet), 
                     next_server
                 ));
             })

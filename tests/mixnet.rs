@@ -24,7 +24,7 @@ fn marshalling_test() {
     let config_info = get_config_info();
 
     for i in 0..(config_info.num_mixes) {
-        let packets = get_init_packets(i);
+        let packets = get_init_data_packets(i);
         println!("{} recv'd {} packets", i, packets.len());
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     keys::{PublicKey, SecretKey},
     marshal::*,
     network::{
-        generate_bad_setup_packet, generate_packet, generate_setup_packet, ticket_server_map_generator, Client, IDProvider, Network, Server
+        generate_bad_setup_packet, generate_data_packet, generate_setup_packet, ticket_server_map_generator, Client, IDProvider, Network, Server
     },
     ToVariableLengthBytes,
 };
@@ -25,7 +25,7 @@ pub fn setup_info() {
     let setup_packets: Arc<StdMutex<Vec<Vec<Vec<u8>>>>> = Arc::new(
         StdMutex::new(vec![vec![].into(); config_info.num_mixes.into()])
     );
-    let packets: Arc<StdMutex<Vec<Vec<Vec<u8>>>>> = Arc::new(
+    let data_packets: Arc<StdMutex<Vec<Vec<Vec<u8>>>>> = Arc::new(
         StdMutex::new(vec![vec![].into(); config_info.num_mixes.into()])
     );
 
@@ -51,7 +51,7 @@ pub fn setup_info() {
             println!("Generating packet {}", i);
             (setup_packet, first_server) = generate_setup_packet(&mut client, &network);
         }
-        let packet = generate_packet(data, &client, &network);
+        let packet = generate_data_packet(data, &client, &network);
 
         // Safely update shared data
         {
@@ -59,20 +59,20 @@ pub fn setup_info() {
             setup_packets_lock[first_server as usize].push(setup_packet);
         }
         {
-            let mut packets_lock = packets.lock().unwrap();
+            let mut packets_lock = data_packets.lock().unwrap();
             packets_lock[first_server as usize].push(packet);
         }
     });
 
     // Write packets to files
     let setup_packets = Arc::try_unwrap(setup_packets).unwrap().into_inner().unwrap();
-    let packets = Arc::try_unwrap(packets).unwrap().into_inner().unwrap();
+    let packets = Arc::try_unwrap(data_packets).unwrap().into_inner().unwrap();
 
     for i in 0..config_info.num_mixes {
-        let setup_filename = format!("{}setup_packets_{}", *INFO_FOLDER, i);
-        serialize_data_to_file::<Vec<Vec<u8>>>(&setup_packets[i as usize], &setup_filename).unwrap();
-        let packets_filename = format!("{}packets_{}", *INFO_FOLDER, i);
-        serialize_data_to_file::<Vec<Vec<u8>>>(&packets[i as usize], &packets_filename).unwrap();
+        let setup_packets_filename = format!("{}setup_packets_{}", *INFO_FOLDER, i);
+        serialize_data_to_file::<Vec<Vec<u8>>>(&setup_packets[i as usize], &setup_packets_filename).unwrap();
+        let data_packets_filename = format!("{}data_packets_{}", *INFO_FOLDER, i);
+        serialize_data_to_file::<Vec<Vec<u8>>>(&packets[i as usize], &data_packets_filename).unwrap();
     }
 
     let network_filename = "network_info";
@@ -86,8 +86,8 @@ pub fn get_init_setup_packets(mix_id: u16) -> Vec<Vec<u8>> {
     return packets;
 }
 
-pub fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>> {
-    let filename = format!("{}packets_{}", *INFO_FOLDER, mix_id);
+pub fn get_init_data_packets(mix_id: u16) -> Vec<Vec<u8>> {
+    let filename = format!("{}data_packets_{}", *INFO_FOLDER, mix_id);
     let packets: Vec<Vec<u8>> = deserialize_data_from_file(&filename).unwrap();
     return packets;
 }
