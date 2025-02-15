@@ -94,9 +94,8 @@ fn marshal_network_test() {
     serialize_network(&x, filename).unwrap();
     let network: Network = deserialize_network(filename).unwrap();
     let y = network;
-    // TODO: The public keys aren't acutally equal?? wtf...
     assert_eq!(x.is_proof_compressed, y.is_proof_compressed);
-    // assert_eq!(x.id_provider.bbs_keys.1, y.id_provider.bbs_keys.1);
-    // assert_eq!(x.id_provider.bbs_keys.0, y.id_provider.bbs_keys.0);
+    assert_eq!(x.id_provider.bbs_keys.1, y.id_provider.bbs_keys.1);
+    assert_eq!(x.id_provider.bbs_keys.0, y.id_provider.bbs_keys.0);
     let _ = std::fs::remove_file("testt");
 }

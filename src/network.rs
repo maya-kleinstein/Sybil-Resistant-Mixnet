@@ -182,8 +182,6 @@ impl Network {
     }
 }
 
-//TODO: eventually take care of private-public values (e.g. Network can see all private keys)
-
 /// Generate a packet from the client to the network with the given data
 pub fn generate_setup_packet(client: &mut Client, network: &Network) -> (Vec<u8>, u64) {
     return generate_setup_packet_inner(client, network, |_, _, _| {});
@@ -671,8 +669,9 @@ mod tests {
         // get ticket server mapping
         let mapping = ticket_server_map_generator(network.size.try_into().unwrap());
         let mut bad_tickets_vec = vec![];
-        // build vector of tickets to travel in path of your choice (i%2 is zig-zag for example)
-        // TODO: add "bad packet path" choice to config values - zigzag, etc. maybe add more then 1 option?
+        /* NOTE: notice all bad packets are generated with the same path
+            The path is a zig-zag between mix server 0 and 1 (i%2)
+         */
         for i in 0..network.layers {
             bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
         }
