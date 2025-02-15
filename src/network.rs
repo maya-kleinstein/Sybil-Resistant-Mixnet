@@ -368,8 +368,7 @@ pub fn decrypt_setup_layer(
     };
 
     let conn = packet.setup_header.conn.clone();
-    // TODO: add verification that dest server in conn is next_server
-
+    
     // Retrieving data and next server
     return Some((packet, next_server, conn));
 }
