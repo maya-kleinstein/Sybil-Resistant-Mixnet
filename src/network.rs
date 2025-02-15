@@ -378,13 +378,15 @@ pub fn decrypt_setup_layer(
 
 /// Verify the proof of knowledge of the signature and the ticket
 /// Return the next server and is_valid
-/// TODO: this function can panic easily - need to handle errors better
 pub fn verify_setup_packet(packet: &SetupPacket, network: &Network, layer: u64) -> (u64, bool) {
     let revealed_msgs = setup_default_msgs();
 
     // Calculating next server using the ticket
     let mut cursor = Cursor::new(&packet.setup_header.ticket);
-    let t_recovered = slice_to_elem!(&mut cursor, G1, network.is_proof_compressed).unwrap();
+    let t_recovered = match slice_to_elem!(&mut cursor, G1, network.is_proof_compressed) {
+        Ok(val) => val,
+        Err(_) => return (u64::MAX, false),
+    };
     let x = calculate_next_server(t_recovered, network.size);
 
     // Recovering the value of b
@@ -393,14 +395,20 @@ pub fn verify_setup_packet(packet: &SetupPacket, network: &Network, layer: u64) 
         round_id: network.round_id,
         sys_rand: network.sys_rand,
     };
-    let ticket_vals_bytes = bincode::serialize(&ticket_vals).unwrap();
+    let ticket_vals_bytes = match bincode::serialize(&ticket_vals) {
+        Ok(bytes) => bytes,
+        Err(_) => return (u64::MAX, false),
+    };
     let b_recovered = h_0(ticket_vals_bytes);
     // getting proof from bytes
-    let proof: PoKOfTicketProof;
-    match network.is_proof_compressed {
-        true => proof = PoKOfTicketProof::from_bytes_compressed_form(&packet.setup_header.proof).unwrap(),
-        false => proof = PoKOfTicketProof::from_bytes_uncompressed_form(&packet.setup_header.proof).unwrap(),
-    }
+    let wrapped_proof = match network.is_proof_compressed {
+        true => PoKOfTicketProof::from_bytes_compressed_form(&packet.setup_header.proof),
+        false => PoKOfTicketProof::from_bytes_uncompressed_form(&packet.setup_header.proof),
+    };
+    let proof = match wrapped_proof {
+        Ok(p) => p,
+        Err(_) => return (u64::MAX, false),
+    };
     // Setting up revealed indices
     let mut revealed_indices = BTreeSet::new();
     revealed_indices.insert(0);
@@ -412,16 +420,16 @@ pub fn verify_setup_packet(packet: &SetupPacket, network: &Network, layer: u64) 
         t_recovered,
     );
     let challenge_verifier = ProofChallenge::hash(&challenge_bytes);
-    let valid = proof
-        .verify(
-            &network.id_provider.bbs_keys.0,
-            &revealed_msgs,
-            &challenge_verifier,
-            b_recovered,
-            t_recovered,
-        )
-        .unwrap()
-        .is_valid();
+    let valid = match proof.verify(
+        &network.id_provider.bbs_keys.0,
+        &revealed_msgs,
+        &challenge_verifier,
+        b_recovered,
+        t_recovered,
+    ) {
+        Ok(result) => result.is_valid(),
+        Err(_) => return (u64::MAX, false),
+    };
     return (x, valid);
 }
 
@@ -478,8 +486,6 @@ pub fn generate_data_packet(data: Vec<u8>, client: &Client, network: &Network) -
     return data;
 }
 
-// TODO: make it so this function returns "Result" instead of "Option"
-//  this will be more readable and easier to maintain
 pub fn decrypt_data_packet_layer(
     enc_packet: &[u8], 
     cur_server: u64, 
