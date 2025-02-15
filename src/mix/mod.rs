@@ -112,9 +112,9 @@ impl Mix for MyServer {
                 // TODO: fix this so it is not hardcoded which rounds are setup and which are data
                 info!("mix {} is starting round {}", self.id, round + 1);
                 if round < *NUM_SETUP_ROUNDS - 1 { // first 3 rounds are setup rounds
-                    start_mix_round::<SetupPacket>(&self.mix_ips, self.id).await;
+                    self.start_mix_round::<SetupPacket>().await;
                 } else { 
-                    start_mix_round::<Vec<u8>>(&self.mix_ips, self.id).await;
+                    self.start_mix_round::<Vec<u8>>().await;
                 }
             }
         }
@@ -274,6 +274,11 @@ impl MyServer {
         );
         drop(time_guard);
     }
+
+    async fn start_mix_round<T: MixnetPacket>(&self) {
+        let init_buffer : Vec<Vec<u8>> = T::get_init_packets(self.id);
+        self.send_to_mix::<T>(self.id, 0, init_buffer).await;
+    }
 }
 
 fn is_middle_layer(output_buf: &HashMap<u32, (Vec<Vec<MixnetPacketType>>, u32)>) -> bool {
@@ -323,12 +328,7 @@ async fn wait_for_shutdown(id: u16) {
 }
 
 fn send_init_packets<T: MixnetPacket>(mix_ips: &Vec<IpAddr>, id: u16) -> JoinHandle<()> {
-    let init_buffer : Vec<Vec<u8>>;
-    if T::is_setup_packet() {
-        init_buffer = get_init_setup_packets(id);
-    } else {
-        init_buffer = get_init_data_packets(id);
-    }
+    let init_buffer : Vec<Vec<u8>> = T::get_init_packets(id);
     let dst_ip = mix_ips[id as usize];
     let task = tokio::spawn(async move {
         let mut conn = connect_to_server(&dst_ip, id).await;
@@ -391,13 +391,6 @@ async fn start_server(mix_ips: Vec<IpAddr>, id: u16) {
     });
 
     task.await.unwrap().await.expect("Failed to Start Server");
-}
-
-// TODO: change this function to implement "send_init_packets" with the channels self has
-//       This is possible since start_mix_round is only called by get which has access to the channels 
-//       This way time measurement for next layers can be done straight after the previous round is done
-async fn start_mix_round<T: MixnetPacket>(mix_ips: &Vec<IpAddr>, id: u16) {
-    send_init_packets::<T>(mix_ips, id).await.unwrap();
 }
 
 /// runs Mix

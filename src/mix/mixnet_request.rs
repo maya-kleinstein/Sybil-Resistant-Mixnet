@@ -27,6 +27,8 @@ pub trait MixnetPacket {
         dst: u16,
         total_outgoing: usize,
     );
+
+    fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>>;
 }
 
 impl MixnetPacket for SetupPacket {
@@ -85,6 +87,11 @@ impl MixnetPacket for SetupPacket {
                 _ => (),
             }
     }
+
+
+    fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>> {
+        return get_init_setup_packets(mix_id);
+    }
 }
 
 impl MixnetPacket for Vec<u8> {
@@ -123,6 +130,10 @@ impl MixnetPacket for Vec<u8> {
         _: usize,
         ) {
         // Do nothing
+    }
+
+    fn get_init_packets(mix_id: u16) -> Vec<Vec<u8>> {
+        return get_init_data_packets(mix_id);
     }
 }
 
