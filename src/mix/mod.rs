@@ -241,7 +241,8 @@ impl MyServer {
     /// Process all layers into single output message
     async fn output_last_layer(&self) -> Vec<Vec<u8>> {
         let mut guard = self.output_buffer.lock().await;
-        let send_layer = (*guard).keys().min().expect("HashMap is Empty").clone();
+        let send_layer = (*guard).keys().max().expect("HashMap is Empty").clone();
+        debug!("mix {} is outputting layer {} to config", self.id, send_layer);
         let send_layer_packets = (*guard).remove(&send_layer).unwrap();
         drop(guard);
         let mut packets = (0..*NUM_MIXES)
@@ -256,6 +257,7 @@ impl MyServer {
                 MixnetPacketType::SetupPacket(setup_packet) => messages.push(setup_packet.data),
             }
         }
+        debug!("mix {} is outputting {} messages to config", self.id, messages.len());
         // Shuffle the mix output
         messages.shuffle(&mut thread_rng());
         return messages;
