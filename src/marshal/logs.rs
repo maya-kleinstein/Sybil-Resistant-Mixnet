@@ -80,20 +80,6 @@ pub fn init_logger(file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Rename IP logs to Mix ID logs
-pub fn rename_ip_logs() {
-    // Get all IP file paths
-    let ips = get_cur_ip_files(&*LOGS_FOLDER).unwrap();
-    debug!("Current ORDERED IPs: {:?}", ips);
-    // enumerate through file_ips
-    for (ip_index, ip) in ips.iter().enumerate() {
-        let ip_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip.to_string());
-        let mix_str = format!("{}{}{}", *BASE_FOLDER, *LOGS_FOLDER, ip_index);
-        debug!("Renaming {} to {}", &ip_str, &mix_str);
-        fs::rename(ip_str, mix_str).unwrap();
-    }
-}
-
 /// Delete all files in data\logs that aren't relevant
 pub fn delete_old_log_files() {
     let paths = fs::read_dir(format!("{}{}", *BASE_FOLDER, *LOGS_FOLDER)).unwrap();
@@ -222,7 +208,7 @@ mod test {
         }
         println!("{:?}", get_cur_ip_files(&*LOGS_FOLDER).unwrap());
 
-        rename_ip_logs();
+        // rename_ip_logs();
 
         // Merge all log files
         merge_log_files().unwrap();
