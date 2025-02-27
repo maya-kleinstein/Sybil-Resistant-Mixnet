@@ -36,7 +36,11 @@ pub fn setup_info() {
         The path is a zig-zag between mix server 0 and 1 (i%2)
         */
     for i in 0..config_info.num_layers {
-        bad_tickets_vec.push(mapping.get(&(i % 2)).unwrap().clone());
+        if i % 2 == 0 {
+            bad_tickets_vec.push(mapping.get(&0).unwrap().clone());
+        } else {
+            bad_tickets_vec.push(mapping.get(&8).unwrap().clone());
+        }
     }
 
     let num_bad_clients = ((config_info.num_clients as f64) * config_info.percentage_bad_clients) as u64;
