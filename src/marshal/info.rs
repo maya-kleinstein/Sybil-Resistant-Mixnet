@@ -35,11 +35,12 @@ pub fn setup_info() {
     /* NOTE: notice all bad packets are generated with the same path
         The path is a zig-zag between mix server 0 and 1 (i%2)
         */
+    let attacked_mix = (config_info.num_mixes - 1) as u64;
     for i in 0..config_info.num_layers {
         if i % 2 == 0 {
             bad_tickets_vec.push(mapping.get(&0).unwrap().clone());
         } else {
-            bad_tickets_vec.push(mapping.get(&8).unwrap().clone());
+            bad_tickets_vec.push(mapping.get(&attacked_mix).unwrap().clone());
         }
     }
 
