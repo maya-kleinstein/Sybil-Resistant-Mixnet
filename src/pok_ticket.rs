@@ -601,7 +601,6 @@ impl PoKOfTicketProof {
         {
             return Ok(PoKOfTicketProofStatus::BadHiddenMessage);
         }
-        // TODO: future problem: maybe challenge should have borrow before it? for vc_2 as well?
         // Verifying proof_vc_2
         let mut bases_pok_vc_2 = Vec::with_capacity(2 + vk.message_count() - revealed_msgs.len());
         bases_pok_vc_2.push(GeneratorG1(self.d));

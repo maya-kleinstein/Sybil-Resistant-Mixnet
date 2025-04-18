@@ -77,13 +77,12 @@ pub async fn run_config(mix_ips: Vec<IpAddr>) {
                     response.messages.len()
                 )
             );
-            // TODO: check messages correctness
         });
         tasks.push(task);
     }
     join_all(tasks).await;
 
-    sleep(Duration::from_secs(3)); // TODO: adjust based on remote/local run
+    sleep(Duration::from_secs(3));
     // Generate final log, clear all IP files
     manage_files();
 }

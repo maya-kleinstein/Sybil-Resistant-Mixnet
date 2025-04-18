@@ -3,7 +3,7 @@
 import subprocess
 import time
 
-bin_path = "/cs/labs/yossigi/maya_k/Sybil_Resistant_Mixnet/target/x86_64-unknown-linux-gnu/release"
+bin_path = "./Sybil_Resistant_Mixnet/target/x86_64-unknown-linux-gnu/release"
 
 # Launch the Mixes
 print("launching mix")

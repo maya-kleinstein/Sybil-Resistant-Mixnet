@@ -540,7 +540,7 @@ fn calculate_next_server(t: G1, size: u64) -> u64 {
 
     // server x = H(t), H: {0,1}^* -> Zp
     let mut hasher = VarBlake2b::new(8).unwrap();
-    hasher.input(&mut t_affine); // TODO: add constant string to beginning of hash
+    hasher.input(&mut t_affine);
     let buf = hasher.vec_result();
     let x = u64::from_be_bytes(buf.as_slice().try_into().unwrap()) % size;
     return x;
@@ -560,7 +560,6 @@ fn get_ticket_proof(client: &Client, network: &Network, t: G1, b: G1) -> PoKOfTi
     )
     .unwrap();
 
-    // TODO: beware weak fiat shamir
     let challenge_prover = ProofChallenge::hash(&ticket_pok.to_bytes());
     let proof = ticket_pok.gen_proof(&challenge_prover).unwrap();
     return proof;

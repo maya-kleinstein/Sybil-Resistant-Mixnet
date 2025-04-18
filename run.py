@@ -13,7 +13,7 @@ parser.add_argument('setup', type=bool,
 
 args = parser.parse_args()
 
-bin_path = "C:\\Thesis\\Sybil-Resistant-Mixnet\\target\\release"
+bin_path = "target\\release"
 
 # Setup files
 if args.setup:
