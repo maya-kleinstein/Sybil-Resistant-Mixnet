@@ -61,10 +61,10 @@ srun -n 80 python3 run_mix.py : -n 1 python3 run_config.py remote
 
 You can adjust the SBATCH values as desired.
 
-# How can I Benchmark the System?
-## Microbenchmarks
+## How can I Benchmark the System?
+### Microbenchmarks
 To run microbenchmarks you can use `cargo bench`, this produces benchmarks for registration, data/setup packet decryption as well as ticket verification.
 
-## System Benchmarks
+### System Benchmarks
 To produce system-wide benchmarks you can run the mixnet remotely as described above with the configuration you wish to benchmark. The logs should contain how long each round took each mix to run for a fully connected mixnet.
 
