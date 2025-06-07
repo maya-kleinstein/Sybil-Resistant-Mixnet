@@ -41,10 +41,13 @@ This is done using the `setup` binary and requires no parameters except for the 
 Notice that there will be no clients directly communicating with the launched mixnet - instead the mix servers will get the pre-generated files from `./data/info` and once decrypted will send them to the `configurator` binary that verifies it has received all expected packets.
 
 ### Locally
-To run locally on a windows machine you can build and run the run.py script as follows:
+To run locally on a windows machine you can build using cargo and run the run.py script as follows:
 ```
 python3 run.py _NUM_MIXES_ local _IF_TO_SETUP_
 ```
+
+Alternatively you could use the tests `test_marshalling` (that acts like the setup binary) and then `test_system` - this DOES NOT launch seperate processes and instead launches everything in a multithreaded fashion.
+
 Notice that local runs are mostly useful for debugging and don't necessarily reflect the perfomance on a remote cluster.
 
 ### Remotely
