@@ -25,14 +25,7 @@ fi
 
 echo "Code compiled successfully!"
 
-##### STEP 2: Extract compiled rust code to output dir #####
-
-# Copy the file from the container to the local directory
-# docker cp $CONTAINER_NAME:/code/target/x86_64-unknown-linux-gnu $LOCAL_ELF_DIR
-
-echo "Results copied successfully!"
-
-##### STEP 3: Cleanup. Shut down container. #####
+##### STEP 2: Cleanup. Shut down container. #####
 docker stop $CONTAINER_NAME
 # docker rm $CONTAINER_NAME
 read -p "Press any key to continue . . ."
