@@ -3,7 +3,11 @@ This repo implements a Sybil Resistant Fully Connected Parallel Mixnet as descri
 
 It uses BBS+ signatures as a fork of the BBS+ crate and includes extended zero knowledge proofs as described in the paper.
 
-### Required Directory Structure
+## How can I Launch the Mixnet?
+
+### Setup
+
+#### Required Directory Structure
 
 Before launching the mixnet, ensure the following directory structure exists:
 
@@ -29,14 +33,12 @@ An example for a configuration in `config_info` could be:
 
 Where `base_port + i` is the port the i'th mix will communicate from, `mix_verification` can be `Verify` or `NoVerification` meaning whether proofs will exist and be verified in circuit setup packets. The rest of the values are straight forward or contain their default values. 
 
-### Setup Stage
-To avoid heavy computation during runtime all of the encryption keys and encrypted circuit setup and data packets are pre-generated using the setup stage. 
+#### Generating Pre-computed Data
+To avoid heavy computation during runtime all of the encryption keys and encrypted circuit setup and data packets are pre-generated during the setup stage. 
 
 This is done using the `setup` binary and requires no parameters except for the above configuration.
 
 Notice that there will be no clients directly communicating with the launched mixnet - instead the mix servers will get the pre-generated files from `./data/info` and once decrypted will send them to the `configurator` binary that verifies it has received all expected packets.
-
-## How can I Launch the Mixnet?
 
 ### Locally
 To run locally on a windows machine you can build and run the run.py script as follows:
