@@ -1,5 +1,5 @@
 # Sybil-Resistant-Mixnet
-This repo implements a Sybil Resistant Fully Connected Parallel Mixnet as described in the PETS 2024 paper "Sybil-Resistant Parallel Mixnets".
+This repo implements a Sybil Resistant Fully Connected Parallel Mixnet as described in the PETS 2025 paper **Sybil-Resistant Parallel Mixnets**
 
 It uses BBS+ signatures as a fork of the BBS+ crate and includes extended zero knowledge proofs as described in the paper.
 
