@@ -44,10 +44,12 @@ In total to reproduce all results the mixnet running stages would take at most 2
 ## Environment 
 
 ### Accessibility (All badges)
-The following git repository tag contains the source code, build and launch instructions under the `README.md` for this artifact:
+The following git repository tags contain the source code, build and launch instructions under the `README.md` for this artifact:
 
 - Github Repository: https://github.com/maya-kleinstein/Sybil-Resistant-Mixnet
-- Tag: artifact
+- Tags: artifact, yodel_artifact
+
+Note: artifact is the relevant tag unless explicitly stated otherwise.
 
 ### Set up the environment (Only for Functional and Reproduced badges)
 
@@ -93,7 +95,11 @@ This is done using the `setup` binary and requires no parameters except for the 
 Notice that there will be no clients directly communicating with the launched mixnet - instead the mix servers will get the pre-generated files from `./data/info` and once decrypted will send them to the `configurator` binary that verifies it has received all expected packets.
 
 ### Testing the Environment (Only for Functional and Reproduced badges)
-To simultaneously run and check the mixnet setup stage you can run the `marshalling_test` under `./tests/mixnet.rs`.
+To simultaneously run and check the mixnet setup stage you can run the `marshalling_test` under `./tests/mixnet.rs` using:
+
+```bash
+cargo test --release marshalling_test  -- --nocapture
+```
 
 This is only recommended for short setups since running on debug mode can negatively impact runtime.
 
@@ -138,7 +144,11 @@ python3 run.py _NUM_MIXES_ local _IF_TO_SETUP_
 ```
 where `_NUM_MIXES_` is the number of mix nodes as described in `config_info` and `_IF_TO_SETUP_` is whether to generate pre-computed information before the launch or to use what's already been generated.
 
-Alternatively you could use the test `test_system` - this DOES NOT launch seperate processes and instead launches everything in a multithreaded fashion.
+Alternatively you could use the test `system_test` - this DOES NOT launch seperate processes and instead launches everything in a multithreaded fashion:
+
+```bash
+cargo test --release system_test  -- --nocapture
+```
 
 Notice that local runs are mostly useful for testing functionality and debugging and don't necessarily reflect the perfomance on a remote cluster.
 
@@ -204,6 +214,10 @@ To reproduce the papers results experiments with all possible configuration comb
 - `mix_verification`: `(Verify, NoVerification)`
 
 All other values should be set as described in the environment setup example.
+
+#### Yodel Comparison: 
+
+To reproduce the yodel experiments the above must be done again but this time using the `yodel_artifact` tag in the same repo on the `yodel_mixnet` branch.
 
 ## Limitations (Only for Functional and Reproduced badges)
 Describe which tables and results are included or are not reproducible with the provided artifact.
