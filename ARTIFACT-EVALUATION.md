@@ -103,11 +103,12 @@ This is only recommended for short setups since running on debug mode can negati
 
 #### Main Result 1: Micro-Benchmarks
 The paper shows micro-benchmarks that describe the overhead of registering a client, decrypting and verifying their circuit setup packets.
-The micro-benchmarks are dhown in section 6.1 and can all be calculated using experiment #1. 
+The micro-benchmarks are shown in section 6.1 and can all be calculated using experiment #1. 
 
 #### Main Result 2: System Performance
+The system performance results show the expected latency of the launched mixnet for various configurations of the mixnet.
 
-...
+The results are shown in section 6.2 and can be calculated using experiment #2.
 
 ### Experiments 
 List each experiment the reviewer has to execute. Describe:
@@ -127,11 +128,82 @@ cargo bench
 
 This takes a couple of minutes requires <10MB of disk space.
 
-#### Experiment 2: Name
-...
+#### Experiment 2: System Performance
+To launch the mixnet first the environment needs to be set up as described above
 
-#### Experiment 3: Name 
-...
+##### Locally
+To run the experiment locally on a windows machine (mostly for verifying functionality) you can build using cargo and run the `run.py` script as follows:
+```bash
+python3 run.py _NUM_MIXES_ local _IF_TO_SETUP_
+```
+where `_NUM_MIXES_` is the number of mix nodes as described in `config_info` and `_IF_TO_SETUP_` is whether to generate pre-computed information before the launch or to use what's already been generated.
+
+Alternatively you could use the test `test_system` - this DOES NOT launch seperate processes and instead launches everything in a multithreaded fashion.
+
+Notice that local runs are mostly useful for testing functionality and debugging and don't necessarily reflect the perfomance on a remote cluster.
+
+##### Remotely
+To run on a remote cluster managed by SLURM, you can compile using the Dockefile to build an image and run a container by running:
+```bash
+docker build -t $IMAGE_NAME
+docker run -d --name $CONTAINER_NAME -v $LOCAL_CODE_DIR:/code $IMAGE_NAME bash -c "while true; do sleep 10; done"
+```
+
+Then using the following you can produce all the necessary binaries:
+```bash
+docker start $CONTAINER_NAME
+docker exec $CONTAINER_NAME bash -c "cargo build --release --target x86_64-unknown-linux-gnu"
+docker stop $CONTAINER_NAME
+```
+
+On the cluster itself you must first setup the required environment, first by setting up the directories and configuration file as described earlier and then by running the `run_setup.py` script in `./scripts/`.
+I recommend using this SBATCH configuration for setup:
+```bash
+#!/bin/bash
+
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=64
+#SBATCH --nodes=1
+#SBATCH --time=04:00:00
+#SBATCH --mem=50G
+
+echo "Starting Mixnet\n"
+
+srun -n 1 python3 run_setup.py
+```
+
+Once the setup is done you can launch the mixnet using the number of mixes you configurated in the `./data/config` file, for the papers experiments that would be 80:
+```bash
+#!/bin/bash
+
+#SBATCH --ntasks-per-node=8
+#SBATCH --cpus-per-task=4
+#SBATCH --nodes=10
+#SBATCH --time=01:00:00
+#SBATCH --mem=50G
+
+
+#SBATCH hetjob
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=4
+#SBATCH --nodes=1
+#SBATCH --time=01:00:00
+#SBATCH --mem=50G
+
+
+echo "Starting Mixnet\n"
+
+srun -n 80 python3 run_mix.py : -n 1 python3 run_config.py remote
+```
+
+You can adjust the SBATCH values as desired.
+
+To reproduce the papers results experiments with all possible configuration combinations must be run:
+- `num_clients`: `(100k, 500k, 1M, 2M)`
+- `percentage_bad_clients`: `(0.0, 0.25, 0.5)`
+- `mix_verification`: `(Verify, NoVerification)`
+
+All other values should be set as described in the environment setup example.
 
 ## Limitations (Only for Functional and Reproduced badges)
 Describe which tables and results are included or are not reproducible with the provided artifact.
