@@ -22,19 +22,24 @@ To reproduce the results of the paper, i.e. using 80 nodes with 2 million client
 All necessary software packages are listed in the `cargo.toml` file, python3 is also required. 
 
 - **Locally:** To run locally using the python script `run.py` a Windows OS is required.
-- **Remotely:** To run remotely while using the scripts under `./scripts/` assume a `x86_64-unknown-linux-gnu` architecture and the mix node binary assumes a slurm cluster.
+- **Remotely:** To run remotely while using the scripts under `./scripts/` a `x86_64-unknown-linux-gnu` architecture and a Slurm cluster are required.
 
 ### Estimated Time and Storage Consumption
 
 #### Mixnet Setup Stage
-The setup time is linear to the amount of generated traffic - assuming 64 CPU's and 50G of memory generating 2 million client circuit setup and communication packets takes about 2 hours whereas generating 100k will take a couple of minutes.
+The setup time is linear to the amount of generated traffic. 
+Assuming 64 CPU's and 50G of memory generating the longest evaluation setup with 2 million simulated clients takes about 2 hours whereas generating 100k will take a couple of minutes.
+
+In total to reproduce all results the setup stages would take around 45 hours combined.
 
 #### Launching the Mixnet
 Launching the mixnet as evaluated in the paper with the following configuration:
 - 5 layers
 - 3 circuit setup rounds
 - 3 communication rounds 
-and with 4 CPU's, 50G memory per mix node will take up to 1 hour for 2 million and a couple of minutes for 100k. 
+and with 4 CPU's, 50G memory per mix node will take up to 1 hour for 2 million clients and a couple of minutes for 100k. 
+
+In total to reproduce all results the mixnet running stages would take at most 24 hours combined.
 
 ## Environment 
 
@@ -95,13 +100,13 @@ This is only recommended for short setups since running on debug mode can negati
 ## Artifact Evaluation (Only for Functional and Reproduced badges)
 
 ### Main Results and Claims
-List all your paper's results and claims that are supported by your submitted artifacts.
 
-#### Main Result 1: Name
-Describe the results in 1 to 3 sentences.
-Refer to the related sections in your paper and reference the experiments that support this result/claim.
+#### Main Result 1: Micro-Benchmarks
+The paper shows micro-benchmarks that describe the overhead of registering a client, decrypting and verifying their circuit setup packets.
+The micro-benchmarks are dhown in section 6.1 and can all be calculated using experiment #1. 
 
-#### Main Result 2: Name
+#### Main Result 2: System Performance
+
 ...
 
 ### Experiments 
@@ -111,13 +116,17 @@ List each experiment the reviewer has to execute. Describe:
  - How long it takes and how much space it consumes on disk. (approximately)
  - Which claim and results does it support, and how.
 
-#### Experiment 1: Name
-Provide a short explanation of the experiment and expected results.
-Describe thoroughly the steps to perform the experiment and to collect and organize the results as expected from your paper.
-Use code segments to support the reviewers, e.g.,
+#### Experiment 1: Micro-Benchmarks
+Run the following to reproduce the micro-benchmarks described below from section 6.1:
 ```bash
-python experiment_1.py
+cargo bench
 ```
+-  Credential Issuance time: Is the result of running the `register_client` benchmark
+- Public Key Decryption: Is the result of running the `decrypt_setup_packet_layer` benchmark
+- Ticket Validation: Is the result of running the `verify_proof` benchmark
+
+This takes a couple of minutes requires <10MB of disk space.
+
 #### Experiment 2: Name
 ...
 
