@@ -4,7 +4,7 @@ Paper title: **Sybil-Resistant Parallel Mixnets**
 
 Artifacts HotCRP Id: **#13**
 
-Requested Badge: **Reproduced**
+Requested Badge: **Reproduced, Functional and Available**
 
 ## Description
 This repository implements a configurable fully connected parallel mixnet which can support either Sybil resistant or non-Sybil resistant communication.
