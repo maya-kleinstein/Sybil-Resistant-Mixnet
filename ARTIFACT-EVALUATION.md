@@ -220,11 +220,13 @@ All other values should be set as described in the environment setup example.
 To reproduce the yodel experiments the above must be done again but this time using the `yodel_artifact` tag in the same repo on the `yodel_mixnet` branch.
 
 ## Limitations (Only for Functional and Reproduced badges)
-Describe which tables and results are included or are not reproducible with the provided artifact.
-Provide an argument why this is not included/possible.
+The accessibility to a slurm cluster is a limitation to reproducibility.
+
+Assuming all the basic requirements described in the section above all of the results presented in the paper are reproducible given this artifact.
 
 ## Notes on Reusability (Only for Functional and Reproduced badges)
-First, this section might not apply to your artifacts.
-Use it to share information on how your artifact can be used beyond your research paper, e.g., as a general framework.
-The overall goal of artifact evaluation is not only to reproduce and verify your research but also to help other researchers to re-use and improve on your artifacts.
-Please describe how your artifacts can be adapted to other settings, e.g., more input dimensions, other datasets, and other behavior, through replacing individual modules and functionality or running more iterations of a specific part.
+This artifact could be used as a framework for developing Sybil-Resistant parallel mixnets with additional features, such as:
+- adding support for non-fully connected mixnets
+- adding batch verification to the circuit setup proof verification to improve efficiency
+- Implementing other compatible mixnets such as Yodel on top of the current framework
+- allowing for real-time client connections and communication, and not only via pre-computed packets.
