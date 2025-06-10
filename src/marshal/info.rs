@@ -61,12 +61,26 @@ pub fn setup_info() {
 
         // Safely update shared data
         {
-            let mut setup_packets_lock = setup_packets.lock().unwrap();
-            setup_packets_lock[first_server as usize].push(setup_packet);
-        }
-        {
             let mut packets_lock = data_packets.lock().unwrap();
             packets_lock[first_server as usize].push(packet);
+        }
+
+        // add an additional packet to the setup packets to implement Yodel
+        let mut additional_circuit_client = Client::new(&network);
+        let (additional_setup_packet, additional_first_server): (Vec<u8>, u64);
+        if i < num_bad_clients {
+            println!("Generating additional bad packet {}", i);
+            (additional_setup_packet, additional_first_server) = generate_bad_setup_packet(&mut additional_circuit_client, &network, &bad_tickets_vec);
+        } else {
+            println!("Generating additional packet {}", i);
+            (additional_setup_packet, additional_first_server) = generate_setup_packet(&mut additional_circuit_client, &network);
+        }
+
+        // Safely update shared data
+        {
+            let mut setup_packets_lock = setup_packets.lock().unwrap();
+            setup_packets_lock[first_server as usize].push(setup_packet);
+            setup_packets_lock[additional_first_server as usize].push(additional_setup_packet);
         }
     });
 
