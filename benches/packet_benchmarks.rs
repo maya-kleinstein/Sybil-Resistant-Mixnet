@@ -7,7 +7,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 // Things I want to test: Time to generate a ticket, time to verify a *ticket* and signature, Time to decrypt a packet
 
 pub fn decrypt_setup_packet_layer_benchmark(c: &mut Criterion) {
-    let network = black_box(Network::new(2, 3, MixnetVerification::Verify, true));
+    let network = black_box(Network::new(2, 3, MixnetVerification::NoVerification, true));
     let mut client = black_box(Client::new(&network));
     let (enc_data, first_server) = black_box(generate_setup_packet(&mut client, &network));  
     c.bench_function("decrypt_setup_packet_layer", |b| {

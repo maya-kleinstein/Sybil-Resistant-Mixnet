@@ -11,6 +11,31 @@ This repository implements a configurable fully connected parallel mixnet which 
 
 It uses BBS+ signatures as a fork of the BBS+ crate and includes zero knowledge proofs to achieve Sybil resistance.
 
+### Paper Authors
+- Maya Kleinstein (Hebrew University of Jerusalem)
+- Riad S. Wahby (Carnegie Mellon University)
+- Yossi Gilad (Hebrew University of Jerusalem)
+
+### Paper Abstract
+Parallel mixing is a common technique for efficiently unlinking messages from their senders' identity. It involves multiple servers arranged in a stratified mix-network (mixnet), each shuffling a fraction of the messages in parallel with others and then relaying them to a subsequent server. By the end of the route through the mixnet's servers, after applying each server's local shuffle, all messages are mixed together, hiding the senders' identities. Unfortunately, parallel mixing is bottlenecked by the busiest server in each mixnet stratum and does not offer a way to ensure load balancing across the servers. Thus, Sybil clients can coordinate to route their messages through one victim server in the middle of the mixnet and subsequent strata, stalling message delivery for everyone and keeping their identities hidden since their messages were already shuffled with those from other clients. This paper presents BalancedMixnet, a new protocol for load balancing clients across the servers in a parallel mix network while ensuring sender anonymity. Our protocol relies on anonymous credentials to ensure clients use a route through the mixnet that is selected uniformly at random and, at the same time, let servers verify that the message is from a valid client and prevent replay attacks. The cost of issuing and validating credentials can be easily amortized across multiple messages from the same client. We implement and evaluate BalancedMixnet, illustrating that the cost of integrating it into a parallel mixnet is modest and provides substantial benefits against Sybil attacks.
+
+### Repository Structure
+We'll outline the repository directory structure:
+
+- **benches/** – Contains benchmarking code used to measure microbenchmarks of the mixnet.
+- **bins/** – Contains the code for the seperate binaries produced when building the repo. This includes the `mix`, `setup` and `config` binaries.
+- **data/** – Stores data files containing necessary information for the mixnet to run. This is elaborated on later.
+- **proto/** – Holds the protocol buffer definition the mixnet works with.
+- **scripts/** – Contains utility scripts for running the setup, config and mixes remotely.
+- **src/** – The main source code of the project, forked from the BBS+ crate.
+    - **src/marshall** - Contains the code used for marshalling data to and from the `./data/` directory
+    - **src/mix** - Contains the gRPC implementation
+    - **src/network.rs** - Contains the code that handles encryption and decryption of setup and data packets.
+    - **src/pok_ticket.rs** - Contains the code that implements the PoK for the valid mixnet ticket
+    - **src/mixnet.rs** and **src/config.rs** implement standalone mixnet and config functions.
+    - All other files in **src/** originate from the BBS+ library crate.
+- **tests/** – Contains tests from the original BBS+ crate as well as mixnet specific tests.
+
 ## Basic Requirements (Only for Functional and Reproduced badges)
 
 ### Hardware Requirements
@@ -19,10 +44,11 @@ To run a minimal mixnet with 2 mix nodes and 1000 clients any PC would do and it
 To reproduce the results of the paper, i.e. using 80 nodes with 2 million clients, 4 CPU's and 50G of memory per node would be required.
 
 ### Software Requirements
-All necessary software packages are listed in the `cargo.toml` file, python3 is also required. 
+All necessary cargo packages are listed in the `cargo.toml` file, python3 is also required. 
 
-- **Locally:** To run locally using the python script `run.py` a Windows OS is required.
-- **Remotely:** To run remotely while using the scripts under `./scripts/` a `x86_64-unknown-linux-gnu` architecture and a Slurm cluster are required.
+- **Locally:** No special requirements are needed to run `run.py` on a Windows OS. To run on Linux install the `protobuf-compile` package.
+
+- **Remotely:** To run remotely while using the scripts under `./scripts/` a `x86_64-unknown-linux-gnu` architecture and a Slurm cluster are required. The package `protobuf-compile` is also needed.
 
 ### Estimated Time and Storage Consumption
 
@@ -69,11 +95,49 @@ Each subdirectory serves a specific purpose:
 - `info/` – Stores mixnet metadata or heavy pre-generated information.
 - `ips/` – Holds mix IP's for syncing communication (NOTE: this must be deleted manually in case mixnet stopped mid-run)
 - `logs/` – Output logs for debugging and monitoring.
-- `config_info` - Stores a configuration for the mixnet.
+- `config_info` - Stores a configuration for the mixnet. in the format described in the section below.
 
-An example for a configuration in `config_info` could be:
+**NOTICE:** The directories should all be empty except for `./data/info` and any final log files under `./data/logs/`. If the mixnet crashes or stops mid run they must be cleaned manually before the next launch by running:
 ```
-{"base_port":8000,"num_mixes":2,"num_clients":1000,"percentage_bad_clients":0.0,"num_layers":5,"first_measured_layer":1,"mix_verification":"Verify","num_setup_rounds":3,"num_data_rounds":3,"data_size":128,"is_proof_compressed":true,"edge_limit":1.1}
+rm ./data/ips/*
+find ./data/logs -maxdepth 1 -type f ! -name 'log*' -exec rm {} +
+```
+
+#### System Input
+The mixnet is configured using a configuration file set up in `/data/info/config_info`, where the file is parsed into the following struct:
+```
+pub struct ConfigInfo {
+    pub base_port: u16,
+    pub num_mixes: u16,
+    pub num_clients: u64,
+    pub percentage_bad_clients: f64,
+    pub num_layers: u64,
+    pub first_measured_layer: u32,
+    pub mix_verification: MixnetVerification,
+    pub num_setup_rounds: u32,
+    pub num_data_rounds: u32,
+    pub data_size: u64,
+    pub is_proof_compressed: bool,
+    pub edge_limit: f64,
+}
+
+```
+An example for such a configuration would be:
+```
+{
+    "base_port":8000,
+    "num_mixes":2,
+    "num_clients":1000,
+    "percentage_bad_clients":0.0,
+    "num_layers":5,
+    "first_measured_layer":1,
+    "mix_verification":"Verify",
+    "num_setup_rounds":3,
+    "num_data_rounds":3,
+    "data_size":128,
+    "is_proof_compressed":true,
+    "edge_limit":1.1
+}
 ```
 
 Where:
@@ -82,11 +146,9 @@ Where:
 - `first_measured_layer`, `is_proof_compressed` and `edge_limit` are all set to their default values and shouldn't be changed.
 - The rest of the values are straight forward.
 
-**NOTICE:** The directories should all be empty except for `./data/info` and any final log files under `./data/logs/`. If the mixnet crashes or stops mid run they must be cleaned manually before the next launch by running:
-```
-rm ./data/ips/*
-find ./data/logs -maxdepth 1 -type f ! -name 'log*' -exec rm {} +
-```
+In addition, the `mix`, and `config` binaries receive a parameter `local/remote` which signifies whether they are running on a local machine or a remote cluster. 
+These values are passed implicitly by the local `run.py` script and the remote `./scripts/*` scripts.
+
 #### Mixnet Setup Stage
 To avoid heavy computation during runtime all of the encryption keys and encrypted circuit setup and data packets are pre-generated during the setup stage. 
 
@@ -138,7 +200,7 @@ This takes a couple of minutes requires <10MB of disk space.
 To launch the mixnet first the environment needs to be set up as described above
 
 ##### Locally
-To run the experiment locally on a windows machine (mostly for verifying functionality) you can build using cargo and run the `run.py` script as follows:
+To run the experiment locally (mostly for verifying functionality) you can build using cargo and run the `run.py` script as follows:
 ```bash
 python3 run.py _NUM_MIXES_ local _IF_TO_SETUP_
 ```

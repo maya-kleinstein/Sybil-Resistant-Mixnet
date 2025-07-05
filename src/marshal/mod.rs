@@ -13,7 +13,7 @@ pub mod ips;
 pub mod logs;
 
 /*
-This file contains all functions related to marshalling data to and from files.
+This module contains all functions related to marshalling data to and from files.
 This includes: INFO, IPS, and LOGS files.
 INFO: all pre-computed data
 IPS: all IP addresses for initial setup

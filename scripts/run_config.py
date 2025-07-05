@@ -11,7 +11,7 @@ parser.add_argument('remote', type=str,
 
 args = parser.parse_args()
 
-bin_path = "./Sybil_Resistant_Mixnet/target/x86_64-unknown-linux-gnu/release"
+bin_path = "./target/x86_64-unknown-linux-gnu/release"
 
 # Launch the Configurator
 time.sleep(5)

@@ -1,7 +1,7 @@
 import subprocess
 import time
 
-bin_path = "./Sybil_Resistant_Mixnet/target/x86_64-unknown-linux-gnu/release"
+bin_path = "./target/x86_64-unknown-linux-gnu/release"
 
 # Launch the Mixes
 print("launching mix")

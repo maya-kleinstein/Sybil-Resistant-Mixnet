@@ -1,6 +1,7 @@
 import argparse
 import subprocess
-import time
+import os
+import platform
 
 # Parse flags (num servers, num clients, etc.)
 parser = argparse.ArgumentParser(description='Start remote test.')
@@ -13,37 +14,39 @@ parser.add_argument('setup', type=bool,
 
 args = parser.parse_args()
 
-bin_path = "target\\release"
+# Detect platform and define executable extension and separator
+is_windows = platform.system() == "Windows"
+exe_suffix = ".exe" if is_windows else ""
+bin_path = os.path.join("target", "release")
+
+def full_path(binary_name):
+    return os.path.join(bin_path, binary_name + exe_suffix)
+
+def run_process(cmd_list):
+    return subprocess.Popen(cmd_list, stdout=None, stderr=None, stdin=subprocess.PIPE)
 
 # Setup files
 if args.setup:
     print("Setting up all files")
-    cmd = "{}\\setup.exe".format(bin_path)
-    setup_p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
+    setup_cmd = [full_path("setup")]
+    setup_p = run_process(setup_cmd)
     stdout, stderr = setup_p.communicate()
 
-
-# Launch the Mixes
-print("launching mixes")
+# Launch Mixes
+print("Launching mixes")
 mprocesses = []
 for i in range(args.mixes):
-    cmd = "{}\\mix.exe {} {}".format(bin_path, args.remote, i)
-    p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
+    mix_cmd = [full_path("mix"), args.remote, str(i)]
+    p = run_process(mix_cmd)
     mprocesses.append(p)
-# time.sleep(0.1)
 
-
-# Launch the Configurator
-print("launching configurator")
-cmd = "{}\\config.exe {}".format(bin_path, args.remote)
-config_p = subprocess.Popen(cmd, stdout=None, stderr=None, stdin=subprocess.PIPE, shell=True)
-# time.sleep(0.5)
-
+# Launch Configurator
+print("Launching configurator")
+config_cmd = [full_path("config"), args.remote]
+config_p = run_process(config_cmd)
 
 # Cleanup
-print("cleanup processes")
+print("Waiting for processes to finish")
 for p in mprocesses:
-    stdout, stderr = p.communicate()
-
-stdout, stderr = config_p.communicate()
-
+    p.communicate()
+config_p.communicate()
