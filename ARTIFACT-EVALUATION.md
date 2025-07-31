@@ -197,25 +197,10 @@ cargo bench
 This takes a couple of minutes requires <10MB of disk space.
 
 #### Experiment 2: System Performance
-To launch the mixnet first the environment needs to be set up as described above
+To reproduce the system performace results seen in the paper without access to a SLURM managed cluster please see [limitations].(#limitations-only-for-functional-and-reproduced-badges).
 
-##### Locally
-To run the experiment locally (mostly for verifying functionality) you can build using cargo and run the `run.py` script as follows:
-```bash
-python3 run.py _NUM_MIXES_ local _IF_TO_SETUP_
-```
-where `_NUM_MIXES_` is the number of mix nodes as described in `config_info` and `_IF_TO_SETUP_` is whether to generate pre-computed information before the launch or to use what's already been generated.
-
-Alternatively you could use the test `system_test` - this DOES NOT launch seperate processes and instead launches everything in a multithreaded fashion:
-
-```bash
-cargo test --release system_test  -- --nocapture
-```
-
-Notice that local runs are mostly useful for testing functionality and debugging and don't necessarily reflect the perfomance on a remote cluster.
-
-##### Remotely
-To run on a remote cluster managed by SLURM, you can compile using the Dockefile to build an image and run a container by running:
+##### Remote System Performance:
+You can compile the necessary binaries using the Dockefile to build an image and run a container by running:
 ```bash
 docker build -t $IMAGE_NAME
 docker run -d --name $CONTAINER_NAME -v $LOCAL_CODE_DIR:/code $IMAGE_NAME bash -c "while true; do sleep 10; done"
@@ -277,14 +262,31 @@ To reproduce the papers results experiments with all possible configuration comb
 
 All other values should be set as described in the environment setup example.
 
+#### Local System Performance:
+To run the experiment locally you can build using cargo and run the `run.py` script as follows:
+```bash
+python3 run.py _NUM_MIXES_ local _IF_TO_SETUP_
+```
+where `_NUM_MIXES_` is the number of mix nodes as described in `config_info` and `_IF_TO_SETUP_` is whether to generate pre-computed information before the launch or to use what's already been generated.
+
+Alternatively you could use the test `system_test` - this DOES NOT launch seperate processes and instead launches everything in a multithreaded fashion:
+
+```bash
+cargo test --release system_test  -- --nocapture
+```
+
+Notice that `system_test` runs are mostly useful for testing functionality and debugging since they use less efficient debug compilation.
+
 #### Yodel Comparison: 
 
 To reproduce the yodel experiments the above must be done again but this time using the `yodel_artifact` tag in the same repo on the `yodel_mixnet` branch.
 
 ## Limitations (Only for Functional and Reproduced badges)
-The accessibility to a slurm cluster is a limitation to reproducibility.
+Reproducing the exact system performance results requires a SLURM-managed cluster with sufficient memory and CPU availability. However, the minimal local setup would demonstrate the relative behavior of the system under scale, supporting the paper’s key claims.
 
-Assuming all the basic requirements described in the section above all of the results presented in the paper are reproducible given this artifact.
+In particular, Experiment 2 evaluates the system at `(100K, 500K, 1M, 2M)` clients with 80 mixes, each using 4 CPUs. This can be scaled down by a factor of 100 to `(1K, 5K, 10K, 20K)` clients. These smaller experiments can be run as described [here](#local-system-performance) using 2 mix nodes and the same configuration values as specified [here](#experiment-2-system-performance) — without requiring a SLURM cluster.
+
+While the absolute performance (e.g., latency) will differ from the original results, the scaling behavior should remain similar. This reproduces the relative benefits the BalancedMixnet mechanism provides, without requiring access to SLURM.
 
 ## Notes on Reusability (Only for Functional and Reproduced badges)
 This artifact could be used as a framework for developing Sybil-Resistant parallel mixnets with additional features, such as:
