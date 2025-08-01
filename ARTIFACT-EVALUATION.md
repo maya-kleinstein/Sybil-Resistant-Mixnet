@@ -44,11 +44,11 @@ To run a minimal mixnet with 2 mix nodes and 1000 clients any PC would do and it
 To reproduce the results of the paper, i.e. using 80 nodes with 2 million clients, 4 CPU's and 50G of memory per node would be required.
 
 ### Software Requirements
-All necessary cargo packages are listed in the `cargo.toml` file, python3 is also required. 
-
-- **Locally:** No special requirements are needed to run `run.py` on a Windows OS. To run on Linux install the `protobuf-compile` package.
-
-- **Remotely:** To run remotely while using the scripts under `./scripts/` a `x86_64-unknown-linux-gnu` architecture and a Slurm cluster are required. The package `protobuf-compile` is also needed.
+- Rust
+- Python3
+- All necessary cargo packages are listed in the `cargo.toml`
+- The `protobuf-compiler` package is necessary when running on linux
+- To run remotely using the scripts under `./scripts/` a `x86_64-unknown-linux-gnu` architecture and a Slurm cluster are required.
 
 ### Estimated Time and Storage Consumption
 
@@ -141,7 +141,8 @@ An example for such a configuration would be:
 ```
 
 Where:
-- `base_port`: `base_port + i` is the port the i'th mix will communicate - `mix_verification`: is the verification mode used to generate and decrypt packets and can be either `Verify` or `NoVerification` meaning whether proofs will exist and be verified in circuit setup packets. 
+- `base_port`: `base_port + i` is the port the i'th mix will communicate 
+- `mix_verification`: is the verification mode used to generate and decrypt packets and can be either `Verify` or `NoVerification` meaning whether proofs will exist and be verified in circuit setup packets. 
 - `percentage_bad_clients`: The number of malicious clients who all target a singular mix node per layer.
 - `first_measured_layer`, `is_proof_compressed` and `edge_limit` are all set to their default values and shouldn't be changed.
 - The rest of the values are straight forward.
@@ -197,7 +198,7 @@ cargo bench
 This takes a couple of minutes requires <10MB of disk space.
 
 #### Experiment 2: System Performance
-To reproduce the system performace results seen in the paper without access to a SLURM managed cluster please see [limitations].(#limitations-only-for-functional-and-reproduced-badges).
+To reproduce the system performace results seen in the paper without access to a SLURM managed cluster please see [limitations](#limitations-only-for-functional-and-reproduced-badges).
 
 ##### Remote System Performance:
 You can compile the necessary binaries using the Dockefile to build an image and run a container by running:
@@ -267,7 +268,9 @@ To run the experiment locally you can build using cargo and run the `run.py` scr
 ```bash
 python3 run.py _NUM_MIXES_ local _IF_TO_SETUP_
 ```
-where `_NUM_MIXES_` is the number of mix nodes as described in `config_info` and `_IF_TO_SETUP_` is whether to generate pre-computed information before the launch or to use what's already been generated.
+Where:
+- `_NUM_MIXES_` is the number of mix nodes as described in `config_info`
+- `_IF_TO_SETUP_` is `True/False`, whether to generate pre-computed information before the launch or to use what's already been generated.
 
 Alternatively you could use the test `system_test` - this DOES NOT launch seperate processes and instead launches everything in a multithreaded fashion:
 

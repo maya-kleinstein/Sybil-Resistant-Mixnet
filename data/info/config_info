@@ -1,1 +1,1 @@
-{"base_port":8000,"num_mixes":2,"num_clients":1000,"percentage_bad_clients":0.0,"num_layers":5,"first_measured_layer":1,"mix_verification":"OnlyVerifyEdgeCases","num_setup_rounds":3,"num_data_rounds":3,"data_size":128,"is_proof_compressed":true,"edge_limit":1.1}
+{"base_port":8000,"num_mixes":2,"num_clients":1000,"percentage_bad_clients":0.0,"num_layers":5,"first_measured_layer":1,"mix_verification":"Verify","num_setup_rounds":3,"num_data_rounds":3,"data_size":128,"is_proof_compressed":true,"edge_limit":1.1}

@@ -1,3 +1,5 @@
 target/
-data/info/
+data/info/data_packets_*
+data/info/setup_packets_*
+data/info/network_info
 data/ips/
