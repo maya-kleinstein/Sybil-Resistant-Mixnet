@@ -195,7 +195,7 @@ cargo bench
 - Public Key Decryption: Is the result of running the `decrypt_setup_packet_layer` benchmark
 - Ticket Validation: Is the result of running the `verify_proof` benchmark
 
-This takes a couple of minutes requires <10MB of disk space.
+This takes a couple of minutes and requires <10MB of disk space.
 
 #### Experiment 2: System Performance
 To reproduce the system performace results seen in the paper without access to a SLURM managed cluster please see [limitations](#limitations-only-for-functional-and-reproduced-badges).
@@ -256,14 +256,20 @@ srun -n 80 python3 run_mix.py : -n 1 python3 run_config.py remote
 
 You can adjust the SBATCH values as desired.
 
-To reproduce the papers results experiments with all possible configuration combinations must be run:
+To reproduce the papers results experiments, all possible configuration combinations must be run:
 - `num_clients`: `(100k, 500k, 1M, 2M)`
 - `percentage_bad_clients`: `(0.0, 0.25, 0.5)`
 - `mix_verification`: `(Verify, NoVerification)`
 
 All other values should be set as described in the environment setup example.
 
-#### Local System Performance:
+Each experiment will generate the latency for the data and setup rounds as described [here](#system-performance-results).
+
+Combined they form a series of six graphs as presented in the paper. 
+A graph for each combination of `data/setup` round latency and `percentage_bad_clients` as listed above. 
+Each graph then contains two plots for both `mix_verification` options, each showing latency as a function of `num_clients`.
+
+##### Local System Performance:
 To run the experiment locally you can build using cargo and run the `run.py` script as follows:
 ```bash
 python3 run.py _NUM_MIXES_ local _IF_TO_SETUP_
@@ -279,6 +285,32 @@ cargo test --release system_test  -- --nocapture
 ```
 
 Notice that `system_test` runs are mostly useful for testing functionality and debugging since they use less efficient debug compilation.
+
+##### System Performance Results:
+To process the results of a system run use the log in `data/logs/`. It should contain, in order:
+- the configuration used for this run
+- the latency per round per mix server. For example, for 2 mix server this will look like this:
+```
+ Round 0 took mix 0 1.912319s seconds
+ Round 0 took mix 1 1.5777532s seconds
+ Round 1 took mix 0 1.8200901s seconds
+ Round 1 took mix 1 1.8213545s seconds
+ Round 2 took mix 0 2.2790925s seconds
+ Round 2 took mix 1 1.8112239s seconds
+ Round 3 took mix 0 6.0115ms seconds
+ Round 3 took mix 1 5.8513ms seconds
+ Round 4 took mix 0 5.7413ms seconds
+ Round 4 took mix 1 5.5242ms seconds
+ Round 5 took mix 0 5.1364ms seconds
+ Round 5 took mix 1 5.3241ms seconds
+```
+- the system run logs, tagged by mix server number or config
+
+A rounds latency will be the maximum of the latencies measured for each mix server in that round.
+
+The final measured data/setup latency will be the last measured round - in this case rounds `2` and `5`.
+
+If the other round latencies differ significantly (>10%) the test should be re-run.
 
 #### Yodel Comparison: 
 
